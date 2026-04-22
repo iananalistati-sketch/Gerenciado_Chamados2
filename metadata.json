@@ -1,0 +1,6 @@
+{
+  "name": "Sheets Integration MVP",
+  "description": "Functional Google Sheets Read/Write Integration via Service Account.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
