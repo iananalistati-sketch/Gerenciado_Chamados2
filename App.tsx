@@ -77,10 +77,6 @@ export default function App() {
 
     const values = json as string[][];
 
-    values.forEach((row: any, i: number) => {
-      row._originalIndex = i + 1;
-    });
-
     setData(values);
     setAllData(prev => ({ ...prev, [selectedSheet]: values }));
     setFormData({});
