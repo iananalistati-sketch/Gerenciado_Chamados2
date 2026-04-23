@@ -1,15 +1,16 @@
 import { google } from "googleapis";
 
-export default async function handler(req, res) {
+export default async function handler(req: any, res: any) {
   try {
     const { rowIndex, data, sheetName } = req.body;
 
-    const auth = new google.auth.JWT(
-      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      null,
-      process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-      ["https://www.googleapis.com/auth/spreadsheets"]
-    );
+    const auth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY,
+      },
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
 
     const sheets = google.sheets({ version: "v4", auth });
 
@@ -23,7 +24,8 @@ export default async function handler(req, res) {
     });
 
     res.status(200).json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("ERRO UPDATE:", error);
     res.status(500).json({ error: error.message });
   }
 }
