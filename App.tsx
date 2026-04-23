@@ -104,18 +104,17 @@ export default function App() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          data: rowData, 
+          data: rowData, // 🔥 CORRETO
           rowIndex, 
           sheetName: selectedSheet 
         }),
-
       });
-
+  
       if (res.ok) {
         fetchData();
       } else {
         const err = await res.json();
-        alert('Erro ao salvar linha: ' + (err.details || err.error));
+        alert('Erro ao salvar linha: ' + (err.error));
       }
     } catch (e: any) {
       alert('Erro de rede: ' + e.message);
@@ -123,6 +122,32 @@ export default function App() {
       setLoading(false);
     }
   };
+
+  const handleAddRow = async (newRow: string[]) => {
+  setLoading(true);
+  try {
+    const res = await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        data: newRow,
+        sheetName: selectedSheet 
+      }),
+    });
+
+    if (res.ok) {
+      fetchData();
+    } else {
+      const err = await res.json();
+      alert('Erro ao adicionar: ' + err.error);
+    }
+  } catch (e: any) {
+    alert('Erro de rede: ' + e.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleSave = async (dataToSave = formData) => {
     setLoading(true);
