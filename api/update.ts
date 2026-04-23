@@ -2,7 +2,7 @@ import { google } from "googleapis";
 
 export default async function handler(req: any, res: any) {
   try {
-    const { rowIndex, data, sheetName } = req.body;
+    const { rowIndex, data, sheet } = req.body;
 
     const auth = new google.auth.GoogleAuth({
       credentials: {
@@ -16,7 +16,7 @@ export default async function handler(req: any, res: any) {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.SPREADSHEET_ID,
-      range: `${sheetName}!A${rowIndex}`,
+      range: `${sheet}!A${rowIndex}`,
       valueInputOption: "RAW",
       requestBody: {
         values: [data],
