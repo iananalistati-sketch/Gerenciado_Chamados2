@@ -74,8 +74,9 @@ export default function App() {
     if (!Array.isArray(json)) {
       throw new Error("API não retornou um array");
     }
+    
+    const values = json.filter(row => Array.isArray(row));
 
-    const values = json as string[][];
 
     setData(values);
     setAllData(prev => ({ ...prev, [selectedSheet]: values }));
