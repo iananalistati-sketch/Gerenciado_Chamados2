@@ -19,7 +19,7 @@ export default async function handler(req: any, res: any) {
       range: `${sheetName}!A${rowIndex}`,
       valueInputOption: "RAW",
       requestBody: {
-        values: [Object.values(data)],
+        values: [data],
       },
     });
 
