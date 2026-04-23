@@ -64,32 +64,33 @@ export default function App() {
       .toLowerCase();
 
   const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/data?sheet=${selectedSheet}`);
-      const json = await res.json();
-      if (res.ok) {
-        const values = (json.values || []) as string[][];
-        console.log(`[DEBUG] Headers da aba ${selectedSheet}:`, values[0]);
-        
-        // Atribui o índice real da linha na planilha para cada array de dados
-        // Google Sheets é 1-indexed. values[0] é a linha 1.
-        const formatted = values.map((row, i) => ({
-          values: row,
-          rowIndex: i + 1
-        }));
+  setLoading(true);
+  setError(null);
 
-        setData(formatted);
-        setAllData(prev => ({ ...prev, [selectedSheet]: values }));
-        setFormData({}); // Limpa formulário ao trocar de aba
-      } else throw new Error(json.details || 'Erro ao carregar');
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
+  try {
+    const res = await fetch(`/api/data?sheet=${selectedSheet}`);
+    const json = await res.json();
+
+    if (!Array.isArray(json)) {
+      throw new Error("API não retornou um array");
     }
-  };
+
+    const values = json as string[][];
+
+    values.forEach((row: any, i: number) => {
+      row._originalIndex = i + 1;
+    });
+
+    setData(values);
+    setAllData(prev => ({ ...prev, [selectedSheet]: values }));
+    setFormData({});
+  } catch (e: any) {
+    setError(e.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchData();
