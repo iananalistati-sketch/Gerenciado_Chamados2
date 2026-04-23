@@ -70,10 +70,9 @@ export default function App() {
   try {
     const res = await fetch(`/api/data?sheet=${selectedSheet}`);
     const json = await res.json();
-
-    if (!Array.isArray(json)) {
-      throw new Error("API não retornou um array");
-    }
+    
+    // 🔥 só valida se for array, senão assume vazio
+    const values = Array.isArray(json) ? json : [];
     
     const values = json.filter(row => Array.isArray(row));
 
