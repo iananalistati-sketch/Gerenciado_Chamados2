@@ -75,11 +75,12 @@ export default function App() {
         
         // Atribui o índice real da linha na planilha para cada array de dados
         // Google Sheets é 1-indexed. values[0] é a linha 1.
-        values.forEach((row, i) => {
-          (row as any)._originalIndex = i + 1;
-        });
+        const formatted = values.map((row, i) => ({
+          values: row,
+          rowIndex: i + 1
+        }));
 
-        setData(values);
+        setData(formatted);
         setAllData(prev => ({ ...prev, [selectedSheet]: values }));
         setFormData({}); // Limpa formulário ao trocar de aba
       } else throw new Error(json.details || 'Erro ao carregar');
@@ -105,7 +106,7 @@ export default function App() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          rowData, 
+          data: rowData, 
           rowIndex, 
           sheetName: selectedSheet 
         }),
