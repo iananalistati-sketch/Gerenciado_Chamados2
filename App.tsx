@@ -71,10 +71,10 @@ export default function App() {
     const res = await fetch(`/api/data?sheet=${selectedSheet}`);
     const json = await res.json();
     
-    // 🔥 só valida se for array, senão assume vazio
-    const values = Array.isArray(json) ? json : [];
-    
-    const values = json.filter(row => Array.isArray(row));
+    const values = Array.isArray(json)
+      ? json.filter((row) => Array.isArray(row))
+      : [];
+
 
 
     setData(values);
