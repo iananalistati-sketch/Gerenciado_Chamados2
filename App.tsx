@@ -130,7 +130,7 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         data: newRow,
-        sheetName: selectedSheet 
+        sheet: selectedSheet 
       }),
     });
 
@@ -156,7 +156,7 @@ export default function App() {
     try {
       const method = isEdit ? 'PUT' : 'POST';
       const body = isEdit 
-        ? { rowData, rowIndex: editingRowIndex, sheetName: selectedSheet }
+        ? { rowData, rowIndex: editingRowIndex, sheet: selectedSheet }
         : { rowData };
       
       const url = isEdit ? '/api/data' : `/api/data?sheet=${selectedSheet}`;
