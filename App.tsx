@@ -103,9 +103,9 @@ export default function App() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          data: rowData, // 🔥 CORRETO
+          data: rowData,
           rowIndex, 
-          sheetName: selectedSheet 
+          sheet: selectedSheet 
         }),
       });
   
