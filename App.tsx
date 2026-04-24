@@ -96,18 +96,25 @@ export default function App() {
     setCurrentPage(1);
   }, [selectedSheet]);
 
-  const handleSaveRow = async (rowData: string[], rowIndex: number) => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/data', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          data: rowData,
-          rowIndex, 
-          sheet: selectedSheet 
-        }),
+    const handleSaveRow = async (rowData: string[], rowIndex: number) => {
+      setLoading(true);
+    
+      console.log("DEBUG ENVIO:", {
+        data: rowData,
+        rowIndex,
+        sheet: selectedSheet
       });
+    
+      try {
+        const res = await fetch('/api/data', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            data: rowData,
+            rowIndex, 
+            sheet: selectedSheet 
+          }),
+        });
   
       if (res.ok) {
         fetchData();
