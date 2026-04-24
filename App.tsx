@@ -74,6 +74,11 @@ export default function App() {
     const values = Array.isArray(json)
       ? json.filter((row) => Array.isArray(row))
       : [];
+    
+    // 🔥 ADICIONE ISSO AQUI
+    values.forEach((row, i) => {
+      (row as any)._originalIndex = i + 1;
+    });
 
 
 
@@ -1049,7 +1054,7 @@ export default function App() {
                                     if (cobrancaIdx === -1) return;
                                     const nextRow = [...row];
                                     nextRow[cobrancaIdx] = (row[cobrancaIdx] || "").trim().toUpperCase() === "SIM" ? "NAO" : "SIM";
-                                    handleSaveRow(nextRow, rowIndex);
+                                    handleSaveRow(nextRow, row._originalIndex);
                                 }}
                                 style={{
                                   width: '18px',
@@ -1067,7 +1072,7 @@ export default function App() {
                                     if (excluidoIdx === -1) return;
                                     const nextRow = [...row];
                                     nextRow[excluidoIdx] = (row[excluidoIdx] || "").trim().toUpperCase() === "SIM" ? "NAO" : "SIM";
-                                    handleSaveRow(nextRow, rowIndex);
+                                    handleSaveRow(nextRow, row._originalIndex);
                                 }}
                                 style={{
                                   width: '18px',
@@ -1276,7 +1281,7 @@ export default function App() {
                                       if (cobrancaIdx === -1) return;
                                       const nextRow = [...row];
                                       nextRow[cobrancaIdx] = "";
-                                      handleSaveRow(nextRow, rowIndex);
+                                      handleSaveRow(nextRow, row._originalIndex);
                                   }}
                                   style={{
                                     backgroundColor: '#EF4444',
