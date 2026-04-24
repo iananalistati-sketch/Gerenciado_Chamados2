@@ -68,7 +68,7 @@ export default function App() {
   setError(null);
 
   try {
-    const url = isEdit ? '/api/data' : `/api/data?sheet=${selectedSheet}`;
+    const res = await fetch(`/api/data?sheet=${selectedSheet}`);
     const json = await res.json();
     
     const values = Array.isArray(json)
@@ -1690,4 +1690,3 @@ export default function App() {
     </div>
   );
 }
-
