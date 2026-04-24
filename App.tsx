@@ -173,8 +173,6 @@ export default function App() {
         ? { rowData, rowIndex: editingRowIndex, sheet: selectedSheet }
         : { rowData };
       
-      const url = isEdit ? '/api/data' : `/api/data?sheet=${selectedSheet}`;
-
       const res = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
