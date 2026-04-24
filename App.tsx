@@ -106,7 +106,7 @@ export default function App() {
       });
     
       try {
-        const res = await fetch('/api/data', {
+        const res = await fetch('/api/update', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
