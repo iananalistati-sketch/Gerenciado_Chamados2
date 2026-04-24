@@ -170,7 +170,7 @@ export default function App() {
     try {
       const method = isEdit ? 'PUT' : 'POST';
       const body = isEdit 
-        ? { rowData, rowIndex: rowData._originalIndex, sheet: selectedSheet }
+        ? { rowData, rowIndex: editingRowIndex, sheet: selectedSheet }
         : { rowData };
       
       const url = isEdit ? '/api/data' : `/api/data?sheet=${selectedSheet}`;
