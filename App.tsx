@@ -46,6 +46,7 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
+  const [editingRow, setEditingRow] = useState<any>(null);
   const [showCobrarModal, setShowCobrarModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [sheetFilters, setSheetFilters] = useState<Record<string, Record<string, string>>>({
@@ -196,10 +197,43 @@ export default function App() {
     }
   };
 
-  const onAdd = async (e: React.FormEvent) => {
+  const onAdd = async (e: any) => {
     e.preventDefault();
-    await handleSave();
+  
+    const headers = data[0];
+    const rowData = headers.map(h => formData[h] || '');
+  
+    console.log("FORM SUBMIT:", {
+      rowData,
+      isEdit,
+      selectedSheet
+    });
+  
+    try {
+      if (isEdit) {
+        // 🔥 EDIÇÃO → USA O MESMO FLUXO DO CHECKBOX
+        await handleSaveRow(rowData, editingRow._originalIndex);
+      } else {
+        // 🔥 INSERÇÃO
+        await fetch('/api/insert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rowData,
+            sheet: selectedSheet
+          }),
+        });
+  
+        fetchData();
+      }
+  
+      setShowForm(false);
+  
+    } catch (err: any) {
+      alert("Erro ao salvar: " + err.message);
+    }
   };
+
 
   const handleOpenForm = () => {
     setIsEdit(false);
@@ -1613,14 +1647,6 @@ export default function App() {
                             type="date"
                             style={inputStyle}
                             onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
-                            onBlur={(e) => {
-                              e.target.style.borderColor = '#334155';
-                          
-                              const updatedRow = [...row];
-                              updatedRow[colIndex] = e.target.value;
-                          
-                              handleSaveRow(updatedRow, row._originalIndex);
-                            }}
                             value={formData[header] || ''}
                             onChange={(e) => handleInputChange(header, e.target.value)}
                           />
@@ -1629,14 +1655,6 @@ export default function App() {
                           <input 
                             style={inputStyle}
                             onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
-                            onBlur={(e) => {
-                              e.target.style.borderColor = '#334155';
-                          
-                              const updatedRow = [...row];
-                              updatedRow[colIndex] = e.target.value;
-                          
-                              handleSaveRow(updatedRow, row._originalIndex);
-                            }}
                             value={formData[header] || ''}
                             onChange={(e) => handleInputChange(header, e.target.value)}
                             placeholder={`Digite ${header}...`}
