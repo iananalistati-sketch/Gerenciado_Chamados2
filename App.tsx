@@ -132,7 +132,7 @@ export default function App() {
   const handleAddRow = async (newRow: string[]) => {
   setLoading(true);
   try {
-    const res = await fetch('/api/data', {
+    const res = await fetch('/api/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
