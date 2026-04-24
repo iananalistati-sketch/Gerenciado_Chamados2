@@ -1615,15 +1615,30 @@ export default function App() {
                             type="date"
                             style={inputStyle}
                             onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
-                            onBlur={(e) => e.target.style.borderColor = '#334155'}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = '#334155';
+                          
+                              const updatedRow = [...row];
+                              updatedRow[colIndex] = e.target.value;
+                          
+                              handleSaveRow(updatedRow, rowIndex);
+                            }}
                             value={formData[header] || ''}
                             onChange={(e) => handleInputChange(header, e.target.value)}
                           />
+
                         ) : (
                           <input 
                             style={inputStyle}
                             onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
-                            onBlur={(e) => e.target.style.borderColor = '#334155'}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = '#334155';
+                          
+                              const updatedRow = [...row];
+                              updatedRow[colIndex] = e.target.value;
+                          
+                              handleSaveRow(updatedRow, rowIndex);
+                            }}
                             value={formData[header] || ''}
                             onChange={(e) => handleInputChange(header, e.target.value)}
                             placeholder={`Digite ${header}...`}
