@@ -68,7 +68,7 @@ export default function App() {
   setError(null);
 
   try {
-    const res = await fetch(`/api/data?sheet=${selectedSheet}`);
+    const url = isEdit ? '/api/update' : `/api/data?sheet=${selectedSheet}`;
     const json = await res.json();
     
     const values = Array.isArray(json)
@@ -170,7 +170,7 @@ export default function App() {
     try {
       const method = isEdit ? 'PUT' : 'POST';
       const body = isEdit 
-        ? { rowData, rowIndex: editingRowIndex, sheet: selectedSheet }
+        ? { rowData, rowIndex: rowData._originalIndex, sheet: selectedSheet }
         : { rowData };
       
       const url = isEdit ? '/api/data' : `/api/data?sheet=${selectedSheet}`;
