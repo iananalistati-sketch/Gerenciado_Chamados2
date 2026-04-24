@@ -1621,7 +1621,7 @@ export default function App() {
                               const updatedRow = [...row];
                               updatedRow[colIndex] = e.target.value;
                           
-                              handleSaveRow(updatedRow, rowIndex);
+                              handleSaveRow(updatedRow, row._originalIndex);
                             }}
                             value={formData[header] || ''}
                             onChange={(e) => handleInputChange(header, e.target.value)}
@@ -1637,7 +1637,7 @@ export default function App() {
                               const updatedRow = [...row];
                               updatedRow[colIndex] = e.target.value;
                           
-                              handleSaveRow(updatedRow, rowIndex);
+                              handleSaveRow(updatedRow, row._originalIndex);
                             }}
                             value={formData[header] || ''}
                             onChange={(e) => handleInputChange(header, e.target.value)}
