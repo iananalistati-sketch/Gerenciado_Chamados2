@@ -1,8 +1,16 @@
 import { google } from "googleapis";
 
+console.log("BODY RECEBIDO:", req.body);
+
 export default async function handler(req: any, res: any) {
   try {
-    const { rowIndex, data, sheet } = req.body;
+    const { rowIndex, data, sheet, sheetName } = req.body;
+
+    const finalSheet = sheet || sheetName;
+    
+    if (!finalSheet) {
+      return res.status(400).json({ error: "Sheet não informada" });
+    }
 
     const auth = new google.auth.GoogleAuth({
       credentials: {
@@ -16,12 +24,14 @@ export default async function handler(req: any, res: any) {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.SPREADSHEET_ID,
-      range: `${sheet}!A${rowIndex}`,
+      range: `${finalSheet}!A${rowIndex}`,
       valueInputOption: "RAW",
       requestBody: {
         values: [data],
       },
     });
+
+    console.log("SHEET FINAL:", finalSheet);
 
     res.status(200).json({ success: true });
   } catch (error: any) {
