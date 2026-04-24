@@ -98,7 +98,9 @@ export default function App() {
 
     const handleSaveRow = async (rowData: string[], rowIndex: number) => {
       setLoading(true);
-    
+
+      console.log("SALVANDO LINHA", { rowData, rowIndex, selectedSheet });
+      
       console.log("DEBUG ENVIO:", {
         data: rowData,
         rowIndex,
@@ -106,15 +108,15 @@ export default function App() {
       });
     
       try {
-        const res = await fetch('/api/update', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            data: rowData,
-            rowIndex, 
-            sheet: selectedSheet 
-          }),
-        });
+      const res = await fetch('/api/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rowData,
+          rowIndex,
+          sheet: selectedSheet
+        }),
+      });
   
       if (res.ok) {
         fetchData();
