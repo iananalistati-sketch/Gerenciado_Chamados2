@@ -244,41 +244,36 @@ export default function App() {
   };
 
   const onAdd = async (e: any) => {
-    e.preventDefault();
-  
-    const headers = data[0];
-    const rowData = headers.map(h => formData[h] || '');
-  
-    console.log("FORM SUBMIT:", {
-      rowData,
-      isEdit,
-      selectedSheet
+  e.preventDefault();
+
+  const rowData = data[0].map((header) => formData[header] || '');
+
+  try {
+    const res = await fetch('/api/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rowData,
+        sheet: selectedSheet
+      }),
     });
-  
-    try {
-      if (isEdit) {
-        // 🔥 EDIÇÃO → USA O MESMO FLUXO DO CHECKBOX
-        await handleSaveRow(rowData, editingRow._originalIndex);
-      } else {
-        // 🔥 INSERÇÃO
-        await fetch('/api/insert', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            rowData,
-            sheet: selectedSheet
-          }),
-        });
-  
-        fetchData();
-      }
-  
-      setShowForm(false);
-  
-    } catch (err: any) {
-      alert("Erro ao salvar: " + err.message);
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw new Error(result.error);
     }
-  };
+
+    alert("Chamado criado com sucesso ✅");
+
+    setShowForm(false);
+    setFormData({});
+    fetchData();
+
+  } catch (err: any) {
+    alert("Erro ao criar: " + err.message);
+  }
+};
 
 
   const handleOpenForm = () => {
