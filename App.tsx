@@ -1645,8 +1645,16 @@ export default function App() {
                           >
                             <option value="" style={{ backgroundColor: '#0F172A' }}>Selecione...</option>
                             <option value="Aberto" style={{ backgroundColor: '#0F172A' }}>Aberto</option>
+                            <option value="Agendado" style={{ backgroundColor: '#0F172A' }}>Agendado</option>
                             <option value="Em andamento" style={{ backgroundColor: '#0F172A' }}>Em andamento</option>
-                            <option value="Finalizado" style={{ backgroundColor: '#0F172A' }}>Finalizado</option>
+                            <option value="Concluído" style={{ backgroundColor: '#0F172A' }}>Concluído</option>
+                            <option value="Aguardando Atendimento" style={{ backgroundColor: '#0F172A' }}>Aguardando Atendimento</option>
+                            <option value="Pendente Aplicação Pacote" style={{ backgroundColor: '#0F172A' }}>Pendente Aplicação Pacote</option>
+                            <option value="Ticket Rejeitado" style={{ backgroundColor: '#0F172A' }}>Ticket Rejeitado</option>
+                            <option value="Cancelado" style={{ backgroundColor: '#0F172A' }}>Cancelado</option>
+                            <option value="Retorno Cliente" style={{ backgroundColor: '#0F172A' }}>Retorno Cliente</option>
+                            <option value="Em Correção" style={{ backgroundColor: '#0F172A' }}>Em Correção</option>
+                            <option value="Outros" style={{ backgroundColor: '#0F172A' }}>Outros</option>
                           </select>
                         ) : hClean.includes("gravidade") ? (
                             <select 
