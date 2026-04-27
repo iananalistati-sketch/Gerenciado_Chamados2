@@ -46,7 +46,8 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
-  const [editingRow, setEditingRow] = useState<any>(null);
+  //const [editingRow, setEditingRow] = useState<any>(null);
+  const [editingRow, setEditingRow] = useState<any | null>(null);
   const [showCobrarModal, setShowCobrarModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [sheetFilters, setSheetFilters] = useState<Record<string, Record<string, string>>>({
@@ -137,6 +138,32 @@ export default function App() {
     }
   };
 
+    const handleSubmit = async (e: any) => {
+    e.preventDefault();
+  
+    const rowData = Object.values(formData);
+  
+    console.log("FORM SUBMIT:", {
+      rowData,
+      isEdit,
+      selectedSheet,
+      editingRowIndex
+    });
+  
+    if (isEdit) {
+      if (editingRowIndex === null) {
+        alert("Erro: índice da linha não definido");
+        return;
+      }
+  
+      await handleSaveRow(rowData as string[], editingRowIndex);
+    } else {
+      // criação (mantém seu fluxo atual)
+      await onAdd(e);
+    }
+  };
+
+  
   const handleAddRow = async (newRow: string[]) => {
   setLoading(true);
   try {
@@ -1567,7 +1594,7 @@ export default function App() {
                 Insira os detalhes na aba <strong>{selectedSheet}</strong>.
               </p>
               
-              <form onSubmit={onAdd} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <div style={{ 
                   overflowY: 'auto', 
                   marginBottom: '24px', 
