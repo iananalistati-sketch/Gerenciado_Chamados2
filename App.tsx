@@ -550,9 +550,9 @@ export default function App() {
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#F8FAFC' }}>
-          Dashboard de Chamados
+          Gestor de Chamados
         </h1>
-        <p style={{ color: '#94A3B8', marginBottom: '32px' }}>Gerenciamento inteligente via Google Sheets</p>
+        <p style={{ color: '#94A3B8', marginBottom: '32px' }}>Base de dados via Google Sheets</p>
         
         <div style={{ 
           marginBottom: '32px', 
@@ -579,8 +579,8 @@ export default function App() {
               cursor: 'pointer'
             }}
           >
-            <option value="tbChamadosMV">tbChamadosMV</option>
-            <option value="tbChamadosForhealth">tbChamadosForhealth</option>
+            <option value="tbChamadosMV">MV</option>
+            <option value="tbChamadosForhealth">ForHealth</option>
           </select>
           <div style={{ width: '1px', height: '24px', backgroundColor: '#334155', margin: '0 10px' }}></div>
           <span style={{ fontSize: '12px', color: '#64748B' }}>
