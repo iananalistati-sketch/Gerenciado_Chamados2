@@ -138,7 +138,7 @@ export default function App() {
     }
   };
 
-    const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
   
     const rowData = Object.values(formData);
@@ -150,20 +150,39 @@ export default function App() {
       editingRowIndex
     });
   
-    if (isEdit) {
-      if (editingRowIndex === null) {
-        alert("Erro: índice da linha não definido");
-        return;
+    try {
+      if (isEdit) {
+        if (editingRowIndex === null) {
+          alert("Erro: índice da linha não definido");
+          return;
+        }
+  
+        await handleSaveRow(rowData as string[], editingRowIndex);
+  
+        alert("Alteração salva com sucesso ✅");
+  
+      } else {
+        await onAdd(e);
+        alert("Chamado criado com sucesso ✅");
       }
   
-      await handleSaveRow(rowData as string[], editingRowIndex);
-    } else {
-      // criação (mantém seu fluxo atual)
-      await onAdd(e);
+      // 🔥 FECHAR MODAL
+      setShowForm(false);
+  
+      // 🔥 LIMPAR ESTADOS
+      setFormData({});
+      setEditingRowIndex(null);
+      setIsEdit(false);
+  
+      // 🔥 GARANTIR REFRESH FINAL
+      fetchData();
+  
+    } catch (err: any) {
+      alert("Erro ao salvar: " + err.message);
     }
   };
 
-  
+
   const handleAddRow = async (newRow: string[]) => {
   setLoading(true);
   try {
