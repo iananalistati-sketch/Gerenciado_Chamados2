@@ -50,6 +50,20 @@ export default function App() {
   const [editingRow, setEditingRow] = useState<any | null>(null);
   const [showCobrarModal, setShowCobrarModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [openStatus, setOpenStatus] = useState(false);
+  const statusOptions = [
+    "Aberto",
+    "Agendado",
+    "Em andamento",
+    "Concluído",
+    "Aguardando Atendimento",
+    "Pendente Aplicação Pacote",
+    "Ticket Rejeitado",
+    "Cancelado",
+    "Retorno Cliente",
+    "Em Correção",
+    "Outros"
+  ];
   const [sheetFilters, setSheetFilters] = useState<Record<string, Record<string, string>>>({
     tbChamadosMV: {},
     tbChamadosForhealth: {}
@@ -102,6 +116,13 @@ export default function App() {
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedSheet]);
+
+  useEffect(() => {
+    setCurrentFilters(prev => ({
+      ...prev,
+      Situação: statusOptions.filter(s => s !== "Concluído")
+    }));
+  }, []);
 
     const handleSaveRow = async (rowData: string[], rowIndex: number) => {
       setLoading(true);
@@ -347,7 +368,7 @@ export default function App() {
     setFormData(prev => ({ ...prev, [header]: value }));
   };
 
-  const updateFilter = (header: string, value: string) => {
+  const updateFilter = (header: string, value: string | string[]) => {
     setSheetFilters(prev => ({
       ...prev,
       [selectedSheet]: {
@@ -444,16 +465,28 @@ export default function App() {
     
     const filteredData = data.slice(1).filter(row => {
       return Object.entries(currentFilters).every(([header, filterValue]) => {
-        if (!filterValue) return true;
+        
+        // 🔥 ignora vazio OU array vazio
+        if (!filterValue || (Array.isArray(filterValue) && filterValue.length === 0)) return true;
+    
         const colIdx = currentHeaders.indexOf(header);
         if (colIdx === -1) return true;
-        
+    
         const cellValue = (row[colIdx] || "").toString().toLowerCase();
+    
+        // 🔥 NOVO: suporte multi seleção (FILTROS)
+        if (Array.isArray(filterValue)) {
+          return filterValue.some(val =>
+            cellValue.includes(String(val).toLowerCase())
+          );
+        }
+    
+        // comportamento atual (string)
         const searchVal = String(filterValue).toLowerCase();
-        
         return cellValue.includes(searchVal);
       });
     });
+
 
     if (filteredData.length === 0) return;
 
@@ -1637,25 +1670,60 @@ export default function App() {
                         </label>
                         
                         {hClean.includes("situação") || hClean.includes("situacao") ? (
-                          <select 
-                            style={inputStyle}
-                            value={formData[header] || ''}
-                            onChange={(e) => handleInputChange(header, e.target.value)}
-                            required
-                          >
-                            <option value="" style={{ backgroundColor: '#0F172A' }}>Selecione...</option>
-                            <option value="Aberto" style={{ backgroundColor: '#0F172A' }}>Aberto</option>
-                            <option value="Agendado" style={{ backgroundColor: '#0F172A' }}>Agendado</option>
-                            <option value="Em andamento" style={{ backgroundColor: '#0F172A' }}>Em andamento</option>
-                            <option value="Concluído" style={{ backgroundColor: '#0F172A' }}>Concluído</option>
-                            <option value="Aguardando Atendimento" style={{ backgroundColor: '#0F172A' }}>Aguardando Atendimento</option>
-                            <option value="Pendente Aplicação Pacote" style={{ backgroundColor: '#0F172A' }}>Pendente Aplicação Pacote</option>
-                            <option value="Ticket Rejeitado" style={{ backgroundColor: '#0F172A' }}>Ticket Rejeitado</option>
-                            <option value="Cancelado" style={{ backgroundColor: '#0F172A' }}>Cancelado</option>
-                            <option value="Retorno Cliente" style={{ backgroundColor: '#0F172A' }}>Retorno Cliente</option>
-                            <option value="Em Correção" style={{ backgroundColor: '#0F172A' }}>Em Correção</option>
-                            <option value="Outros" style={{ backgroundColor: '#0F172A' }}>Outros</option>
-                          </select>
+                          <div style={{ position: 'relative' }}>
+                            <div
+                              style={{
+                                padding: '10px',
+                                border: '1px solid #334155',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                backgroundColor: '#0F172A',
+                                color: '#F8FAFC'
+                              }}
+                              onClick={() => setOpenStatus(!openStatus)}
+                            >
+                              {(currentFilters[h] || []).length > 0
+                                ? currentFilters[h].join(", ")
+                                : "Selecione..."}
+                            </div>
+                          
+                            {openStatus && (
+                              <div style={{
+                                position: 'absolute',
+                                backgroundColor: '#0F172A',
+                                border: '1px solid #334155',
+                                borderRadius: '6px',
+                                zIndex: 10,
+                                width: '100%',
+                                maxHeight: '200px',
+                                overflowY: 'auto'
+                              }}>
+                                {statusOptions.map(option => {
+                                  const selected = (currentFilters[h] || []).includes(option);
+                          
+                                  return (
+                                    <label key={option} style={{ display: 'block', padding: '6px' }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={selected}
+                                        onChange={(e) => {
+                                          const current = currentFilters[h] || [];
+                          
+                                          const updated = e.target.checked
+                                            ? [...current, option]
+                                            : current.filter((v: string) => v !== option);
+                          
+                                          updateFilter(h, updated);
+                                        }}
+                                      />
+                                      {option}
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+
                         ) : hClean.includes("gravidade") ? (
                             <select 
                               style={inputStyle}
