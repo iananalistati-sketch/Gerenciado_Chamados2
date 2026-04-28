@@ -118,11 +118,14 @@ export default function App() {
   }, [selectedSheet]);
 
   useEffect(() => {
-    setCurrentFilters(prev => ({
+    setSheetFilters(prev => ({
       ...prev,
-      Situação: statusOptions.filter(s => s !== "Concluído")
+      [selectedSheet]: {
+        ...prev[selectedSheet],
+        Situação: statusOptions.filter(s => s !== "Concluído")
+      }
     }));
-  }, []);
+  }, [selectedSheet]);
 
     const handleSaveRow = async (rowData: string[], rowIndex: number) => {
       setLoading(true);
