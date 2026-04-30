@@ -442,15 +442,16 @@ export default function App() {
     const currentFilters = sheetFilters[selectedSheet] || {};
     const currentHeaders = data[0] || [];
     
-    const searchVal = String(filterValue).toLowerCase();
-    
-    if (searchVal.includes('|')) {
-      const values = searchVal.split('|');
-      return values.some(val => cellValue.includes(val));
-    }
-    
-    return cellValue.includes(searchVal);
-
+    const filteredData = data.slice(1).filter(row => {
+      return Object.entries(currentFilters).every(([header, filterValue]) => {
+        if (!filterValue) return true;
+        const colIdx = currentHeaders.indexOf(header);
+        if (colIdx === -1) return true;
+        
+        const cellValue = (row[colIdx] || "").toString().toLowerCase();
+        const searchVal = String(filterValue).toLowerCase();
+        
+        return cellValue.includes(searchVal);
       });
     });
 
@@ -1467,47 +1468,9 @@ export default function App() {
                         <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase' }}>{h}</label>
                         
                         {config.type === 'select' ? (
-                          {h.toLowerCase().includes("situação") || h.toLowerCase().includes("situacao") ? (
-                            <select
-                              multiple
-                              value={(currentVal || '').split('|').filter(Boolean)}
-                              onChange={(e) => {
-                                const selected = Array.from(e.target.selectedOptions, opt => opt.value);
-                                updateFilter(h, selected.join('|'));
-                              }}
-                              style={{
-                                padding: '10px',
-                                backgroundColor: '#0F172A',
-                                color: '#F8FAFC',
-                                border: '1px solid #334155',
-                                borderRadius: '8px',
-                                outline: 'none'
-                              }}
-                            >
-                              {config.options?.map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <select 
-                              value={currentVal}
-                              onChange={(e) => updateFilter(h, e.target.value)}
-                              style={{
-                                padding: '10px',
-                                backgroundColor: '#0F172A',
-                                color: '#F8FAFC',
-                                border: '1px solid #334155',
-                                borderRadius: '8px',
-                                outline: 'none'
-                              }}
-                            >
-                              <option value="">Todos</option>
-                              {config.options?.map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          )}
-
+                          <select 
+                            value={currentVal}
+                            onChange={(e) => updateFilter(h, e.target.value)}
                             style={{
                               padding: '10px',
                               backgroundColor: '#0F172A',
