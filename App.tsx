@@ -347,7 +347,7 @@ export default function App() {
     setFormData(prev => ({ ...prev, [header]: value }));
   };
 
-  const updateFilter = (header: string, value: string) => {
+  const updateFilter = (header: string, value: string | string[]) => {
     setSheetFilters(prev => ({
       ...prev,
       [selectedSheet]: {
@@ -451,7 +451,14 @@ export default function App() {
         const cellValue = (row[colIdx] || "").toString().toLowerCase();
         const searchVal = String(filterValue).toLowerCase();
         
-        return cellValue.includes(searchVal);
+        if (Array.isArray(filterValue)) {
+          return filterValue.some(val =>
+            cellValue.includes(String(val).toLowerCase())
+          );
+        }
+        
+        return cellValue.includes(String(filterValue).toLowerCase());
+
       });
     });
 
@@ -1637,13 +1644,15 @@ export default function App() {
                         </label>
                         
                         {hClean.includes("situação") || hClean.includes("situacao") ? (
-                          <select 
+                          <select
+                            multiple
                             style={inputStyle}
-                            value={formData[header] || ''}
-                            onChange={(e) => handleInputChange(header, e.target.value)}
-                            required
+                            value={currentFilters[h] || []}
+                            onChange={(e) => {
+                              const selected = Array.from(e.target.selectedOptions, opt => opt.value);
+                              updateFilter(h, selected);
+                            }}
                           >
-                            <option value="" style={{ backgroundColor: '#0F172A' }}>Selecione...</option>
                             <option value="Aberto" style={{ backgroundColor: '#0F172A' }}>Aberto</option>
                             <option value="Agendado" style={{ backgroundColor: '#0F172A' }}>Agendado</option>
                             <option value="Em andamento" style={{ backgroundColor: '#0F172A' }}>Em andamento</option>
