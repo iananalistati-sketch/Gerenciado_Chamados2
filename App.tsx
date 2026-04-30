@@ -449,6 +449,15 @@ export default function App() {
         if (colIdx === -1) return true;
         
         const cellValue = (row[colIdx] || "").toString().toLowerCase();
+
+        // 🔥 SUPORTE A MULTI SELECT
+        if (Array.isArray(filterValue)) {
+          if (filterValue.length === 0) return true;
+        
+          return filterValue.some(val =>
+            cellValue.includes(String(val).toLowerCase())
+          );
+        }
         const searchVal = String(filterValue).toLowerCase();
         
         return cellValue.includes(searchVal);
@@ -1637,13 +1646,14 @@ export default function App() {
                         </label>
                         
                         {hClean.includes("situação") || hClean.includes("situacao") ? (
-                          <select 
-                            style={inputStyle}
-                            value={formData[header] || ''}
-                            onChange={(e) => handleInputChange(header, e.target.value)}
-                            required
+                          <select
+                            multiple
+                            value={currentFilters[h] || []}
+                            onChange={(e) => {
+                              const selected = Array.from(e.target.selectedOptions, opt => opt.value);
+                              updateFilter(h, selected);
+                            }}
                           >
-                            <option value="" style={{ backgroundColor: '#0F172A' }}>Selecione...</option>
                             <option value="Aberto" style={{ backgroundColor: '#0F172A' }}>Aberto</option>
                             <option value="Agendado" style={{ backgroundColor: '#0F172A' }}>Agendado</option>
                             <option value="Em andamento" style={{ backgroundColor: '#0F172A' }}>Em andamento</option>
