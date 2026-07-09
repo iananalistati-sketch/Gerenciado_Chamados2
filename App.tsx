@@ -1462,30 +1462,120 @@ export default function App() {
                   {headers.map((h, i) => {
                     const config = getColumnConfig(h, i);
                     const currentVal = sheetFilters[selectedSheet]?.[h] || "";
-
+                    const isSituacao = normalize(h) === "situacao"; 
+            
                     return (
                       <div key={h} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase' }}>{h}</label>
                         
-                        {config.type === 'select' ? (
-                          <select 
+                        {isSituacao ? (
+
+                        <div
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "6px",
+                                maxHeight: "180px",
+                                overflowY: "auto",
+                                padding: "10px",
+                                backgroundColor: "#0F172A",
+                                border: "1px solid #334155",
+                                borderRadius: "8px"
+                            }}
+                        >
+                        
+                        {config.options?.map(opcao=>{
+                        
+                            const selecionado =
+                                currentVal
+                                    ? currentVal.split("|").includes(opcao)
+                                    : false;
+                        
+                            return(
+                        
+                        <label
+                            key={opcao}
+                            style={{
+                                display:"flex",
+                                alignItems:"center",
+                                gap:"8px",
+                                cursor:"pointer"
+                            }}
+                        >
+                        
+                        <input
+                        
+                        type="checkbox"
+                        
+                        checked={selecionado}
+                        
+                        onChange={(e)=>{
+                        
+                            let valores: string[] =
+                            currentVal
+                                ? currentVal
+                                    .split("|")
+                                    .filter(Boolean)
+                                : [];
+                        
+                            if(e.target.checked){
+                        
+                                if(!valores.includes(opcao))
+                                    valores.push(opcao);
+                        
+                            }else{
+                        
+                                valores =
+                                    valores.filter(
+                                        x=>x!==opcao
+                                    );
+                        
+                            }
+                        
+                            updateFilter(
+                                h,
+                                valores.join("|")
+                            );
+                        
+                        }}
+                        
+                         />
+                        
+                        <span>{opcao}</span>
+                        
+                        </label>
+                        
+                            )
+                        
+                        })}
+                        
+                        </div>
+                        
+                        ) : config.type === "select" ? (
+
+                        <select
                             value={currentVal}
                             onChange={(e) => updateFilter(h, e.target.value)}
                             style={{
-                              padding: '10px',
-                              backgroundColor: '#0F172A',
-                              color: '#F8FAFC',
-                              border: '1px solid #334155',
-                              borderRadius: '8px',
-                              outline: 'none'
+                                padding: '10px',
+                                backgroundColor: '#0F172A',
+                                color: '#F8FAFC',
+                                border: '1px solid #334155',
+                                borderRadius: '8px',
+                                outline: 'none'
                             }}
-                          >
+                        >
                             <option value="">Todos</option>
+                        
                             {config.options?.map(opt => (
-                              <option key={opt} value={opt}>{opt}</option>
+                                <option key={opt} value={opt}>
+                                    {opt}
+                                </option>
                             ))}
-                          </select>
-                        ) : (
+                        
+                        </select>
+                        
+                        ) : ( 
                           <input 
                             type={config.type}
                             value={currentVal}
