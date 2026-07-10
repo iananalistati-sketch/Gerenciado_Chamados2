@@ -1524,7 +1524,7 @@ export default function App() {
             
                     return (
                       <div key={h} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase' }}>{h}</label>
+                        <label style={{ fontSize: '12px', lineHeight:"18px", fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase' }}>{h}</label>
                         
                         {isMultiSelect ? (
 
@@ -1533,12 +1533,16 @@ export default function App() {
                                 display: "flex",
                                 flexDirection: "column",
                                 gap: "6px",
+                                height: "180px",
+                                minHeight: "180px",
                                 maxHeight: "180px",
                                 overflowY: "auto",
                                 padding: "10px",
+                                paddingRight: "6px",
                                 backgroundColor: "#0F172A",
                                 border: "1px solid #334155",
-                                borderRadius: "8px"
+                                borderRadius: "8px",
+                                boxSizing: "border-box"
                             }}
                         >
                         
