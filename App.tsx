@@ -451,8 +451,14 @@ export default function App() {
         const colIdx = currentHeaders.indexOf(header);
         if (colIdx === -1) return true;
         
-        const cellValue = (row[colIdx] || "").toString().toLowerCase();
-        const searchVal = String(filterValue).toLowerCase();
+        const cellValue = (row[colIdx] || "")
+          .toString()
+          .trim()
+          .toLowerCase();
+        
+        const searchVal = String(filterValue)
+          .trim()
+          .toLowerCase();
         
         // Se possuir múltiplos valores (checkbox)
         if (searchVal.includes("|")) {
@@ -462,11 +468,21 @@ export default function App() {
             .map(v => v.trim())
             .filter(Boolean);
         
+          // ===== LOGS TEMPORÁRIOS =====
+          if (normalize(header) === "situacao") {
+            console.log("================================");
+            console.log("Header:", header);
+            console.log("Filtro:", filtros);
+            console.log("Valor da célula:", `"${cellValue}"`);
+            console.log("Resultado:", filtros.includes(cellValue));
+          }
+          // ============================
+        
           return filtros.includes(cellValue);
         
         }
         
-        // Filtro normal (texto ou select)
+        // Filtro normal
         return cellValue.includes(searchVal);
       });
     });
