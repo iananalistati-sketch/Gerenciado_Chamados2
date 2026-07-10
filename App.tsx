@@ -1577,8 +1577,11 @@ export default function App() {
                                 alignItems: "center",
                                 gap: "8px",
                                 cursor: "pointer",
-                                fontWeight: "bold",
-                                marginBottom: "8px"
+                                fontWeight: 600,
+                                color: "#F8FAFC",
+                                paddingBottom: "4px",
+                                marginBottom: "4px",
+                                borderBottom: "1px solid #334155"
                             }}
                         >
                         
@@ -1612,13 +1615,6 @@ export default function App() {
                         
                         </label>
                         
-                        <div
-                            style={{
-                                height: "1px",
-                                background: "#334155",
-                                margin: "8px 0"
-                            }}
-                        />
                         
                         {sortedOptions.map(opcao => {
                         
