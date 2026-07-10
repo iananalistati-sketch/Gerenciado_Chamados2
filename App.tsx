@@ -212,6 +212,93 @@ export default function App() {
   const handleSave = async (dataToSave = formData) => {
     setLoading(true);
     const headers = data[0] || [];
+    // Define somente a ordem visual dos filtros no modal.
+    // Não altera a ordem das colunas da planilha.
+    const getFilterVisualOrder = (header: string) => {
+      const name = normalize(header);
+    
+      if (
+        name.includes("numero") &&
+        name.includes("chamado")
+      ) {
+        return 10;
+      }
+    
+      if (name === "titulo") {
+        return 20;
+      }
+    
+      if (
+        name.includes("descricao") &&
+        name.includes("problema")
+      ) {
+        return 30;
+      }
+    
+      if (
+        name.includes("os") &&
+        name.includes("aberta")
+      ) {
+        return 40;
+      }
+    
+      if (
+        name.includes("ticket") &&
+        name.includes("referencia")
+      ) {
+        return 50;
+      }
+    
+      if (name === "cobranca") {
+        return 60;
+      }
+    
+      if (
+        name.includes("data") &&
+        name.includes("ultima") &&
+        name.includes("interacao")
+      ) {
+        return 70;
+      }
+    
+      if (
+        name.includes("data") &&
+        name.includes("abertura")
+      ) {
+        return 80;
+      }
+    
+      if (name === "excluido") {
+        return 90;
+      }
+    
+      // Os filtros maiores ficam juntos na última linha.
+      if (name === "situacao") {
+        return 100;
+      }
+    
+      if (name === "gravidade") {
+        return 110;
+      }
+    
+      if (name === "responsavel") {
+        return 120;
+      }
+    
+      // Qualquer nova coluna será exibida depois das demais.
+      return 999;
+    };
+    
+    const orderedFilterHeaders = headers
+      .map((header, originalIndex) => ({
+        header,
+        originalIndex
+      }))
+      .sort(
+        (a, b) =>
+          getFilterVisualOrder(a.header) -
+          getFilterVisualOrder(b.header)
+      );
     const rowData = headers.map(h => dataToSave[h] || "");
 
     try {
@@ -1600,12 +1687,16 @@ export default function App() {
               </div>
 
               <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
-                  gap: '20px' 
-                }}>
-                  {headers.map((h, i) => {
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(3, minmax(0, 1fr))",
+                    gap: "20px",
+                    alignItems: "start"
+                  }}
+                >
+                  {orderedFilterHeaders.map(({ header: h, originalIndex: i }) => {
                     const config = getColumnConfig(h, i);
                     const currentVal = sheetFilters[selectedSheet]?.[h] || "";
                     const normalizedHeader = normalize(h);
