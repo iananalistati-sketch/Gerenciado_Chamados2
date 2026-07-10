@@ -348,6 +348,9 @@ export default function App() {
   };
 
   const updateFilter = (header: string, value: string) => {
+    
+    console.log("updateFilter:", header, value);
+    
     setSheetFilters(prev => ({
       ...prev,
       [selectedSheet]: {
@@ -1544,7 +1547,11 @@ export default function App() {
                                     );
                         
                             }
-                        
+
+                            console.log("currentVal:", currentVal);
+                            console.log("valores:", valores);
+                            console.log("gravando:", valores.join("|"));
+                          
                             updateFilter(
                                 h,
                                 valores.join("|")
