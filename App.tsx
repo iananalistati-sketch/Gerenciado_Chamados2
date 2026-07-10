@@ -317,7 +317,44 @@ export default function App() {
     // Nota: O ajuste de fuso depende de como o Date foi criado.
     // Se a string era YYYY-MM-DD, o JS costuma assumir meia-noite UTC.
   };
-
+    const parseDateToNumber = (value: string): number | null => {
+    if (!value) return null;
+  
+    const cleanValue = String(value).trim();
+  
+    // Formato AAAA-MM-DD
+    const isoMatch = cleanValue.match(
+      /^(\d{4})-(\d{1,2})-(\d{1,2})/
+    );
+  
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+  
+      return Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day)
+      );
+    }
+  
+    // Formato DD/MM/AAAA
+    const brMatch = cleanValue.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})/
+    );
+  
+    if (brMatch) {
+      const [, day, month, year] = brMatch;
+  
+      return Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day)
+      );
+    }
+  
+    return null;
+  };
+  
   const handleEdit = (row: string[]) => {
     // Busca o índice original armazenado na linha durante o fetchData
     const rowIndex = (row as any)._originalIndex;
@@ -532,6 +569,40 @@ export default function App() {
 
     return Object.entries(currentFilters).every(([header, filterValue]) => {
       if (!filterValue) return true;
+
+      const isDataInicio = header.endsWith("__inicio");
+      const isDataFim = header.endsWith("__fim");
+      
+      if (isDataInicio || isDataFim) {
+        const originalHeader = header
+          .replace("__inicio", "")
+          .replace("__fim", "");
+      
+        const dataColIdx = headers.findIndex(
+          h => normalize(h) === normalize(originalHeader)
+        );
+      
+        if (dataColIdx === -1) return true;
+      
+        const dataCelula = parseDateToNumber(
+          row[dataColIdx] || ""
+        );
+      
+        const dataFiltro = parseDateToNumber(
+          String(filterValue)
+        );
+      
+        if (dataCelula === null || dataFiltro === null) {
+          return false;
+        }
+      
+        if (isDataInicio) {
+          return dataCelula >= dataFiltro;
+        }
+      
+        return dataCelula <= dataFiltro;
+      }
+      
       const colIdx = headers.findIndex(
           h => normalize(h) === normalize(header)
       );
@@ -1512,6 +1583,20 @@ export default function App() {
                   {headers.map((h, i) => {
                     const config = getColumnConfig(h, i);
                     const currentVal = sheetFilters[selectedSheet]?.[h] || "";
+                    const normalizedHeader = normalize(h);
+
+                    const isDataAbertura =
+                      normalizedHeader.includes("data") &&
+                      normalizedHeader.includes("abertura");
+                    
+                    const dataInicioKey = `${h}__inicio`;
+                    const dataFimKey = `${h}__fim`;
+                    
+                    const dataInicio =
+                      sheetFilters[selectedSheet]?.[dataInicioKey] || "";
+                    
+                    const dataFim =
+                      sheetFilters[selectedSheet]?.[dataFimKey] || "";
                     const multiSelectFields = [
                         "situacao",
                         "gravidade",
@@ -1686,6 +1771,83 @@ export default function App() {
                         
                         
                         </div>
+                        
+                        ) : isDataAbertura ? (
+
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "8px",
+                              padding: "10px",
+                              backgroundColor: "#0F172A",
+                              border: "1px solid #334155",
+                              borderRadius: "8px",
+                              boxSizing: "border-box"
+                            }}
+                          >
+                            <label
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "5px",
+                                fontSize: "11px",
+                                color: "#94A3B8"
+                              }}
+                            >
+                              De
+                        
+                              <input
+                                type="date"
+                                value={dataInicio}
+                                max={dataFim || undefined}
+                                onChange={(e) =>
+                                  updateFilter(dataInicioKey, e.target.value)
+                                }
+                                style={{
+                                  width: "100%",
+                                  padding: "9px",
+                                  backgroundColor: "#1E293B",
+                                  color: "#F8FAFC",
+                                  border: "1px solid #334155",
+                                  borderRadius: "6px",
+                                  outline: "none",
+                                  boxSizing: "border-box"
+                                }}
+                              />
+                            </label>
+                        
+                            <label
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "5px",
+                                fontSize: "11px",
+                                color: "#94A3B8"
+                              }}
+                            >
+                              Até
+                        
+                              <input
+                                type="date"
+                                value={dataFim}
+                                min={dataInicio || undefined}
+                                onChange={(e) =>
+                                  updateFilter(dataFimKey, e.target.value)
+                                }
+                                style={{
+                                  width: "100%",
+                                  padding: "9px",
+                                  backgroundColor: "#1E293B",
+                                  color: "#F8FAFC",
+                                  border: "1px solid #334155",
+                                  borderRadius: "6px",
+                                  outline: "none",
+                                  boxSizing: "border-box"
+                                }}
+                              />
+                            </label>
+                          </div>
                         
                         ) : config.type === "select" ? (
 
