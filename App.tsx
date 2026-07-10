@@ -537,7 +537,10 @@ export default function App() {
       
       const cellValue = (row[colIdx] || "").toString().toLowerCase();
       const searchVal = String(filterValue).toLowerCase();
-      
+      console.log("filterValue:", filterValue);
+      console.log("typeof:", typeof filterValue);
+      console.log("searchVal:", searchVal);
+      console.log("tem pipe?", searchVal.includes("|"));
       return cellValue.includes(searchVal);
     });
   });
