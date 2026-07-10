@@ -1613,64 +1613,128 @@ export default function App() {
                     const currentVal = sheetFilters[selectedSheet]?.[h] || "";
                     const normalizedHeader = normalize(h);
 
-                    // Ordem exclusivamente visual dos filtros no modal.
-                    // Não modifica a ordem das colunas nem o índice da planilha.
+                    // Define somente a ordem visual dos filtros.
+                    // Não altera o índice ou a estrutura da planilha.
                     let filterOrder = 999;
                     
-                    if (
-                      normalizedHeader.includes("numero") &&
-                      normalizedHeader.includes("chamado")
-                    ) {
-                      filterOrder = 10;
+                    if (selectedSheet === "tbChamadosForhealth") {
                     
-                    } else if (normalizedHeader === "titulo") {
-                      filterOrder = 20;
+                      // Primeira linha
+                      if (normalizedHeader === "titulo") {
+                        filterOrder = 10;
                     
-                    } else if (
-                      normalizedHeader.includes("descricao") &&
-                      normalizedHeader.includes("problema")
-                    ) {
-                      filterOrder = 30;
+                      } else if (
+                        normalizedHeader.includes("descricao") &&
+                        normalizedHeader.includes("problema")
+                      ) {
+                        filterOrder = 20;
                     
-                    } else if (
-                      normalizedHeader.includes("os") &&
-                      normalizedHeader.includes("aberta")
-                    ) {
-                      filterOrder = 40;
+                      } else if (
+                        normalizedHeader.includes("os") &&
+                        normalizedHeader.includes("aberta")
+                      ) {
+                        filterOrder = 30;
                     
-                    } else if (
-                      normalizedHeader.includes("ticket") &&
-                      normalizedHeader.includes("referencia")
-                    ) {
-                      filterOrder = 50;
+                      // Segunda linha
+                      } else if (normalizedHeader === "cobranca") {
+                        filterOrder = 40;
                     
-                    } else if (normalizedHeader === "cobranca") {
-                      filterOrder = 60;
+                      } else if (
+                        normalizedHeader.includes("data") &&
+                        normalizedHeader.includes("ultima") &&
+                        normalizedHeader.includes("interacao")
+                      ) {
+                        filterOrder = 50;
                     
-                    } else if (
-                      normalizedHeader.includes("data") &&
-                      normalizedHeader.includes("ultima") &&
-                      normalizedHeader.includes("interacao")
-                    ) {
-                      filterOrder = 70;
+                      } else if (
+                        normalizedHeader.includes("data") &&
+                        normalizedHeader.includes("abertura")
+                      ) {
+                        filterOrder = 60;
                     
-                    } else if (
-                      normalizedHeader.includes("data") &&
-                      normalizedHeader.includes("abertura")
-                    ) {
-                      filterOrder = 80;
+                      // Terceira linha: filtros menores
+                      } else if (normalizedHeader === "excluido") {
+                        filterOrder = 70;
                     
-                    } else if (normalizedHeader === "excluido") {
-                      filterOrder = 90;
+                      } else if (
+                        normalizedHeader.includes("metodo") &&
+                        normalizedHeader.includes("acionamento")
+                      ) {
+                        filterOrder = 80;
                     
-                    } else if (normalizedHeader === "situacao") {
-                      filterOrder = 100;
+                      // Coluna sem título, caso realmente exista na planilha
+                      } else if (normalizedHeader === "") {
+                        filterOrder = 90;
                     
-                    } else if (normalizedHeader === "gravidade") {
-                      filterOrder = 110;
+                      // Última linha: listas maiores
+                      } else if (normalizedHeader === "situacao") {
+                        filterOrder = 100;
                     
-                    } else if (normalizedHeader === "responsavel") {
-                      filterOrder = 120;
+                      } else if (normalizedHeader === "gravidade") {
+                        filterOrder = 110;
+                    
+                      } else if (normalizedHeader === "responsavel") {
+                        filterOrder = 120;
+                      }
+                    
+                    } else {
+                    
+                      // Ordenação da aba tbChamadosMV, que já está funcionando
+                      if (
+                        normalizedHeader.includes("numero") &&
+                        normalizedHeader.includes("chamado")
+                      ) {
+                        filterOrder = 10;
+                    
+                      } else if (normalizedHeader === "titulo") {
+                        filterOrder = 20;
+                    
+                      } else if (
+                        normalizedHeader.includes("descricao") &&
+                        normalizedHeader.includes("problema")
+                      ) {
+                        filterOrder = 30;
+                    
+                      } else if (
+                        normalizedHeader.includes("os") &&
+                        normalizedHeader.includes("aberta")
+                      ) {
+                        filterOrder = 40;
+                    
+                      } else if (
+                        normalizedHeader.includes("ticket") &&
+                        normalizedHeader.includes("referencia")
+                      ) {
+                        filterOrder = 50;
+                    
+                      } else if (normalizedHeader === "cobranca") {
+                        filterOrder = 60;
+                    
+                      } else if (
+                        normalizedHeader.includes("data") &&
+                        normalizedHeader.includes("ultima") &&
+                        normalizedHeader.includes("interacao")
+                      ) {
+                        filterOrder = 70;
+                    
+                      } else if (
+                        normalizedHeader.includes("data") &&
+                        normalizedHeader.includes("abertura")
+                      ) {
+                        filterOrder = 80;
+                    
+                      } else if (normalizedHeader === "excluido") {
+                        filterOrder = 90;
+                    
+                      } else if (normalizedHeader === "situacao") {
+                        filterOrder = 100;
+                    
+                      } else if (normalizedHeader === "gravidade") {
+                        filterOrder = 110;
+                    
+                      } else if (normalizedHeader === "responsavel") {
+                        filterOrder = 120;
+                      }
                     }
                     
                     const isDataAbertura =
