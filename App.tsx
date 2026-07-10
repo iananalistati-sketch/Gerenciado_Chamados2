@@ -1767,7 +1767,14 @@ export default function App() {
                           flexDirection: "column",
                           gap: "8px",
                           order: filterOrder,
-                          minWidth: 0
+                          minWidth: 0,
+                    
+                          // Na aba ForHealth, Situação inicia uma nova linha.
+                          gridColumnStart:
+                            selectedSheet === "tbChamadosForhealth" &&
+                            normalizedHeader === "situacao"
+                              ? 1
+                              : "auto"
                         }}
                       >
                         <label style={{ fontSize: '12px', lineHeight:"18px", fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase' }}>{h}</label>
