@@ -1512,13 +1512,21 @@ export default function App() {
                   {headers.map((h, i) => {
                     const config = getColumnConfig(h, i);
                     const currentVal = sheetFilters[selectedSheet]?.[h] || "";
-                    const isSituacao = normalize(h) === "situacao"; 
+                    const multiSelectFields = [
+                        "situacao",
+                        "gravidade",
+                        "responsavel"
+                    ];
+                    const isMultiSelect =
+                    multiSelectFields.includes(
+                        normalize(h)
+                    );
             
                     return (
                       <div key={h} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase' }}>{h}</label>
                         
-                        {isSituacao ? (
+                        {isMultiSelect ? (
 
                         <div
                             style={{
