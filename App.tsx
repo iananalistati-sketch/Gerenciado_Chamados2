@@ -212,93 +212,6 @@ export default function App() {
   const handleSave = async (dataToSave = formData) => {
     setLoading(true);
     const headers = data[0] || [];
-    // Define somente a ordem visual dos filtros no modal.
-    // Não altera a ordem das colunas da planilha.
-    const getFilterVisualOrder = (header: string) => {
-      const name = normalize(header);
-    
-      if (
-        name.includes("numero") &&
-        name.includes("chamado")
-      ) {
-        return 10;
-      }
-    
-      if (name === "titulo") {
-        return 20;
-      }
-    
-      if (
-        name.includes("descricao") &&
-        name.includes("problema")
-      ) {
-        return 30;
-      }
-    
-      if (
-        name.includes("os") &&
-        name.includes("aberta")
-      ) {
-        return 40;
-      }
-    
-      if (
-        name.includes("ticket") &&
-        name.includes("referencia")
-      ) {
-        return 50;
-      }
-    
-      if (name === "cobranca") {
-        return 60;
-      }
-    
-      if (
-        name.includes("data") &&
-        name.includes("ultima") &&
-        name.includes("interacao")
-      ) {
-        return 70;
-      }
-    
-      if (
-        name.includes("data") &&
-        name.includes("abertura")
-      ) {
-        return 80;
-      }
-    
-      if (name === "excluido") {
-        return 90;
-      }
-    
-      // Os filtros maiores ficam juntos na última linha.
-      if (name === "situacao") {
-        return 100;
-      }
-    
-      if (name === "gravidade") {
-        return 110;
-      }
-    
-      if (name === "responsavel") {
-        return 120;
-      }
-    
-      // Qualquer nova coluna será exibida depois das demais.
-      return 999;
-    };
-    
-    const orderedFilterHeaders = headers
-      .map((header, originalIndex) => ({
-        header,
-        originalIndex
-      }))
-      .sort(
-        (a, b) =>
-          getFilterVisualOrder(a.header) -
-          getFilterVisualOrder(b.header)
-      );
     const rowData = headers.map(h => dataToSave[h] || "");
 
     try {
@@ -1690,17 +1603,76 @@ export default function App() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns:
-                      "repeat(3, minmax(0, 1fr))",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
                     gap: "20px",
                     alignItems: "start"
                   }}
                 >
-                  {orderedFilterHeaders.map(({ header: h, originalIndex: i }) => {
+                  {headers.map((h, i) => {
                     const config = getColumnConfig(h, i);
                     const currentVal = sheetFilters[selectedSheet]?.[h] || "";
                     const normalizedHeader = normalize(h);
 
+                    // Ordem exclusivamente visual dos filtros no modal.
+                    // Não modifica a ordem das colunas nem o índice da planilha.
+                    let filterOrder = 999;
+                    
+                    if (
+                      normalizedHeader.includes("numero") &&
+                      normalizedHeader.includes("chamado")
+                    ) {
+                      filterOrder = 10;
+                    
+                    } else if (normalizedHeader === "titulo") {
+                      filterOrder = 20;
+                    
+                    } else if (
+                      normalizedHeader.includes("descricao") &&
+                      normalizedHeader.includes("problema")
+                    ) {
+                      filterOrder = 30;
+                    
+                    } else if (
+                      normalizedHeader.includes("os") &&
+                      normalizedHeader.includes("aberta")
+                    ) {
+                      filterOrder = 40;
+                    
+                    } else if (
+                      normalizedHeader.includes("ticket") &&
+                      normalizedHeader.includes("referencia")
+                    ) {
+                      filterOrder = 50;
+                    
+                    } else if (normalizedHeader === "cobranca") {
+                      filterOrder = 60;
+                    
+                    } else if (
+                      normalizedHeader.includes("data") &&
+                      normalizedHeader.includes("ultima") &&
+                      normalizedHeader.includes("interacao")
+                    ) {
+                      filterOrder = 70;
+                    
+                    } else if (
+                      normalizedHeader.includes("data") &&
+                      normalizedHeader.includes("abertura")
+                    ) {
+                      filterOrder = 80;
+                    
+                    } else if (normalizedHeader === "excluido") {
+                      filterOrder = 90;
+                    
+                    } else if (normalizedHeader === "situacao") {
+                      filterOrder = 100;
+                    
+                    } else if (normalizedHeader === "gravidade") {
+                      filterOrder = 110;
+                    
+                    } else if (normalizedHeader === "responsavel") {
+                      filterOrder = 120;
+                    }
+                    
                     const isDataAbertura =
                       normalizedHeader.includes("data") &&
                       normalizedHeader.includes("abertura");
@@ -1724,7 +1696,16 @@ export default function App() {
                     );
             
                     return (
-                      <div key={h} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div
+                        key={h}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                          order: filterOrder,
+                          minWidth: 0
+                        }}
+                      >
                         <label style={{ fontSize: '12px', lineHeight:"18px", fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase' }}>{h}</label>
                         
                         {isMultiSelect ? (
