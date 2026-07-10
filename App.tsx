@@ -451,6 +451,19 @@ export default function App() {
         const cellValue = (row[colIdx] || "").toString().toLowerCase();
         const searchVal = String(filterValue).toLowerCase();
         
+        // Se possuir múltiplos valores (checkbox)
+        if (searchVal.includes("|")) {
+        
+          const filtros = searchVal
+            .split("|")
+            .map(v => v.trim())
+            .filter(Boolean);
+        
+          return filtros.includes(cellValue);
+        
+        }
+        
+        // Filtro normal (texto ou select)
         return cellValue.includes(searchVal);
       });
     });
