@@ -532,15 +532,30 @@ export default function App() {
 
     return Object.entries(currentFilters).every(([header, filterValue]) => {
       if (!filterValue) return true;
-      const colIdx = headers.indexOf(header);
+      const colIdx = headers.findIndex(
+          h => normalize(h) === normalize(header)
+      );
       if (colIdx === -1) return true;
       
-      const cellValue = (row[colIdx] || "").toString().toLowerCase();
-      const searchVal = String(filterValue).toLowerCase();
-      console.log("filterValue:", filterValue);
-      console.log("typeof:", typeof filterValue);
-      console.log("searchVal:", searchVal);
-      console.log("tem pipe?", searchVal.includes("|"));
+      const cellValue = (row[colIdx] || "")
+        .toString()
+        .trim()
+        .toLowerCase();
+      
+      const searchVal = String(filterValue)
+        .trim()
+        .toLowerCase();
+      
+      if (searchVal.includes("|")) {
+      
+          const filtros = searchVal
+              .split("|")
+              .map(v => v.trim())
+              .filter(Boolean);
+      
+          return filtros.some(f => f === cellValue);
+      }
+      
       return cellValue.includes(searchVal);
     });
   });
