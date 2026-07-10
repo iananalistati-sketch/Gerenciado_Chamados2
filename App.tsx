@@ -1560,12 +1560,70 @@ export default function App() {
                                     )
                                 );
                         
-                        return sortedOptions.map(opcao => {
+                        const selectedValues = currentVal
+                            ? currentVal.split("|")
+                            : [];
+                        
+                        const allSelected =
+                            sortedOptions.length > 0 &&
+                            sortedOptions.every(op => selectedValues.includes(op));
+                        
+                        return (
+                        <>
+                        
+                        <label
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                cursor: "pointer",
+                                fontWeight: "bold",
+                                marginBottom: "8px"
+                            }}
+                        >
+                        
+                        <input
+                            type="checkbox"
+                        
+                            checked={allSelected}
+                        
+                            onChange={(e)=>{
+                        
+                                if(e.target.checked){
+                        
+                                    updateFilter(
+                                        h,
+                                        sortedOptions.join("|")
+                                    );
+                        
+                                }else{
+                        
+                                    updateFilter(
+                                        h,
+                                        ""
+                                    );
+                        
+                                }
+                        
+                            }}
+                        />
+                        
+                        <span>Todos</span>
+                        
+                        </label>
+                        
+                        <div
+                            style={{
+                                height: "1px",
+                                background: "#334155",
+                                margin: "8px 0"
+                            }}
+                        />
+                        
+                        {sortedOptions.map(opcao => {
                         
                             const selecionado =
-                                currentVal
-                                    ? currentVal.split("|").includes(opcao)
-                                    : false;
+                                selectedValues.includes(opcao);
                         
                             return(
                         
@@ -1587,12 +1645,7 @@ export default function App() {
                         
                         onChange={(e)=>{
                         
-                            let valores: string[] =
-                            currentVal
-                                ? currentVal
-                                    .split("|")
-                                    .filter(Boolean)
-                                : [];
+                            let valores = [...selectedValues];
                         
                             if(e.target.checked){
                         
@@ -1627,8 +1680,12 @@ export default function App() {
                         
                             )
                         
-                        })
+                        })}
 
+                        </>
+                        
+                        );
+                        
                         })()}
                         
                         
