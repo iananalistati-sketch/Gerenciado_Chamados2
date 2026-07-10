@@ -1546,7 +1546,21 @@ export default function App() {
                             }}
                         >
                         
-                        {config.options?.map(opcao=>{
+                        {(() => {
+
+                        const sortedOptions =
+                            [...(config.options || [])]
+                                .sort((a, b) =>
+                                    a.localeCompare(
+                                        b,
+                                        "pt-BR",
+                                        {
+                                            sensitivity: "base"
+                                        }
+                                    )
+                                );
+                        
+                        return sortedOptions.map(opcao => {
                         
                             const selecionado =
                                 currentVal
@@ -1613,7 +1627,10 @@ export default function App() {
                         
                             )
                         
-                        })}
+                        })
+
+                        })()}
+                        
                         
                         </div>
                         
