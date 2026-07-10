@@ -548,7 +548,32 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
   
-  const activeFilterCount = Object.values(sheetFilters[selectedSheet] || {}).filter(v => v !== "").length;
+  const activeFilterCount = (() => {
+    const filters = sheetFilters[selectedSheet] || {};
+  
+    let count = 0;
+    let hasDatePeriod = false;
+  
+    Object.entries(filters).forEach(([key, value]) => {
+      if (!value) return;
+  
+      if (
+        key.endsWith("__inicio") ||
+        key.endsWith("__fim")
+      ) {
+        hasDatePeriod = true;
+        return;
+      }
+  
+      count++;
+    });
+  
+    if (hasDatePeriod) {
+      count++;
+    }
+  
+    return count;
+})();
 
   // Lógica de filtragem centralizada para Dashboard e Tabela
   const currentFilters = sheetFilters[selectedSheet] || {};
@@ -1774,82 +1799,115 @@ export default function App() {
                         
                         ) : isDataAbertura ? (
 
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "8px",
-                              padding: "10px",
-                              backgroundColor: "#0F172A",
-                              border: "1px solid #334155",
-                              borderRadius: "8px",
-                              boxSizing: "border-box"
-                            }}
-                          >
-                            <label
+                          ) : isDataAbertura ? (
+
+                            <div
                               style={{
                                 display: "flex",
                                 flexDirection: "column",
-                                gap: "5px",
-                                fontSize: "11px",
-                                color: "#94A3B8"
+                                gap: "10px",
+                          
+                                height: "180px",
+                                minHeight: "180px",
+                                maxHeight: "180px",
+                          
+                                padding: "12px",
+                                backgroundColor: "#0F172A",
+                                border: "1px solid #334155",
+                                borderRadius: "8px",
+                                boxSizing: "border-box"
                               }}
                             >
-                              De
-                        
-                              <input
-                                type="date"
-                                value={dataInicio}
-                                max={dataFim || undefined}
-                                onChange={(e) =>
-                                  updateFilter(dataInicioKey, e.target.value)
-                                }
+                              <div
                                 style={{
-                                  width: "100%",
-                                  padding: "9px",
-                                  backgroundColor: "#1E293B",
-                                  color: "#F8FAFC",
-                                  border: "1px solid #334155",
-                                  borderRadius: "6px",
-                                  outline: "none",
-                                  boxSizing: "border-box"
+                                  fontSize: "12px",
+                                  color: "#94A3B8",
+                                  lineHeight: "18px"
                                 }}
-                              />
-                            </label>
-                        
-                            <label
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "5px",
-                                fontSize: "11px",
-                                color: "#94A3B8"
-                              }}
-                            >
-                              Até
-                        
-                              <input
-                                type="date"
-                                value={dataFim}
-                                min={dataInicio || undefined}
-                                onChange={(e) =>
-                                  updateFilter(dataFimKey, e.target.value)
-                                }
+                              >
+                                Selecione o período desejado
+                              </div>
+                          
+                              <label
                                 style={{
-                                  width: "100%",
-                                  padding: "9px",
-                                  backgroundColor: "#1E293B",
-                                  color: "#F8FAFC",
-                                  border: "1px solid #334155",
-                                  borderRadius: "6px",
-                                  outline: "none",
-                                  boxSizing: "border-box"
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "4px"
                                 }}
-                              />
-                            </label>
-                          </div>
-                        
-                        ) : config.type === "select" ? (
+                              >
+                                <span
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "#64748B",
+                                    fontWeight: 600,
+                                    textTransform: "uppercase"
+                                  }}
+                                >
+                                  De
+                                </span>
+                          
+                                <input
+                                  type="date"
+                                  value={dataInicio}
+                                  max={dataFim || undefined}
+                                  onChange={(e) =>
+                                    updateFilter(dataInicioKey, e.target.value)
+                                  }
+                                  style={{
+                                    width: "100%",
+                                    padding: "8px",
+                                    backgroundColor: "#1E293B",
+                                    color: "#F8FAFC",
+                                    border: "1px solid #334155",
+                                    borderRadius: "6px",
+                                    outline: "none",
+                                    boxSizing: "border-box",
+                                    colorScheme: "dark"
+                                  }}
+                                />
+                              </label>
+                          
+                              <label
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "4px"
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "#64748B",
+                                    fontWeight: 600,
+                                    textTransform: "uppercase"
+                                  }}
+                                >
+                                  Até
+                                </span>
+                          
+                                <input
+                                  type="date"
+                                  value={dataFim}
+                                  min={dataInicio || undefined}
+                                  onChange={(e) =>
+                                    updateFilter(dataFimKey, e.target.value)
+                                  }
+                                  style={{
+                                    width: "100%",
+                                    padding: "8px",
+                                    backgroundColor: "#1E293B",
+                                    color: "#F8FAFC",
+                                    border: "1px solid #334155",
+                                    borderRadius: "6px",
+                                    outline: "none",
+                                    boxSizing: "border-box",
+                                    colorScheme: "dark"
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          
+                          ) : config.type === "select" ? (
 
                         <select
                             value={currentVal}
