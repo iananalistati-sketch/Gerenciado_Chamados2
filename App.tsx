@@ -532,6 +532,33 @@ export default function App() {
   
     setCurrentPage(1);
   };
+
+  const handleDashboardFilter = (
+    normalizedHeader: string,
+    selectedValue: string
+  ) => {
+    const actualHeader = headers.find(
+      header => normalize(header) === normalizedHeader
+    );
+  
+    if (!actualHeader) {
+      console.warn(
+        `Coluna não encontrada para o filtro: ${normalizedHeader}`
+      );
+      return;
+    }
+  
+    const currentValue =
+      sheetFilters[selectedSheet]?.[actualHeader] || "";
+  
+    // Se clicar novamente no mesmo valor, remove o filtro.
+    const nextValue =
+      currentValue === selectedValue
+        ? ""
+        : selectedValue;
+  
+    updateFilter(actualHeader, nextValue);
+  };
   
   // Heurística para identificar o tipo de dado da coluna
   const getColumnConfig = (header: string, index: number) => {
@@ -1076,7 +1103,47 @@ export default function App() {
                         borderWidth: 0
                       }]
                     }}
-                    options={{ maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#94A3B8', font: { size: 10 } } } } }}
+                    options={{
+                      maintainAspectRatio: false,
+                    
+                      onClick: (_event, elements, chart) => {
+                        if (!elements.length) return;
+                    
+                        const clickedIndex = elements[0].index;
+                    
+                        const selectedValue =
+                          String(chart.data.labels?.[clickedIndex] || "");
+                    
+                        if (!selectedValue) return;
+                    
+                        handleDashboardFilter(
+                          "situacao",
+                          selectedValue
+                        );
+                      },
+                    
+                      onHover: (event, elements) => {
+                        const target =
+                          event.native?.target as HTMLElement | null;
+                    
+                        if (target) {
+                          target.style.cursor =
+                            elements.length > 0
+                              ? "pointer"
+                              : "default";
+                        }
+                      },
+                    
+                      plugins: {
+                        legend: {
+                          position: "right",
+                          labels: {
+                            color: "#94A3B8",
+                            font: { size: 10 }
+                          }
+                        }
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -1094,13 +1161,53 @@ export default function App() {
                         borderRadius: 4
                       }]
                     }}
-                    options={{ 
-                      maintainAspectRatio: false, 
-                      scales: { 
-                        y: { ticks: { color: '#94A3B8' }, grid: { color: '#334155' } },
-                        x: { ticks: { color: '#94A3B8' }, grid: { display: false } }
+                    options={{
+                      maintainAspectRatio: false,
+                    
+                      onClick: (_event, elements, chart) => {
+                        if (!elements.length) return;
+                    
+                        const clickedIndex = elements[0].index;
+                    
+                        const selectedValue =
+                          String(chart.data.labels?.[clickedIndex] || "");
+                    
+                        if (!selectedValue) return;
+                    
+                        handleDashboardFilter(
+                          "gravidade",
+                          selectedValue
+                        );
                       },
-                      plugins: { legend: { display: false } }
+                    
+                      onHover: (event, elements) => {
+                        const target =
+                          event.native?.target as HTMLElement | null;
+                    
+                        if (target) {
+                          target.style.cursor =
+                            elements.length > 0
+                              ? "pointer"
+                              : "default";
+                        }
+                      },
+                    
+                      scales: {
+                        y: {
+                          ticks: { color: "#94A3B8" },
+                          grid: { color: "#334155" }
+                        },
+                        x: {
+                          ticks: { color: "#94A3B8" },
+                          grid: { display: false }
+                        }
+                      },
+                    
+                      plugins: {
+                        legend: {
+                          display: false
+                        }
+                      }
                     }}
                   />
                 </div>
@@ -1119,14 +1226,54 @@ export default function App() {
                         borderRadius: 4
                       }]
                     }}
-                    options={{ 
-                      indexAxis: 'y',
-                      maintainAspectRatio: false, 
-                      scales: { 
-                        y: { ticks: { color: '#94A3B8' }, grid: { display: false } },
-                        x: { ticks: { color: '#94A3B8' }, grid: { color: '#334155' } }
+                    options={{
+                      indexAxis: "y",
+                      maintainAspectRatio: false,
+                    
+                      onClick: (_event, elements, chart) => {
+                        if (!elements.length) return;
+                    
+                        const clickedIndex = elements[0].index;
+                    
+                        const selectedValue =
+                          String(chart.data.labels?.[clickedIndex] || "");
+                    
+                        if (!selectedValue) return;
+                    
+                        handleDashboardFilter(
+                          "responsavel",
+                          selectedValue
+                        );
                       },
-                      plugins: { legend: { display: false } }
+                    
+                      onHover: (event, elements) => {
+                        const target =
+                          event.native?.target as HTMLElement | null;
+                    
+                        if (target) {
+                          target.style.cursor =
+                            elements.length > 0
+                              ? "pointer"
+                              : "default";
+                        }
+                      },
+                    
+                      scales: {
+                        y: {
+                          ticks: { color: "#94A3B8" },
+                          grid: { display: false }
+                        },
+                        x: {
+                          ticks: { color: "#94A3B8" },
+                          grid: { color: "#334155" }
+                        }
+                      },
+                    
+                      plugins: {
+                        legend: {
+                          display: false
+                        }
+                      }
                     }}
                   />
                 </div>
