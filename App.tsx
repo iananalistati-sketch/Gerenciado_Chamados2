@@ -1819,7 +1819,7 @@ export default function App() {
 
                           return (
                             <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#1E293B' : '#1a2434' }}>
-                              {headers.map((_, j) => {
+                              {headers.map((h, j) => {
                                 const cell = row[j] || "";
                                 if (j === gravidadeIdx) {
                                   const gravValue = cell.trim().toLowerCase();
@@ -1839,14 +1839,27 @@ export default function App() {
                                     <td
                                       key={j}
                                       style={{
-                                        ...getTableColumnStyle(h)
+                                        ...getTableColumnStyle(h),
+                                        padding: "10px 8px",
+                                        borderBottom: "1px solid #334155"
                                       }}
                                     >
                                       <span style={labelStyle}>{cell}</span>
                                     </td>
                                   );
                                 }
-                                return <td key={j} style={{ padding: '12px 16px', borderBottom: '1px solid #334155' }}>{cell}</td>;
+                                return (
+                                  <td
+                                    key={j}
+                                    style={{
+                                      ...getTableColumnStyle(h),
+                                      padding: "10px 8px",
+                                      borderBottom: "1px solid #334155"
+                                    }}
+                                  >
+                                    {cell}
+                                  </td>
+                                );
                               })}
                               <td style={{ padding: '12px 16px', borderBottom: '1px solid #334155', textAlign: 'center' }}>
                                 <button 
