@@ -317,7 +317,10 @@ export default function App() {
     }
   
     if (
-      selectedSheet === "tbChamadosMV" &&
+      (
+        selectedSheet === "tbChamadosMV" ||
+        selectedSheet === "tbChamadosForhealth"
+      ) &&
       (
         hNorm === "cobranca" ||
         hNorm === "excluido"
@@ -418,32 +421,36 @@ export default function App() {
   const prepareFormRow = (): string[] | null => {
     const headers = data[0] || [];
   
-    // Cópia dos valores atuais do formulário.
     const preparedData: Record<string, string> = {
       ...formData
     };
   
-    // As regras abaixo são exclusivas da aba MV.
-    if (selectedSheet === "tbChamadosMV") {
+    /*
+     * Preenche Cobrança e Excluído com NAO
+     * nas duas abas, quando estiverem vazios.
+     */
+    headers.forEach(header => {
+      const headerName = normalize(header);
   
-      // Preenche Cobrança e Excluído com NAO quando vazios.
-      headers.forEach(header => {
-        const headerName = normalize(header);
+      if (
+        headerName === "cobranca" ||
+        headerName === "excluido"
+      ) {
+        const value = preparedData[header];
   
-        if (
-          headerName === "cobranca" ||
-          headerName === "excluido"
-        ) {
-          const value = preparedData[header];
-  
-          if (!value || String(value).trim() === "") {
-            preparedData[header] = "NAO";
-          }
+        if (!value || String(value).trim() === "") {
+          preparedData[header] = "NAO";
         }
-      });
+      }
+    });
   
-      // Identifica os campos obrigatórios do MV.
-      const requiredHeaders = headers.filter(header => {
+    let requiredHeaders: string[] = [];
+  
+    /*
+     * Campos obrigatórios da aba MV
+     */
+    if (selectedSheet === "tbChamadosMV") {
+      requiredHeaders = headers.filter(header => {
         const headerName = normalize(header);
   
         return (
@@ -470,27 +477,65 @@ export default function App() {
           headerName === "responsavel"
         );
       });
-  
-      const missingHeaders = requiredHeaders.filter(header => {
-        const value = preparedData[header];
-  
-        return !value || String(value).trim() === "";
-      });
-  
-      if (missingHeaders.length > 0) {
-        alert(
-          "Preencha os campos obrigatórios:\n\n" +
-          missingHeaders
-            .map(header => `• ${header}`)
-            .join("\n")
-        );
-  
-        return null;
-      }
     }
   
-    // Garante a mesma ordem das colunas da planilha.
-    return headers.map(header => preparedData[header] || "");
+    /*
+     * Campos obrigatórios da aba ForHealth
+     */
+    if (selectedSheet === "tbChamadosForhealth") {
+      requiredHeaders = headers.filter(header => {
+        const headerName = normalize(header);
+  
+        return (
+          (
+            headerName.includes("os") &&
+            headerName.includes("aberta")
+          ) ||
+          (
+            headerName.includes("metodo") &&
+            headerName.includes("acionamento")
+          ) ||
+          headerName === "titulo" ||
+          (
+            headerName.includes("descricao") &&
+            headerName.includes("problema")
+          ) ||
+          headerName === "situacao" ||
+          (
+            headerName.includes("data") &&
+            headerName.includes("abertura")
+          ) ||
+          (
+            headerName.includes("data") &&
+            headerName.includes("ultima") &&
+            headerName.includes("interacao")
+          ) ||
+          headerName === "gravidade" ||
+          headerName === "responsavel"
+        );
+      });
+    }
+  
+    const missingHeaders = requiredHeaders.filter(header => {
+      const value = preparedData[header];
+  
+      return !value || String(value).trim() === "";
+    });
+  
+    if (missingHeaders.length > 0) {
+      alert(
+        "Preencha os campos obrigatórios:\n\n" +
+        missingHeaders
+          .map(header => `• ${header}`)
+          .join("\n")
+      );
+  
+      return null;
+    }
+  
+    return headers.map(
+      header => preparedData[header] || ""
+    );
   };
   
   const updateFilter = (header: string, value: string) => {
