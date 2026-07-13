@@ -308,36 +308,32 @@ export default function App() {
   };
 
   const onAdd = async (rowData: string[]) => {
-  e.preventDefault();
-
-  const rowData = data[0].map((header) => formData[header] || '');
-
-  try {
-    const res = await fetch('/api/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        rowData,
-        sheet: selectedSheet
-      }),
-    });
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      throw new Error(result.error);
+    try {
+      const res = await fetch("/api/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          rowData,
+          sheet: selectedSheet
+        })
+      });
+  
+      const result = await res.json();
+  
+      if (!res.ok) {
+        throw new Error(result.error || "Erro ao criar chamado");
+      }
+  
+      setShowForm(false);
+      setFormData({});
+      fetchData();
+  
+    } catch (err: any) {
+      throw new Error(err.message || "Erro ao criar chamado");
     }
-
-    alert("Chamado criado com sucesso ✅");
-
-    setShowForm(false);
-    setFormData({});
-    fetchData();
-
-  } catch (err: any) {
-    alert("Erro ao criar: " + err.message);
-  }
-};
+  };
 
 
   const handleOpenForm = () => {
