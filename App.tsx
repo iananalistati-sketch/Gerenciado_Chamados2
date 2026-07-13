@@ -1741,6 +1741,14 @@ export default function App() {
                       normalizedHeader.includes("data") &&
                       normalizedHeader.includes("abertura");
                     
+                    const isDataUltimaInteracao =
+                      normalizedHeader.includes("data") &&
+                      normalizedHeader.includes("ultima") &&
+                      normalizedHeader.includes("interacao");
+                    
+                    const isDateRangeField =
+                      isDataAbertura || isDataUltimaInteracao;
+                    
                     const dataInicioKey = `${h}__inicio`;
                     const dataFimKey = `${h}__fim`;
                     
@@ -1940,7 +1948,7 @@ export default function App() {
                         
                         </div>
                         
-                        ) : isDataAbertura ? (
+                        ) : isDateRangeField ? (
 
                           <div
                             style={{
