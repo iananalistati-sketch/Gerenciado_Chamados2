@@ -456,6 +456,116 @@ export default function App() {
     return { type: 'text' };
   };
 
+  const getTableColumnStyle = (
+    header: string
+  ): React.CSSProperties => {
+    const name = normalize(header);
+  
+    // Número do chamado
+    if (
+      name.includes("numero") &&
+      name.includes("chamado")
+    ) {
+      return {
+        width: "7%",
+        minWidth: 0
+      };
+    }
+  
+    // Título
+    if (name === "titulo") {
+      return {
+        width: "12%",
+        minWidth: 0
+      };
+    }
+  
+    // Descrição
+    if (
+      name.includes("descricao") &&
+      name.includes("problema")
+    ) {
+      return {
+        width: "25%",
+        minWidth: 0,
+        whiteSpace: "normal",
+        wordBreak: "break-word",
+        overflowWrap: "anywhere"
+      };
+    }
+  
+    // Situação
+    if (name === "situacao") {
+      return {
+        width: "9%",
+        minWidth: 0
+      };
+    }
+  
+    // OS aberta
+    if (
+      name.includes("os") &&
+      name.includes("aberta")
+    ) {
+      return {
+        width: "7%",
+        minWidth: 0
+      };
+    }
+  
+    // Datas
+    if (name.includes("data")) {
+      return {
+        width: "9%",
+        minWidth: 0
+      };
+    }
+  
+    // Gravidade
+    if (name === "gravidade") {
+      return {
+        width: "8%",
+        minWidth: 0
+      };
+    }
+  
+    // Responsável
+    if (name === "responsavel") {
+      return {
+        width: "10%",
+        minWidth: 0
+      };
+    }
+  
+    // Ticket de referência
+    if (
+      name.includes("ticket") &&
+      name.includes("referencia")
+    ) {
+      return {
+        width: "9%",
+        minWidth: 0
+      };
+    }
+  
+    // Método de acionamento — aba ForHealth
+    if (
+      name.includes("metodo") &&
+      name.includes("acionamento")
+    ) {
+      return {
+        width: "10%",
+        minWidth: 0
+      };
+    }
+  
+    // Demais colunas
+    return {
+      width: "8%",
+      minWidth: 0
+    };
+  };
+  
   // Extração dinâmica de valores únicos para os filtros e campos
   const headers = data[0] || [];
 
@@ -1145,20 +1255,16 @@ export default function App() {
                   /* Controle de Largura e Texto */
                   .table-scroll td,
                   .table-scroll th {
-                    max-width: 250px;
+                    min-width: 0;
+                    max-width: none;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    padding: 12px 16px;
+                    padding: 10px 8px;
                     border-bottom: 1px solid #334155;
+                    vertical-align: middle;
+                    box-sizing: border-box;
                   }
 
-                  /* Coluna de Descrição (3ª coluna) - Permitir quebra */
-                  .table-scroll td:nth-child(3) {
-                    white-space: normal;
-                    word-break: break-word;
-                    min-width: 300px;
-                    max-width: 400px;
-                  }
 
                   /* Garantir Visibilidade da Scrollbar */
                   .table-scroll {
@@ -1215,7 +1321,9 @@ export default function App() {
                               letterSpacing: "0.5px",
                               cursor: "pointer",
                               userSelect: "none",
-                              transition: "color 0.2s"
+                              transition: "color 0.2s",
+                          
+                              ...getTableColumnStyle(h)
                             }}
                           >
                             <span
@@ -1248,7 +1356,10 @@ export default function App() {
                         textTransform: 'uppercase', 
                         fontSize: '11px', 
                         letterSpacing: '0.5px',
-                        padding: '16px'
+                        padding: '8px 4px',
+                        width: "55px",
+                        minWidth: "55px",
+                        maxWidth: "55px",
                       }}>
                         Ações
                       </th>
@@ -1259,7 +1370,10 @@ export default function App() {
                         textTransform: 'uppercase', 
                         fontSize: '11px', 
                         letterSpacing: '0.5px',
-                        padding: '16px'
+                        padding: "8px 4px",
+                        width: "55px",
+                        minWidth: "55px",
+                        maxWidth: "55px"
                       }}>
                         Cobrança
                       </th>
@@ -1270,7 +1384,10 @@ export default function App() {
                         textTransform: 'uppercase', 
                         fontSize: '11px', 
                         letterSpacing: '0.5px',
-                        padding: '16px'
+                        padding: "8px 4px",
+                        width: "55px",
+                        minWidth: "55px",
+                        maxWidth: "55px"
                       }}>
                         Excluído
                       </th>
@@ -1358,7 +1475,12 @@ export default function App() {
                               }
 
                               return (
-                                <td key={j}>
+                                <td
+                                  key={j}
+                                  style={{
+                                    ...getTableColumnStyle(h)
+                                  }}
+                                >
                                   {cell}
                                 </td>
                               );
@@ -1611,7 +1733,16 @@ export default function App() {
                                   else if (gravValue === "intermediário") { labelStyle.backgroundColor = "#451a03"; labelStyle.color = "#fbbf24"; }
                                   else if (gravValue === "baixa") { labelStyle.backgroundColor = "#064E3B"; labelStyle.color = "#6EE7B7"; }
 
-                                  return <td key={j} style={{ padding: '12px 16px', borderBottom: '1px solid #334155' }}><span style={labelStyle}>{cell}</span></td>;
+                                  return (
+                                    <td
+                                      key={j}
+                                      style={{
+                                        ...getTableColumnStyle(h)
+                                      }}
+                                    >
+                                      <span style={labelStyle}>{cell}</span>
+                                    </td>
+                                  );
                                 }
                                 return <td key={j} style={{ padding: '12px 16px', borderBottom: '1px solid #334155' }}>{cell}</td>;
                               })}
