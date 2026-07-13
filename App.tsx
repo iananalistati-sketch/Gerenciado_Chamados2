@@ -42,6 +42,13 @@ export default function App() {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [selectedSheet, setSelectedSheet] = useState('tbChamadosMV');
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState<{
+    columnIndex: number | null;
+    direction: "asc" | "desc";
+  }>({
+    columnIndex: null,
+    direction: "asc"
+  });
   const itemsPerPage = 10;
   const [showForm, setShowForm] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
@@ -406,6 +413,24 @@ export default function App() {
     setCurrentPage(1);
   };
 
+  const handleSort = (columnIndex: number) => {
+    setSortConfig(prev => {
+      if (prev.columnIndex === columnIndex) {
+        return {
+          columnIndex,
+          direction: prev.direction === "asc" ? "desc" : "asc"
+        };
+      }
+  
+      return {
+        columnIndex,
+        direction: "asc"
+      };
+    });
+  
+    setCurrentPage(1);
+  };
+  
   // Heurística para identificar o tipo de dado da coluna
   const getColumnConfig = (header: string, index: number) => {
     const rawValues = data.slice(1).map(row => (row[index] || "").trim()).filter(v => v !== "");
@@ -656,6 +681,60 @@ export default function App() {
     });
   });
 
+  const sortedData = [...filteredData].sort((rowA, rowB) => {
+    const columnIndex = sortConfig.columnIndex;
+  
+    if (columnIndex === null) {
+      return 0;
+    }
+  
+    const header = headers[columnIndex] || "";
+    const normalizedHeader = normalize(header);
+  
+    const valueA = (rowA[columnIndex] || "").toString().trim();
+    const valueB = (rowB[columnIndex] || "").toString().trim();
+  
+    let comparison = 0;
+  
+    // Ordenação de datas
+    if (normalizedHeader.includes("data")) {
+      const dateA = parseDateToNumber(valueA);
+      const dateB = parseDateToNumber(valueB);
+  
+      if (dateA === null && dateB === null) {
+        comparison = 0;
+      } else if (dateA === null) {
+        comparison = 1;
+      } else if (dateB === null) {
+        comparison = -1;
+      } else {
+        comparison = dateA - dateB;
+      }
+  
+    // Ordenação numérica
+    } else if (
+      valueA !== "" &&
+      valueB !== "" &&
+      !isNaN(Number(valueA.replace(",", "."))) &&
+      !isNaN(Number(valueB.replace(",", ".")))
+    ) {
+      comparison =
+        Number(valueA.replace(",", ".")) -
+        Number(valueB.replace(",", "."));
+  
+    // Ordenação textual
+    } else {
+      comparison = valueA.localeCompare(valueB, "pt-BR", {
+        sensitivity: "base",
+        numeric: true
+      });
+    }
+  
+    return sortConfig.direction === "asc"
+      ? comparison
+      : -comparison;
+  });
+  
   const groupBy = (data: string[][], index: number) => {
     return data.reduce((acc: Record<string, number>, row) => {
       const key = (row[index] || "Não informado").trim() || "Não informado";
@@ -1112,15 +1191,45 @@ export default function App() {
                         const name = normalize(h);
                         if (name === "cobranca" || name === "excluido") return null;
                         return (
-                          <th key={i} style={{ 
-                            textAlign: 'left', 
-                            fontWeight: 'bold', 
-                            color: '#94A3B8', 
-                            textTransform: 'uppercase', 
-                            fontSize: '11px', 
-                            letterSpacing: '0.5px'
-                          }}>
-                            {h}
+                          <th
+                            key={i}
+                            onClick={() => handleSort(i)}
+                            title={`Ordenar por ${h}`}
+                            style={{
+                              textAlign: "left",
+                              fontWeight: "bold",
+                              color:
+                                sortConfig.columnIndex === i
+                                  ? "#F8FAFC"
+                                  : "#94A3B8",
+                              textTransform: "uppercase",
+                              fontSize: "11px",
+                              letterSpacing: "0.5px",
+                              cursor: "pointer",
+                              userSelect: "none",
+                              transition: "color 0.2s"
+                            }}
+                          >
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px"
+                              }}
+                            >
+                              {h}
+                        
+                              {sortConfig.columnIndex === i && (
+                                <span
+                                  style={{
+                                    color: "#3B82F6",
+                                    fontSize: "12px"
+                                  }}
+                                >
+                                  {sortConfig.direction === "asc" ? "▲" : "▼"}
+                                </span>
+                              )}
+                            </span>
                           </th>
                         );
                       })}
@@ -1161,9 +1270,13 @@ export default function App() {
                   </thead>
                   <tbody>
                     {(() => {
-                      const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+                      const totalPages = Math.ceil(sortedData.length / itemsPerPage);
                       const startIndex = (currentPage - 1) * itemsPerPage;
-                      const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+                      
+                      const paginatedData = sortedData.slice(
+                        startIndex,
+                        startIndex + itemsPerPage
+                      );
 
                         return paginatedData.map((row, i) => {
                           const headers = data[0] || [];
