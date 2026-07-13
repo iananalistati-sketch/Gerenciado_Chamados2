@@ -773,7 +773,13 @@ export default function App() {
       padding: '40px 20px', 
       fontFamily: 'Inter, system-ui, -apple-system, sans-serif' 
     }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "none",
+          margin: "0 auto"
+        }}
+      >
         <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#F8FAFC' }}>
           Gestor de Chamados
         </h1>
@@ -1177,14 +1183,16 @@ export default function App() {
                   }
                 `}</style>
                 
-                <table style={{ 
-                  width: '100%', 
-                  borderCollapse: 'separate', 
-                  borderSpacing: 0,
-                  fontSize: '13px', 
-                  color: '#E2E8F0',
-                  minWidth: '1400px'
-                }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "separate",
+                    borderSpacing: 0,
+                    fontSize: "clamp(11px, 0.75vw, 13px)",
+                    color: "#E2E8F0",
+                    tableLayout: "fixed"
+                  }}
+                >
                   <thead>
                     <tr style={{ backgroundColor: '#0F172A' }}>
                       {data[0]?.map((h, i) => {
