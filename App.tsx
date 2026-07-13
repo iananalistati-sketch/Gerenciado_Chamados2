@@ -148,7 +148,64 @@ export default function App() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
   
-    const rowData = Object.values(formData);
+    const headers = data[0] || [];
+  
+    // Cria uma cópia local para não alterar diretamente o estado.
+    const normalizedFormData: Record<string, string> = {
+      ...formData
+    };
+  
+    // Somente na aba MV, preenche Cobrança e Excluído com NAO.
+    if (selectedSheet === "tbChamadosMV") {
+      headers.forEach(header => {
+        const name = normalize(header);
+  
+        if (
+          name === "cobranca" ||
+          name === "excluido"
+        ) {
+          const currentValue =
+            normalizedFormData[header];
+  
+          if (
+            !currentValue ||
+            String(currentValue).trim() === ""
+          ) {
+            normalizedFormData[header] = "NAO";
+          }
+        }
+      });
+    }
+  
+    // Validação obrigatória somente para a aba MV.
+    const missingFields = headers.filter(header => {
+      if (!isRequiredMvField(header)) {
+        return false;
+      }
+  
+      const value = normalizedFormData[header];
+  
+      return (
+        !value ||
+        String(value).trim() === ""
+      );
+    });
+  
+    if (missingFields.length > 0) {
+      alert(
+        "Preencha os campos obrigatórios:\n\n" +
+        missingFields
+          .map(field => `• ${field}`)
+          .join("\n")
+      );
+  
+      return;
+    }
+  
+    // Mantém exatamente a ordem das colunas da planilha.
+    const rowData = headers.map(
+      header => normalizedFormData[header] || ""
+    );
   
     console.log("FORM SUBMIT:", {
       rowData,
@@ -169,7 +226,7 @@ export default function App() {
         alert("Alteração salva com sucesso ✅");
   
       } else {
-        await onAdd(e);
+        await onAdd(rowData);
         alert("Chamado criado com sucesso ✅");
       }
   
@@ -250,7 +307,7 @@ export default function App() {
     }
   };
 
-  const onAdd = async (e: any) => {
+  const onAdd = async (rowData: string[]) => {
   e.preventDefault();
 
   const rowData = data[0].map((header) => formData[header] || '');
@@ -391,6 +448,38 @@ export default function App() {
     setFormData(prev => ({ ...prev, [header]: value }));
   };
 
+  const isRequiredMvField = (header: string): boolean => {
+    if (selectedSheet !== "tbChamadosMV") {
+      return false;
+    }
+  
+    const name = normalize(header);
+  
+    return (
+      (
+        name.includes("numero") &&
+        name.includes("chamado")
+      ) ||
+      name === "titulo" ||
+      (
+        name.includes("descricao") &&
+        name.includes("problema")
+      ) ||
+      name === "situacao" ||
+      (
+        name.includes("data") &&
+        name.includes("abertura")
+      ) ||
+      (
+        name.includes("data") &&
+        name.includes("ultima") &&
+        name.includes("interacao")
+      ) ||
+      name === "gravidade" ||
+      name === "responsavel"
+    );
+  };
+  
   const updateFilter = (header: string, value: string) => {
     
     console.log("updateFilter:", header, value);
@@ -909,6 +998,7 @@ export default function App() {
           <select 
             value={selectedSheet} 
             onChange={(e) => setSelectedSheet(e.target.value)}
+            required={required}
             style={{ 
               padding: '8px 12px', 
               fontSize: '14px', 
@@ -1512,6 +1602,7 @@ export default function App() {
                               <input 
                                 type="checkbox" 
                                 checked={cobrancaIdx !== -1 && (row[cobrancaIdx] || "").trim().toUpperCase() === "SIM"}
+                                required={required}
                                 onChange={() => {
                                     if (cobrancaIdx === -1) return;
                                     const nextRow = [...row];
@@ -2099,10 +2190,9 @@ export default function App() {
                         >
                         
                         <input
-                            type="checkbox"
-                        
+                            type="checkbox"                        
                             checked={allSelected}
-                        
+                            required={required}
                             onChange={(e)=>{
                         
                                 if(e.target.checked){
@@ -2229,6 +2319,7 @@ export default function App() {
                                 type="date"
                                 value={dataInicio}
                                 max={dataFim || undefined}
+                                required={required}
                                 onChange={(e) =>
                                   updateFilter(dataInicioKey, e.target.value)
                                 }
@@ -2260,6 +2351,7 @@ export default function App() {
                                 type="date"
                                 value={dataFim}
                                 min={dataInicio || undefined}
+                                required={required}
                                 onChange={(e) =>
                                   updateFilter(dataFimKey, e.target.value)
                                 }
@@ -2282,6 +2374,7 @@ export default function App() {
                         <select
                             value={currentVal}
                             onChange={(e) => updateFilter(h, e.target.value)}
+                            required={required}
                             style={{
                                 padding: '10px',
                                 backgroundColor: '#0F172A',
@@ -2306,6 +2399,7 @@ export default function App() {
                             type={config.type}
                             value={currentVal}
                             onChange={(e) => updateFilter(h, e.target.value)}
+                            required={required}
                             placeholder={`Buscar em ${h}...`}
                             style={{
                               padding: '10px',
@@ -2434,6 +2528,7 @@ export default function App() {
                 }}>
                   {data[0]?.map((header, index) => {
                     const hClean = header.toLowerCase().trim();
+                    const required = isRequiredMvField(header);
                     const inputStyle: React.CSSProperties = { 
                       width: '100%', 
                       padding: '12px', 
@@ -2450,6 +2545,17 @@ export default function App() {
                       <div key={index} style={{ marginBottom: '24px' }}>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '8px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           {header}
+
+                          {required && (
+                            <span
+                              style={{
+                                color: "#EF4444",
+                                marginLeft: "4px"
+                              }}
+                            >
+                              *
+                            </span>
+                          )}
                         </label>
                         
                         {hClean.includes("situação") || hClean.includes("situacao") ? (
@@ -2457,7 +2563,7 @@ export default function App() {
                             style={inputStyle}
                             value={formData[header] || ''}
                             onChange={(e) => handleInputChange(header, e.target.value)}
-                            required
+                            required={required}
                           >
                             <option value="" style={{ backgroundColor: '#0F172A' }}>Selecione...</option>
                             <option value="Aberto" style={{ backgroundColor: '#0F172A' }}>Aberto</option>
@@ -2477,7 +2583,7 @@ export default function App() {
                               style={inputStyle}
                               value={formData[header] || ''}
                               onChange={(e) => handleInputChange(header, e.target.value)}
-                              required
+                              required={required}
                             >
                               <option value="" style={{ backgroundColor: '#0F172A' }}>Selecione...</option>
                               <option value="Crítico" style={{ backgroundColor: '#0F172A' }}>Crítico</option>
@@ -2490,6 +2596,7 @@ export default function App() {
                             style={inputStyle}
                             value={formData[header] || ''}
                             onChange={(e) => handleInputChange(header, e.target.value)}
+                            required={required}
                           >
                             <option value="" style={{ backgroundColor: '#0F172A' }}>Selecione...</option>
                             {Array.from(new Set(data.slice(1).map(row => (row[index] || "").trim()).filter(v => v !== ""))).sort().map(name => (
@@ -2501,6 +2608,7 @@ export default function App() {
                             style={inputStyle}
                             value={formData[header] || 'Email'}
                             onChange={(e) => handleInputChange(header, e.target.value)}
+                            required={required}
                           >
                             <option value="Email" style={{ backgroundColor: '#0F172A' }}>Email</option>
                             <option value="Telefone" style={{ backgroundColor: '#0F172A' }}>Telefone</option>
@@ -2514,6 +2622,7 @@ export default function App() {
                             onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
                             value={formData[header] || ''}
                             onChange={(e) => handleInputChange(header, e.target.value)}
+                            required={required}
                           />
 
                         ) : (
