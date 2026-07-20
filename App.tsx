@@ -787,50 +787,93 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const exportFilteredData = () => {
+    const exportFilteredData = () => {
     const currentFilters = sheetFilters[selectedSheet] || {};
     const currentHeaders = data[0] || [];
-    
+  
     const filteredData = data.slice(1).filter(row => {
-      return Object.entries(currentFilters).every(([header, filterValue]) => {
-        if (!filterValue) return true;
-        const colIdx = currentHeaders.indexOf(header);
-        if (colIdx === -1) return true;
-        
-        const cellValue = (row[colIdx] || "")
-          .toString()
-          .trim()
-          .toLowerCase();
-        
-        const searchVal = String(filterValue)
-          .trim()
-          .toLowerCase();
-        
-        // Se possuir múltiplos valores (checkbox)
-        if (searchVal.includes("|")) {
-        
-          const filtros = searchVal
-            .split("|")
-            .map(v => v.trim())
-            .filter(Boolean);
-        
-          // ===== LOGS TEMPORÁRIOS =====
-          if (normalize(header) === "situacao") {
-            console.log("================================");
-            console.log("Header:", header);
-            console.log("Filtro:", filtros);
-            console.log("Valor da célula:", `"${cellValue}"`);
-            console.log("Resultado:", filtros.includes(cellValue));
+      return Object.entries(currentFilters).every(
+        ([header, filterValue]) => {
+          if (!filterValue) return true;
+  
+          const isDataInicio =
+            header.endsWith("__inicio");
+  
+          const isDataFim =
+            header.endsWith("__fim");
+  
+          // Tratamento dos filtros de período
+          if (isDataInicio || isDataFim) {
+            const originalHeader = header
+              .replace("__inicio", "")
+              .replace("__fim", "");
+  
+            const dataColIdx = currentHeaders.findIndex(
+              currentHeader =>
+                normalize(currentHeader) ===
+                normalize(originalHeader)
+            );
+  
+            if (dataColIdx === -1) {
+              return true;
+            }
+  
+            const dataCelula = parseDateToNumber(
+              row[dataColIdx] || ""
+            );
+  
+            const dataFiltro = parseDateToNumber(
+              String(filterValue)
+            );
+  
+            if (
+              dataCelula === null ||
+              dataFiltro === null
+            ) {
+              return false;
+            }
+  
+            if (isDataInicio) {
+              return dataCelula >= dataFiltro;
+            }
+  
+            return dataCelula <= dataFiltro;
           }
-          // ============================
-        
-          return filtros.includes(cellValue);
-        
+  
+          // Demais filtros
+          const colIdx = currentHeaders.findIndex(
+            currentHeader =>
+              normalize(currentHeader) ===
+              normalize(header)
+          );
+  
+          if (colIdx === -1) {
+            return true;
+          }
+  
+          const cellValue = (row[colIdx] || "")
+            .toString()
+            .trim()
+            .toLowerCase();
+  
+          const searchVal = String(filterValue)
+            .trim()
+            .toLowerCase();
+  
+          // Se possuir múltiplos valores
+          if (searchVal.includes("|")) {
+            const filtros = searchVal
+              .split("|")
+              .map(value => value.trim())
+              .filter(Boolean);
+  
+            return filtros.includes(cellValue);
+          }
+  
+          // Filtro normal
+          return cellValue.includes(searchVal);
         }
-        
-        // Filtro normal
-        return cellValue.includes(searchVal);
-      });
+      );
     });
 
     if (filteredData.length === 0) return;
