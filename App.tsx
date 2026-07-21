@@ -2187,209 +2187,132 @@ export default function App() {
         </div>
 
 
-        {/* Modal de Cobrança */}
-        {showCobrarModal && (
-          <div style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            width: '100%', 
-            height: '100%', 
-            backgroundColor: 'rgba(2, 6, 23, 0.8)', 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            zIndex: 1000,
-            padding: '20px',
-            backdropFilter: 'blur(8px)'
-          }}>
-            <div style={{ 
-              backgroundColor: '#1E293B', 
-              padding: '30px', 
-              borderRadius: '16px', 
-              width: '100%', 
-              maxWidth: '1200px', 
-              maxHeight: '90vh', 
-              overflowY: 'auto',
-              border: '1px solid #334155',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#F8FAFC' }}>
-                  Tickets em Cobrança ({currentSheetCount})
-                </h2>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: '#94A3B8' }}>
-                    Aba: <strong>{selectedSheet}</strong>
-                  </span>
-                  <button 
-                    onClick={() => setShowCobrarModal(false)}
-                    style={{ backgroundColor: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '24px' }}
-                  >
-                    &times;
-                </button>
-                </div>
-              </div>
-
-              {currentSheetCount === 0 ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8' }}>
-                  Nenhum ticket da aba <strong>{selectedSheet}</strong> selecionado.
-                </div>
-              ) : (
-                <div style={{ 
-                  width: '100%', 
-                  overflowX: 'auto',
-                  border: '1px solid #334155',
-                  borderRadius: '12px'
-                }}>
-                  <table style={{ 
-                    width: '100%', 
-                    borderCollapse: 'separate', 
-                    borderSpacing: 0,
-                    fontSize: '13px', 
-                    color: '#E2E8F0',
-                    minWidth: '1000px'
-                  }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#0F172A' }}>
-                        {data[0]?.map((h, i) => (
-                          <th key={i} style={{ 
-                            padding: '16px',
-                            textAlign: 'left', 
-                            fontWeight: 'bold', 
-                            color: '#94A3B8', 
-                            textTransform: 'uppercase', 
-                            fontSize: '11px',
-                            borderBottom: '1px solid #334155'
-                          }}>
-                            {h}
-                          </th>
-                        ))}
-                        <th style={{ padding: '16px', borderBottom: '1px solid #334155' }}>Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const currentData = data || [];
-                        const headers = currentData[0] || [];
-                        const cobrancaIdx = headers.findIndex(h => normalize(h) === "cobranca");
-                        const gravidadeIdx = headers.findIndex(h => normalize(h) === "gravidade");
-                        
-                        // Lista registros marcados físicamente na planilha
-                        const cobrancaData = currentData.slice(1).filter(row => {
-                           return cobrancaIdx !== -1 && (row[cobrancaIdx] || "").trim().toUpperCase() === "SIM";
-                        });
-
-                        return cobrancaData.map((row, i) => {
-                          const rowIndex = (row as any)._originalIndex;
-
-                          return (
-                            <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#1E293B' : '#1a2434' }}>
-                              {headers.map((h, j) => {
-                                const cell = row[j] || "";
-                                if (j === gravidadeIdx) {
-                                  const gravValue = cell.trim().toLowerCase();
-                                  const labelStyle: React.CSSProperties = {
-                                    fontWeight: "bold",
-                                    borderRadius: '4px',
-                                    padding: '4px 8px',
-                                    display: 'inline-block',
-                                    fontSize: '11px',
-                                  };
-                                  if (gravValue === "crítico") { labelStyle.backgroundColor = "#7F1D1D"; labelStyle.color = "#FCA5A5"; }
-                                  else if (gravValue === "urgente") { labelStyle.backgroundColor = "#78350F"; labelStyle.color = "#FCD34D"; }
-                                  else if (gravValue === "intermediário") { labelStyle.backgroundColor = "#451a03"; labelStyle.color = "#fbbf24"; }
-                                  else if (gravValue === "baixa") { labelStyle.backgroundColor = "#064E3B"; labelStyle.color = "#6EE7B7"; }
-
-                                  return (
-                                    <td
-                                      key={j}
-                                      style={{
-                                        ...getTableColumnStyle(h),
-                                        padding: "10px 8px",
-                                        borderBottom: "1px solid #334155"
-                                      }}
-                                    >
-                                      <span style={labelStyle}>{cell}</span>
-                                    </td>
-                                  );
-                                }
-                                return (
-                                  <td
-                                    key={j}
-                                    style={{
-                                      ...getTableColumnStyle(h),
-                                      padding: "10px 8px",
-                                      borderBottom: "1px solid #334155"
-                                    }}
-                                  >
-                                    {cell}
-                                  </td>
-                                );
-                              })}
-                              <td style={{ padding: '12px 16px', borderBottom: '1px solid #334155', textAlign: 'center' }}>
-                                <button 
-                                  onClick={() => {
-                                      if (cobrancaIdx === -1) return;
-                                      const nextRow = [...row];
-                                      nextRow[cobrancaIdx] = "";
-                                      handleSaveRow(nextRow, row._originalIndex);
-                                  }}
-                                  style={{
-                                    backgroundColor: '#EF4444',
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: '6px 12px',
-                                    borderRadius: '6px',
-                                    fontSize: '12px',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  Remover
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        });
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              
-              <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                {currentSheetCount > 0 && (
-                  <button 
-                    onClick={exportToExcel}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: '#10B981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <span>📊</span> Exportar Excel
-                  </button>
-                )}
-                <button 
-                  onClick={() => setShowCobrarModal(false)}
+        {/* Modal de Conclusão */}
+        {showConcluirModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: "rgba(2, 6, 23, 0.8)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 1100,
+              padding: "20px",
+              backdropFilter: "blur(8px)"
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: "460px",
+                backgroundColor: "#1E293B",
+                border: "1px solid #334155",
+                borderRadius: "16px",
+                padding: "28px",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)"
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  marginBottom: "12px",
+                  fontSize: "22px",
+                  color: "#F8FAFC"
+                }}
+              >
+                Concluir chamado
+              </h2>
+        
+              <p
+                style={{
+                  marginTop: 0,
+                  marginBottom: "22px",
+                  color: "#94A3B8",
+                  fontSize: "14px",
+                  lineHeight: "1.5"
+                }}
+              >
+                Confirme a Data da Última Interação que será utilizada como data de
+                conclusão do chamado.
+              </p>
+        
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  color: "#CBD5E1",
+                  fontSize: "13px",
+                  fontWeight: "600"
+                }}
+              >
+                Data da Última Interação
+              </label>
+        
+              <input
+                type="date"
+                value={conclusionDate}
+                onChange={(e) => setConclusionDate(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  backgroundColor: "#0F172A",
+                  color: "#F8FAFC",
+                  border: "1px solid #334155",
+                  borderRadius: "8px",
+                  outline: "none",
+                  fontSize: "14px",
+                  boxSizing: "border-box",
+                  marginBottom: "24px"
+                }}
+              />
+        
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "12px"
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleCloseConcluirModal}
                   style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#334155',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
+                    padding: "11px 18px",
+                    backgroundColor: "transparent",
+                    color: "#94A3B8",
+                    border: "1px solid #334155",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "600"
                   }}
                 >
-                  Fechar
+                  Cancelar
+                </button>
+        
+                <button
+                  type="button"
+                  onClick={handleConfirmConclusion}
+                  style={{
+                    padding: "11px 18px",
+                    backgroundColor: "#10B981",
+                    color: "#FFFFFF",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "700"
+                  }}
+                  onMouseOver={(e) =>
+                    e.currentTarget.style.backgroundColor = "#059669"
+                  }
+                  onMouseOut={(e) =>
+                    e.currentTarget.style.backgroundColor = "#10B981"
+                  }
+                >
+                  Confirmar conclusão
                 </button>
               </div>
             </div>
