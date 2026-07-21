@@ -63,6 +63,9 @@ export default function App() {
   });
   const [error, setError] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [showConcluirModal, setShowConcluirModal] = useState(false);
+  const [rowToConclude, setRowToConclude] = useState<string[] | null>(null);
+  const [conclusionDate, setConclusionDate] = useState("");
 
   // Helper para normalizar cabeçalhos (remove acentos, espaços e padroniza caixa)
   const normalize = (str: string) => 
@@ -462,6 +465,22 @@ export default function App() {
     
     setFormData(newValues);
     setShowForm(true);
+  };
+
+  const getTodayISO = () => {
+    const now = new Date();
+  
+    const localDate = new Date(
+      now.getTime() - now.getTimezoneOffset() * 60000
+    );
+  
+    return localDate.toISOString().split("T")[0];
+  };
+  
+  const handleOpenConcluirModal = (row: string[]) => {
+    setRowToConclude(row);
+    setConclusionDate(getTodayISO());
+    setShowConcluirModal(true);
   };
 
   const handleDeleteCurrentRow = async () => {
@@ -1834,20 +1853,21 @@ export default function App() {
                         maxWidth: "55px"
                       }}>
                         Cobrança
-                      </th>
-                      <th style={{ 
-                        textAlign: 'center', 
-                        fontWeight: 'bold', 
-                        color: '#94A3B8', 
-                        textTransform: 'uppercase', 
-                        fontSize: '11px', 
-                        letterSpacing: '0.5px',
-                        padding: "8px 4px",
-                        width: "55px",
-                        minWidth: "55px",
-                        maxWidth: "55px"
-                      }}>
-                        Excluído
+                      <th
+                        style={{
+                          textAlign: 'center',
+                          fontWeight: 'bold',
+                          color: '#94A3B8',
+                          textTransform: 'uppercase',
+                          fontSize: '11px',
+                          letterSpacing: '0.5px',
+                          padding: '8px 4px',
+                          width: '85px',
+                          minWidth: '85px',
+                          maxWidth: '85px'
+                        }}
+                      >
+                        Concluir
                       </th>
                     </tr>
                   </thead>
@@ -1866,7 +1886,6 @@ export default function App() {
                           const situacaoIdx = headers.findIndex(h => normalize(h) === "situacao");
                           const gravidadeIdx = headers.findIndex(h => normalize(h) === "gravidade");
                           const cobrancaIdx = headers.findIndex(h => normalize(h) === "cobranca");
-                          const excluidoIdx = headers.findIndex(h => normalize(h) === "excluido");
                           
                           const idIdx = headers.findIndex(h => normalize(h).includes("numero") && normalize(h).includes("chamado"));
                           const fallbackIdx = headers.findIndex(h => normalize(h).includes("os") && normalize(h).includes("aberta"));
@@ -1984,23 +2003,37 @@ export default function App() {
                                 }}
                               />
                             </td>
-                            <td style={{ textAlign: 'center', padding: '12px 16px' }}>
-                              <input 
-                                type="checkbox" 
-                                checked={excluidoIdx !== -1 && (row[excluidoIdx] || "").trim().toUpperCase() === "SIM"}
-                                onChange={() => {
-                                    if (excluidoIdx === -1) return;
-                                    const nextRow = [...row];
-                                    nextRow[excluidoIdx] = (row[excluidoIdx] || "").trim().toUpperCase() === "SIM" ? "NAO" : "SIM";
-                                    handleSaveRow(nextRow, row._originalIndex);
-                                }}
+                            <td
+                              style={{
+                                textAlign: 'center',
+                                padding: '8px 6px'
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleOpenConcluirModal(row)}
                                 style={{
-                                  width: '18px',
-                                  height: '18px',
+                                  padding: '6px 10px',
+                                  backgroundColor: '#10B981',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  borderRadius: '6px',
                                   cursor: 'pointer',
-                                  accentColor: '#3B82F6'
+                                  fontSize: '11px',
+                                  fontWeight: '700',
+                                  whiteSpace: 'nowrap',
+                                  transition: 'all 0.2s'
                                 }}
-                              />
+                                onMouseOver={(e) =>
+                                  e.currentTarget.style.backgroundColor = '#059669'
+                                }
+                                onMouseOut={(e) =>
+                                  e.currentTarget.style.backgroundColor = '#10B981'
+                                }
+                                title="Concluir chamado"
+                              >
+                                ✓ Concluir
+                              </button>
                             </td>
                           </tr>
                         );
