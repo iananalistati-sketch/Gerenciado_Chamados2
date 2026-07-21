@@ -110,6 +110,40 @@ export default function App() {
     setCurrentPage(1);
   }, [selectedSheet]);
 
+  useEffect(() => {
+    const headers = data[0] || [];
+  
+    const excluidoHeader = headers.find(
+      header => normalize(header) === "excluido"
+    );
+  
+    if (!excluidoHeader) {
+      return;
+    }
+  
+    setSheetFilters(prev => {
+      const currentSheetFilters =
+        prev[selectedSheet] || {};
+  
+      if (
+        Object.prototype.hasOwnProperty.call(
+          currentSheetFilters,
+          excluidoHeader
+        )
+      ) {
+        return prev;
+      }
+  
+      return {
+        ...prev,
+        [selectedSheet]: {
+          ...currentSheetFilters,
+          [excluidoHeader]: "NAO"
+        }
+      };
+    });
+  }, [data, selectedSheet]);
+
     const handleSaveRow = async (rowData: string[], rowIndex: number) => {
       setLoading(true);
 
