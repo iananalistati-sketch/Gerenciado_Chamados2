@@ -440,8 +440,23 @@ export default function App() {
     
     const headers = data[0] || [];
     const newValues: Record<string, string> = {};
+    
+    const today = new Date()
+      .toISOString()
+      .split("T")[0];
+    
     headers.forEach((h, i) => {
-      newValues[h] = row[i] || "";
+      const headerName = normalize(h);
+    
+      if (
+        headerName.includes("data") &&
+        headerName.includes("ultima") &&
+        headerName.includes("interacao")
+      ) {
+        newValues[h] = today;
+      } else {
+        newValues[h] = row[i] || "";
+      }
     });
     
     setFormData(newValues);
