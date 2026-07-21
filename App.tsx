@@ -1931,19 +1931,21 @@ export default function App() {
                       }}>
                         Cobrança
                       </th>
-                      <th style={{ 
-                        textAlign: 'center', 
-                        fontWeight: 'bold', 
-                        color: '#94A3B8', 
-                        textTransform: 'uppercase', 
-                        fontSize: '11px', 
-                        letterSpacing: '0.5px',
-                        padding: "8px 4px",
-                        width: "55px",
-                        minWidth: "55px",
-                        maxWidth: "55px"
-                      }}>
-                        Excluído
+                      <th
+                        style={{
+                          textAlign: 'center',
+                          fontWeight: 'bold',
+                          color: '#94A3B8',
+                          textTransform: 'uppercase',
+                          fontSize: '11px',
+                          letterSpacing: '0.5px',
+                          padding: '8px 4px',
+                          width: '95px',
+                          minWidth: '95px',
+                          maxWidth: '95px'
+                        }}
+                      >
+                        Concluir
                       </th>
                     </tr>
                   </thead>
@@ -2080,23 +2082,35 @@ export default function App() {
                                 }}
                               />
                             </td>
-                            <td style={{ textAlign: 'center', padding: '12px 16px' }}>
-                              <input 
-                                type="checkbox" 
-                                checked={excluidoIdx !== -1 && (row[excluidoIdx] || "").trim().toUpperCase() === "SIM"}
-                                onChange={() => {
-                                    if (excluidoIdx === -1) return;
-                                    const nextRow = [...row];
-                                    nextRow[excluidoIdx] = (row[excluidoIdx] || "").trim().toUpperCase() === "SIM" ? "NAO" : "SIM";
-                                    handleSaveRow(nextRow, row._originalIndex);
-                                }}
+                            <td
+                              style={{
+                                textAlign: "center",
+                                padding: "8px"
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleOpenConcluirModal(row)}
                                 style={{
-                                  width: '18px',
-                                  height: '18px',
-                                  cursor: 'pointer',
-                                  accentColor: '#3B82F6'
+                                  backgroundColor: "#10B981",
+                                  color: "#FFF",
+                                  border: "none",
+                                  borderRadius: "6px",
+                                  padding: "6px 10px",
+                                  cursor: "pointer",
+                                  fontSize: "11px",
+                                  fontWeight: "bold",
+                                  transition: "0.2s"
                                 }}
-                              />
+                                onMouseOver={(e) =>
+                                  e.currentTarget.style.backgroundColor = "#059669"
+                                }
+                                onMouseOut={(e) =>
+                                  e.currentTarget.style.backgroundColor = "#10B981"
+                                }
+                              >
+                                ✓ Concluir
+                              </button>
                             </td>
                           </tr>
                         );
