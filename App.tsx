@@ -542,6 +542,95 @@ export default function App() {
     }
   };
 
+  const getTodayISO = () => {
+    const now = new Date();
+  
+    const localDate = new Date(
+      now.getTime() - now.getTimezoneOffset() * 60000
+    );
+  
+    return localDate.toISOString().split("T")[0];
+  };
+  
+  const handleOpenConcluirModal = (row: string[]) => {
+    setRowToConclude([...row]);
+    setConclusionDate(getTodayISO());
+    setShowConcluirModal(true);
+  };
+  
+  const handleCloseConcluirModal = () => {
+    setShowConcluirModal(false);
+    setRowToConclude(null);
+    setConclusionDate("");
+  };
+  
+  const handleConfirmConclusion = async () => {
+    if (!rowToConclude) {
+      alert("Não foi possível identificar o chamado.");
+      return;
+    }
+  
+    if (!conclusionDate) {
+      alert("Informe a Data da Última Interação.");
+      return;
+    }
+  
+    const headers = data[0] || [];
+  
+    const situacaoIdx = headers.findIndex(
+      header => normalize(header) === "situacao"
+    );
+  
+    const dataUltimaInteracaoIdx = headers.findIndex(header => {
+      const headerName = normalize(header);
+  
+      return (
+        headerName.includes("data") &&
+        headerName.includes("ultima") &&
+        headerName.includes("interacao")
+      );
+    });
+  
+    if (situacaoIdx === -1) {
+      alert("A coluna Situação não foi encontrada.");
+      return;
+    }
+  
+    if (dataUltimaInteracaoIdx === -1) {
+      alert(
+        "A coluna Data da Última Interação não foi encontrada."
+      );
+      return;
+    }
+  
+    const rowIndex = (rowToConclude as any)._originalIndex;
+  
+    if (rowIndex === undefined || rowIndex === null) {
+      alert(
+        "Não foi possível identificar o índice original do chamado."
+      );
+      return;
+    }
+  
+    const updatedRow = [...rowToConclude];
+  
+    updatedRow[situacaoIdx] = "Concluído";
+    updatedRow[dataUltimaInteracaoIdx] = conclusionDate;
+  
+    try {
+      await handleSaveRow(updatedRow, rowIndex);
+  
+      handleCloseConcluirModal();
+  
+      alert("Chamado concluído com sucesso.");
+    } catch (error: any) {
+      alert(
+        "Erro ao concluir chamado: " +
+        error.message
+      );
+    }
+  };
+
   const handleInputChange = (header: string, value: string) => {
     setFormData(prev => ({ ...prev, [header]: value }));
   };
