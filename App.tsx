@@ -3001,53 +3001,96 @@ export default function App() {
                   })}
                 </div>
 
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '12px', 
-                  paddingTop: '24px', 
-                  borderTop: '1px solid #334155',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end'
-                }}>
-                  <button 
-                    type="button" 
-                    onClick={() => setShowForm(false)}
-                    style={{ 
-                      padding: '14px', 
-                      backgroundColor: 'transparent', 
-                      color: '#94A3B8', 
-                      fontWeight: '600',
-                      cursor: 'pointer', 
-                      border: '1px solid #334155',
-                      borderRadius: '10px',
-                      transition: 'all 0.2s',
-                      flex: isEdit ? '0 1 auto' : '1'
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '12px',
+                    paddingTop: '24px',
+                    borderTop: '1px solid #334155',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div>
+                    {isEdit && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteCurrentRow}
+                        style={{
+                          padding: '14px',
+                          backgroundColor: '#DC2626',
+                          color: '#FFFFFF',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          border: 'none',
+                          borderRadius: '10px',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseOver={(e) =>
+                          e.currentTarget.style.backgroundColor = '#B91C1C'
+                        }
+                        onMouseOut={(e) =>
+                          e.currentTarget.style.backgroundColor = '#DC2626'
+                        }
+                      >
+                        Excluir Chamado
+                      </button>
+                    )}
+                  </div>
+                
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '12px'
                     }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#334155'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    Descartar
-                  </button>
-                  <button 
-                    type="submit" 
-                    style={{ 
-                      flex: isEdit ? '0 1 auto' : '2',
-                      minWidth: isEdit ? '160px' : 'auto',
-                      padding: '14px', 
-                      backgroundColor: '#3B82F6', 
-                      color: '#fff', 
-                      fontWeight: '700',
-                      cursor: 'pointer', 
-                      border: 'none',
-                      borderRadius: '10px',
-                      transition: 'all 0.2s',
-                      boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.4)'
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2563EB'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3B82F6'}
-                  >
-                    {isEdit ? 'Salvar Alterações' : 'Criar Chamado'}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowForm(false)}
+                      style={{
+                        padding: '14px',
+                        backgroundColor: 'transparent',
+                        color: '#94A3B8',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        border: '1px solid #334155',
+                        borderRadius: '10px',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) =>
+                        e.currentTarget.style.backgroundColor = '#334155'
+                      }
+                      onMouseOut={(e) =>
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }
+                    >
+                      Descartar
+                    </button>
+                
+                    <button
+                      type="submit"
+                      style={{
+                        minWidth: isEdit ? '160px' : 'auto',
+                        padding: '14px',
+                        backgroundColor: '#3B82F6',
+                        color: '#fff',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        border: 'none',
+                        borderRadius: '10px',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.4)'
+                      }}
+                      onMouseOver={(e) =>
+                        e.currentTarget.style.backgroundColor = '#2563EB'
+                      }
+                      onMouseOut={(e) =>
+                        e.currentTarget.style.backgroundColor = '#3B82F6'
+                      }
+                    >
+                      {isEdit ? 'Salvar Alterações' : 'Criar Chamado'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
