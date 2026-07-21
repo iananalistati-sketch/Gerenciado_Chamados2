@@ -424,6 +424,7 @@ export default function App() {
   };
   
   const handleEdit = (row: string[]) => {
+    setEditingRow([...row]);
     // Busca o índice original armazenado na linha durante o fetchData
     const rowIndex = (row as any)._originalIndex;
     
@@ -465,13 +466,15 @@ export default function App() {
 
   const handleDeleteCurrentRow = async () => {
     if (!isEdit || editingRowIndex === null) {
-      alert("Não foi possível identificar o chamado para exclusão.");
+      alert(
+        "Não foi possível identificar o chamado para exclusão."
+      );
       return;
     }
   
     const confirmed = window.confirm(
       "Confirma a exclusão deste chamado?\n\n" +
-      "O registro será marcado como excluído e poderá ser consultado posteriormente em \"Ver Excluídos\"."
+      "O registro será marcado como excluído e poderá ser consultado em \"Ver Excluídos\"."
     );
   
     if (!confirmed) {
@@ -479,39 +482,33 @@ export default function App() {
     }
   
     const headers = data[0] || [];
-
-    const excluidoFormHeader = headers.find(
-      header => normalize(header) === "excluido"
-    );
-    
-    const currentFormIsDeleted =
-      excluidoFormHeader
-        ? String(
-            formData[excluidoFormHeader] || ""
-          )
-            .trim()
-            .toUpperCase() === "SIM"
-        : false;
   
     const excluidoIdx = headers.findIndex(
       header => normalize(header) === "excluido"
     );
   
     if (excluidoIdx === -1) {
-      alert("A coluna Excluído não foi encontrada.");
+      alert(
+        "A coluna Excluído não foi encontrada."
+      );
       return;
     }
   
     /*
-     * Monta a linha preservando todos os valores
-     * atualmente carregados no formulário.
+     * Usa os dados originais da linha em edição.
+     * Isso evita perder valores de campos ocultos.
      */
-    const updatedRow = headers.map(
-      header => formData[header] || ""
-    );
+    if (!editingRow) {
+      alert(
+        "Não foi possível recuperar os dados originais do chamado."
+      );
+      return;
+    }
+  
+    const updatedRow = [...editingRow];
   
     /*
-     * Altera somente a coluna Excluído.
+     * Altera somente Excluído para SIM.
      */
     updatedRow[excluidoIdx] = "SIM";
   
@@ -523,10 +520,13 @@ export default function App() {
   
       setShowForm(false);
       setFormData({});
+      setEditingRow(null);
       setEditingRowIndex(null);
       setIsEdit(false);
   
-      alert("Chamado excluído com sucesso.");
+      alert(
+        "Chamado marcado como excluído com sucesso."
+      );
     } catch (error: any) {
       alert(
         "Erro ao excluir o chamado: " +
@@ -3001,104 +3001,53 @@ export default function App() {
                   })}
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    paddingTop: "24px",
-                    borderTop: "1px solid #334155"
-                  }}
-                >
-                
-                  {/* Lado esquerdo */}
-                  <div>
-                    {isEdit && !currentFormIsDeleted && (
-                      <button
-                        type="button"
-                        onClick={handleDeleteCurrentRow}
-                        style={{
-                          padding: "14px 18px",
-                          backgroundColor: "#DC2626",
-                          color: "#FFFFFF",
-                          border: "none",
-                          borderRadius: "10px",
-                          cursor: "pointer",
-                          fontWeight: "700",
-                          transition: "0.2s"
-                        }}
-                        onMouseOver={e =>
-                          e.currentTarget.style.backgroundColor = "#B91C1C"
-                        }
-                        onMouseOut={e =>
-                          e.currentTarget.style.backgroundColor = "#DC2626"
-                        }
-                      >
-                        🗑 Excluir Chamado
-                      </button>
-                    )}
-                  </div>
-                
-                  {/* Lado direito */}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "12px"
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '12px', 
+                  paddingTop: '24px', 
+                  borderTop: '1px solid #334155',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end'
+                }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowForm(false)}
+                    style={{ 
+                      padding: '14px', 
+                      backgroundColor: 'transparent', 
+                      color: '#94A3B8', 
+                      fontWeight: '600',
+                      cursor: 'pointer', 
+                      border: '1px solid #334155',
+                      borderRadius: '10px',
+                      transition: 'all 0.2s',
+                      flex: isEdit ? '0 1 auto' : '1'
                     }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#334155'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                
-                    <button
-                      type="button"
-                      onClick={() => setShowForm(false)}
-                      style={{
-                        padding: "14px",
-                        backgroundColor: "transparent",
-                        color: "#94A3B8",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                        border: "1px solid #334155",
-                        borderRadius: "10px",
-                        transition: "all 0.2s"
-                      }}
-                      onMouseOver={e =>
-                        e.currentTarget.style.backgroundColor = "#334155"
-                      }
-                      onMouseOut={e =>
-                        e.currentTarget.style.backgroundColor = "transparent"
-                      }
-                    >
-                      Descartar
-                    </button>
-                
-                    <button
-                      type="submit"
-                      style={{
-                        minWidth: "170px",
-                        padding: "14px",
-                        backgroundColor: "#3B82F6",
-                        color: "#fff",
-                        fontWeight: "700",
-                        cursor: "pointer",
-                        border: "none",
-                        borderRadius: "10px",
-                        transition: "all 0.2s",
-                        boxShadow:
-                          "0 4px 6px -1px rgba(59,130,246,.4)"
-                      }}
-                      onMouseOver={e =>
-                        e.currentTarget.style.backgroundColor = "#2563EB"
-                      }
-                      onMouseOut={e =>
-                        e.currentTarget.style.backgroundColor = "#3B82F6"
-                      }
-                    >
-                      {isEdit
-                        ? "Salvar Alterações"
-                        : "Criar Chamado"}
-                    </button>
-                
-                  </div>
-                
+                    Descartar
+                  </button>
+                  <button 
+                    type="submit" 
+                    style={{ 
+                      flex: isEdit ? '0 1 auto' : '2',
+                      minWidth: isEdit ? '160px' : 'auto',
+                      padding: '14px', 
+                      backgroundColor: '#3B82F6', 
+                      color: '#fff', 
+                      fontWeight: '700',
+                      cursor: 'pointer', 
+                      border: 'none',
+                      borderRadius: '10px',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.4)'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2563EB'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3B82F6'}
+                  >
+                    {isEdit ? 'Salvar Alterações' : 'Criar Chamado'}
+                  </button>
                 </div>
               </form>
             </div>
