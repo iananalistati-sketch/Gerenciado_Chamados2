@@ -60,7 +60,10 @@ export default function App() {
   const [showConcluirModal, setShowConcluirModal] = useState(false);
   
   const [rowToConclude, setRowToConclude] =
-    useState<string[] | null>(null);
+  useState<{
+      row: string[];
+      rowIndex: number;
+  } | null>(null);
   
   const [conclusionDate, setConclusionDate] =
     useState("");
@@ -553,9 +556,17 @@ export default function App() {
   };
   
   const handleOpenConcluirModal = (row: string[]) => {
-    setRowToConclude([...row]);
-    setConclusionDate(getTodayISO());
-    setShowConcluirModal(true);
+
+      const rowIndex = (row as any)._originalIndex;
+  
+      setRowToConclude({
+          row: [...row],
+          rowIndex
+      });
+  
+      setConclusionDate(getTodayISO());
+  
+      setShowConcluirModal(true);
   };
   
   const handleCloseConcluirModal = () => {
@@ -603,7 +614,7 @@ export default function App() {
       return;
     }
   
-    const rowIndex = (rowToConclude as any)._originalIndex;
+    const rowIndex = rowToConclude.rowIndex;
   
     if (rowIndex === undefined || rowIndex === null) {
       alert(
@@ -612,7 +623,7 @@ export default function App() {
       return;
     }
   
-    const updatedRow = [...rowToConclude];
+    const updatedRow = [...rowToConclude.row];
   
     updatedRow[situacaoIdx] = "Concluído";
     updatedRow[dataUltimaInteracaoIdx] = conclusionDate;
