@@ -780,11 +780,53 @@ export default function App() {
     setCurrentPage(1);
   };
 
-  const clearFilters = () => {
+  const handleToggleDeleted = () => {
+    const headers = data[0] || [];
+  
+    const excluidoHeader = headers.find(
+      header => normalize(header) === "excluido"
+    );
+  
+    const nextShowDeleted = !showDeleted;
+    const nextFilterValue = nextShowDeleted
+      ? "SIM"
+      : "NAO";
+  
+    setShowDeleted(nextShowDeleted);
+  
+    if (!excluidoHeader) {
+      return;
+    }
+  
     setSheetFilters(prev => ({
       ...prev,
-      [selectedSheet]: {}
+      [selectedSheet]: {
+        ...(prev[selectedSheet] || {}),
+        [excluidoHeader]: nextFilterValue
+      }
     }));
+  
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    const headers = data[0] || [];
+  
+    const excluidoHeader = headers.find(
+      header => normalize(header) === "excluido"
+    );
+  
+    setSheetFilters(prev => ({
+      ...prev,
+      [selectedSheet]: excluidoHeader
+        ? {
+            [excluidoHeader]: showDeleted
+              ? "SIM"
+              : "NAO"
+          }
+        : {}
+    }));
+  
     setCurrentPage(1);
   };
 
@@ -1639,7 +1681,7 @@ export default function App() {
               </button>
 
               <button 
-                onClick={() => setShowDeleted(!showDeleted)}
+                onClick={handleToggleDeleted}
                 style={{
                   padding: '12px 20px',
                   backgroundColor: showDeleted ? '#334155' : '#1E293B',
