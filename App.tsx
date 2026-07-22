@@ -263,41 +263,6 @@ export default function App() {
   }
 };
 
-
-  const handleSave = async (dataToSave = formData) => {
-    setLoading(true);
-    const headers = data[0] || [];
-    const rowData = headers.map(h => dataToSave[h] || "");
-
-    try {
-      const method = isEdit ? 'PUT' : 'POST';
-      const body = isEdit 
-        ? { rowData, rowIndex: editingRowIndex, sheet: selectedSheet }
-        : { rowData };
-      
-      const res = await fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      if (res.ok) {
-        setFormData({});
-        setShowForm(false);
-        setIsEdit(false);
-        setEditingRowIndex(null);
-        fetchData();
-      } else {
-        const err = await res.json();
-        alert('Erro: ' + (err.details || err.error));
-      }
-    } catch (e: any) {
-      alert('Erro de rede: ' + e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const onAdd = async (e: any) => {
   e.preventDefault();
 
@@ -875,10 +840,33 @@ export default function App() {
     updateFilter(actualHeader, nextValue);
   };
   
+  type ColumnConfig =
+  | {
+      type: "select";
+      options: string[];
+    }
+  | {
+      type: "date" | "number" | "text";
+      options?: never;
+    };
+
   // Heurística para identificar o tipo de dado da coluna
-  const getColumnConfig = (header: string, index: number) => {
-    const rawValues = data.slice(1).map(row => (row[index] || "").trim()).filter(v => v !== "");
-    const uniqueValues = Array.from(new Set(rawValues)).sort();
+  const getColumnConfig = (
+    header: string,
+    index: number
+  ): ColumnConfig => {
+    const rawValues: string[] = data
+      .slice(1)
+      .map(row => String(row[index] || "").trim())
+      .filter((value): value is string => value !== "");
+
+    const uniqueValues: string[] = Array.from(
+      new Set<string>(rawValues)
+    ).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", {
+        sensitivity: "base"
+      })
+    );
     
     // Se tem poucas opções, vira Select
     if (uniqueValues.length > 0 && uniqueValues.length <= 12) {
@@ -2619,16 +2607,13 @@ export default function App() {
                         {(() => {
 
                         const sortedOptions =
-                            [...(config.options || [])]
-                                .sort((a, b) =>
-                                    a.localeCompare(
-                                        b,
-                                        "pt-BR",
-                                        {
-                                            sensitivity: "base"
-                                        }
-                                    )
-                                );
+                          config.type === "select"
+                            ? [...config.options].sort((a, b) =>
+                                a.localeCompare(b, "pt-BR", {
+                                  sensitivity: "base"
+                                })
+                              )
+                            : [];
                         
                         const selectedValues = currentVal
                             ? currentVal.split("|")
