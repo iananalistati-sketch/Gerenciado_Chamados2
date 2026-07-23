@@ -1,17 +1,25 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import {
+  browserLocalPersistence,
+  getAuth,
+  setPersistence,
+} from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCEwqOAmlgJGLIO6TcxuWxyH7WvW2u-Sfs",
-  authDomain: "controle-chamados-b315d.firebaseapp.com",
-  projectId: "controle-chamados-b315d",
-  storageBucket: "controle-chamados-b315d.firebasestorage.app",
-  messagingSenderId: "189053771521",
-  appId: "1:189053771521:web:e01d45d666fcdbd7c2c500",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error("Erro ao configurar persistência da sessão:", error);
+});
 
 export default app;

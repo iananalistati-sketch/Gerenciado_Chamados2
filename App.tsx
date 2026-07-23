@@ -9,13 +9,16 @@ import Dashboard from "./components/Dashboard";
 import ChamadosTable from "./components/ChamadosTable";
 import CobrancaModal from "./components/CobrancaModal";
 import FiltroModal from "./components/FiltroModal";
+import Login from "./components/Login";
+import { useAuth } from "./contexts/AuthContext";
 
 /**
  * App.tsx - Mínimo Funcional
  * Focado apenas na lógica de leitura e escrita no Google Sheets.
  */
 
-export default function App() {
+function AppContent() {
+  const { user, logout } = useAuth();
   const [data, setData] = useState<string[][]>([]);
   // allData: Armazena os dados de todas as abas carregadas
   const [allData, setAllData] = useState<Record<string, string[][]>>({
@@ -1207,6 +1210,15 @@ export default function App() {
 
   const stats = getDashboardStats();
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (logoutError) {
+      console.error("Erro ao encerrar sessão:", logoutError);
+      alert("Não foi possível encerrar a sessão.");
+    }
+  };
+
   return (
     <div style={{ 
       minHeight: '100vh',
@@ -1222,10 +1234,55 @@ export default function App() {
           margin: "0 auto"
         }}
       >
-        <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#F8FAFC' }}>
-          Gestor de Chamados
-        </h1>
-        <p style={{ color: '#94A3B8', marginBottom: '32px' }}>Base de dados via Google Sheets</p>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '20px',
+            flexWrap: 'wrap',
+            marginBottom: '32px'
+          }}
+        >
+          <div>
+            <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#F8FAFC' }}>
+              Gestor de Chamados
+            </h1>
+            <p style={{ color: '#94A3B8', margin: 0 }}>Base de dados via Google Sheets</p>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '10px 12px',
+              backgroundColor: '#1E293B',
+              border: '1px solid #334155',
+              borderRadius: '10px'
+            }}
+          >
+            <span style={{ fontSize: '13px', color: '#CBD5E1' }}>
+              {user?.email || 'Usuário autenticado'}
+            </span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                padding: '8px 14px',
+                backgroundColor: '#DC2626',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '600'
+              }}
+            >
+              Sair
+            </button>
+          </div>
+        </div>
         
         <div style={{ 
           marginBottom: '32px', 
@@ -1819,4 +1876,33 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+
+export default function App() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#0F172A',
+          color: '#E2E8F0',
+          fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+        }}
+      >
+        Validando sessão...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
+  return <AppContent />;
 }
