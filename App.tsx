@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import ConcluirModal from "./components/ConcluirModal";
 import Dashboard from "./components/Dashboard";
 import ChamadosTable from "./components/ChamadosTable";
+import CobrancaModal from "./components/CobrancaModal";
 
 /**
  * App.tsx - Mínimo Funcional
@@ -1514,6 +1515,17 @@ export default function App() {
             </div>
           )}
         </div>
+
+        <CobrancaModal
+          isOpen={showCobrarModal}
+          data={data}
+          selectedSheet={selectedSheet}
+          currentSheetCount={currentSheetCount}
+          normalize={normalize}
+          onClose={() => setShowCobrarModal(false)}
+          onSaveRow={handleSaveRow}
+          onExport={exportToExcel}
+        />  
 
         <ConcluirModal
           isOpen={showConcluirModal}
