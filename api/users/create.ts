@@ -5,11 +5,11 @@ import type {
 
 import {
   getAdminAuth,
-} from "../_firebaseAdmin";
+} from "../_firebaseAdmin.js";
 
 import {
   requireAdmin,
-} from "../_requireAdmin";
+} from "../_requireAdmin.js";
 
 const validRoles = [
   "admin",

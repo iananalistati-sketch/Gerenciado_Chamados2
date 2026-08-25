@@ -1,6 +1,6 @@
 import {
   getAdminAuth,
-} from "./_firebaseAdmin";
+} from "./_firebaseAdmin.js";
 
 export async function requireAdmin(
   authorizationHeader?: string
