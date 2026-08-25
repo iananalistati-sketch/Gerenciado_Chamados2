@@ -57,6 +57,9 @@ export default function UserManagement({
   const [activeTab, setActiveTab] =
     useState<UserManagementTab>("users");
 
+  const [searchTerm, setSearchTerm] =
+    useState("");
+
   async function handleToggleStatus(
     user: ManagedUser
   ) {
@@ -295,6 +298,24 @@ export default function UserManagement({
   if (!isOpen) {
     return null;
   }
+
+  const normalizedSearch =
+    searchTerm.trim().toLowerCase();
+
+  const filteredUsers = users.filter((user) => {
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    return (
+      user.name
+        .toLowerCase()
+        .includes(normalizedSearch) ||
+      user.email
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  });
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -679,6 +700,32 @@ export default function UserManagement({
             </button>
           </div>
 
+          <div
+            style={{
+              marginBottom: "16px",
+            }}
+          >
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) =>
+                setSearchTerm(event.target.value)
+              }
+              placeholder="Buscar por nome ou e-mail..."
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 12px",
+                backgroundColor: "#0F172A",
+                color: "#F8FAFC",
+                border: "1px solid #334155",
+                borderRadius: "8px",
+                outline: "none",
+                fontSize: "13px",
+              }}
+            />
+          </div>
+
           {loadingUsers ? (
             <div
               style={{
@@ -695,272 +742,328 @@ export default function UserManagement({
                 fontSize: "13px",
               }}
             >
-              Nenhum usuário encontrado.
+              Nenhum usuário cadastrado.
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div
+              style={{
+                color: "#94A3B8",
+                fontSize: "13px",
+                padding: "12px 0",
+              }}
+            >
+              Nenhum usuário encontrado para a busca.
             </div>
           ) : (
             <div
               style={{
-                maxHeight: "240px",
-                overflowY: "auto",
-                border:
-                  "1px solid #334155",
+                border: "1px solid #334155",
                 borderRadius: "10px",
+                overflow: "hidden",
               }}
             >
-              {users.map(user => (
-                <div
-                  key={user.uid}
-                  style={{
-                    padding: "16px",
-                    borderBottom: "1px solid #334155",
-                    backgroundColor: "#1E293B",
-                  }}
-                >
-                  {/* Linha superior: usuário + badges */}
+              {filteredUsers.map((user) => {
+                const isCurrentUser =
+                  user.uid === auth.currentUser?.uid;
+
+                return (
                   <div
+                    key={user.uid}
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      gap: "12px",
+                      padding: "16px",
+                      borderBottom: "1px solid #334155",
+                      backgroundColor: "#1E293B",
                     }}
                   >
-                    <div
-                      style={{
-                        minWidth: 0,
-                        flex: 1,
-                      }}
-                    >
-                      <div
-                        style={{
-                          color: "#F8FAFC",
-                          fontSize: "13px",
-                          fontWeight: 700,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {user.name || user.email}
-                      </div>
-
-                      <div
-                        style={{
-                          color: "#94A3B8",
-                          fontSize: "12px",
-                          marginTop: "4px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {user.email}
-                      </div>
-                    </div>
-
+                    {/* Informações e status */}
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "center",
-                        justifyContent: "flex-end",
-                        gap: "6px",
-                        flexWrap: "wrap",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: "12px",
                       }}
                     >
-                      <span
+                      <div
                         style={{
-                          padding: "4px 8px",
-                          borderRadius: "999px",
-                          backgroundColor: "#334155",
-                          color: "#CBD5E1",
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          whiteSpace: "nowrap",
+                          minWidth: 0,
+                          flex: 1,
                         }}
                       >
-                        {user.role === "admin"
-                          ? "Administrador"
-                          : user.role === "analyst"
-                          ? "Analista"
-                          : "Consulta"}
-                      </span>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "7px",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: "#F8FAFC",
+                              fontSize: "13px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {user.name || user.email}
+                          </span>
 
-                      <span
-                        style={{
-                          padding: "4px 8px",
-                          borderRadius: "999px",
-                          backgroundColor: user.disabled
-                            ? "rgba(220,38,38,0.15)"
-                            : "rgba(5,150,105,0.15)",
-                          color: user.disabled
-                            ? "#FCA5A5"
-                            : "#6EE7B7",
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {user.disabled
-                          ? "Inativo"
-                          : "Ativo"}
-                      </span>
-                    </div>
-                  </div>
+                          {isCurrentUser && (
+                            <span
+                              style={{
+                                padding: "3px 7px",
+                                borderRadius: "999px",
+                                backgroundColor:
+                                  "rgba(59,130,246,0.15)",
+                                color: "#93C5FD",
+                                fontSize: "10px",
+                                fontWeight: 700,
+                              }}
+                            >
+                              Você
+                            </span>
+                          )}
+                        </div>
 
-                  {/* Linha inferior: ações */}
-                  <div
-                    style={{
-                      marginTop: "13px",
-                      paddingTop: "11px",
-                      borderTop: "1px solid rgba(51, 65, 85, 0.65)",
-                    }}
-                  >
-                    {editingUserId === user.uid ? (
+                        <div
+                          style={{
+                            color: "#94A3B8",
+                            fontSize: "12px",
+                            marginTop: "4px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {user.email}
+                        </div>
+                      </div>
+
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "8px",
+                          justifyContent: "flex-end",
+                          gap: "6px",
                           flexWrap: "wrap",
                         }}
                       >
-                        <select
-                          value={editingRole}
-                          onChange={(event) =>
-                            setEditingRole(
-                              event.target.value as UserRole
-                            )
-                          }
-                          disabled={savingUser}
+                        <span
                           style={{
-                            flex: 1,
-                            minWidth: "150px",
-                            padding: "8px 10px",
-                            backgroundColor: "#0F172A",
-                            color: "#F8FAFC",
-                            border: "1px solid #475569",
-                            borderRadius: "7px",
-                            fontSize: "12px",
-                            outline: "none",
-                          }}
-                        >
-                          <option value="admin">
-                            Administrador
-                          </option>
-
-                          <option value="analyst">
-                            Analista
-                          </option>
-
-                          <option value="viewer">
-                            Consulta
-                          </option>
-                        </select>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleUpdateRole(user.uid)
-                          }
-                          disabled={savingUser}
-                          style={{
-                            padding: "8px 12px",
-                            backgroundColor: "#3B82F6",
-                            color: "#FFFFFF",
-                            border: "none",
-                            borderRadius: "7px",
-                            cursor: savingUser
-                              ? "not-allowed"
-                              : "pointer",
-                            fontSize: "12px",
+                            padding: "4px 8px",
+                            borderRadius: "999px",
+                            backgroundColor: "#334155",
+                            color: "#CBD5E1",
+                            fontSize: "11px",
                             fontWeight: 600,
-                            opacity: savingUser ? 0.65 : 1,
+                            whiteSpace: "nowrap",
                           }}
                         >
-                          {savingUser
-                            ? "Salvando..."
-                            : "Salvar"}
-                        </button>
+                          {user.role === "admin"
+                            ? "Administrador"
+                            : user.role === "analyst"
+                            ? "Analista"
+                            : "Consulta"}
+                        </span>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEditingUserId(null)
-                          }
-                          disabled={savingUser}
+                        <span
                           style={{
-                            padding: "8px 12px",
-                            backgroundColor: "transparent",
-                            color: "#94A3B8",
-                            border: "1px solid #475569",
-                            borderRadius: "7px",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "16px",
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingUserId(user.uid);
-                            setEditingRole(user.role);
-                            setErrorMessage("");
-                            setSuccessMessage("");
-                          }}
-                          style={{
-                            padding: 0,
-                            background: "transparent",
-                            border: "none",
-                            color: "#93C5FD",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Editar perfil
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleToggleStatus(user)
-                          }
-                          disabled={savingUser}
-                          style={{
-                            padding: 0,
-                            background: "transparent",
-                            border: "none",
+                            padding: "4px 8px",
+                            borderRadius: "999px",
+                            backgroundColor: user.disabled
+                              ? "rgba(220,38,38,0.15)"
+                              : "rgba(5,150,105,0.15)",
                             color: user.disabled
-                              ? "#6EE7B7"
-                              : "#FCA5A5",
-                            cursor: savingUser
-                              ? "not-allowed"
-                              : "pointer",
-                            fontSize: "12px",
+                              ? "#FCA5A5"
+                              : "#6EE7B7",
+                            fontSize: "11px",
                             fontWeight: 600,
-                            opacity: savingUser ? 0.6 : 1,
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {user.disabled
-                            ? "Ativar usuário"
-                            : "Desativar usuário"}
-                        </button>
+                            ? "Inativo"
+                            : "Ativo"}
+                        </span>
                       </div>
-                    )}
+                    </div>
+
+                    {/* Área de ações */}
+                    <div
+                      style={{
+                        marginTop: "13px",
+                        paddingTop: "11px",
+                        borderTop:
+                          "1px solid rgba(51,65,85,0.65)",
+                      }}
+                    >
+                      {editingUserId === user.uid ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <select
+                            value={editingRole}
+                            onChange={(event) =>
+                              setEditingRole(
+                                event.target.value as UserRole
+                              )
+                            }
+                            disabled={savingUser}
+                            style={{
+                              flex: 1,
+                              minWidth: "150px",
+                              padding: "8px 10px",
+                              backgroundColor: "#0F172A",
+                              color: "#F8FAFC",
+                              border: "1px solid #475569",
+                              borderRadius: "7px",
+                              fontSize: "12px",
+                              outline: "none",
+                            }}
+                          >
+                            <option value="admin">
+                              Administrador
+                            </option>
+
+                            <option value="analyst">
+                              Analista
+                            </option>
+
+                            <option value="viewer">
+                              Consulta
+                            </option>
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateRole(user.uid)
+                            }
+                            disabled={savingUser}
+                            style={{
+                              padding: "8px 12px",
+                              backgroundColor: "#3B82F6",
+                              color: "#FFFFFF",
+                              border: "none",
+                              borderRadius: "7px",
+                              cursor: savingUser
+                                ? "not-allowed"
+                                : "pointer",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              opacity: savingUser ? 0.65 : 1,
+                            }}
+                          >
+                            {savingUser
+                              ? "Salvando..."
+                              : "Salvar"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingUserId(null)
+                            }
+                            disabled={savingUser}
+                            style={{
+                              padding: "8px 12px",
+                              backgroundColor: "transparent",
+                              color: "#94A3B8",
+                              border: "1px solid #475569",
+                              borderRadius: "7px",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingUserId(user.uid);
+                              setEditingRole(user.role);
+                              setErrorMessage("");
+                              setSuccessMessage("");
+                            }}
+                            style={{
+                              padding: "7px 11px",
+                              backgroundColor:
+                                "rgba(59,130,246,0.10)",
+                              border:
+                                "1px solid rgba(59,130,246,0.35)",
+                              borderRadius: "7px",
+                              color: "#93C5FD",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Editar perfil
+                          </button>
+
+                          {!isCurrentUser ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleToggleStatus(user)
+                              }
+                              disabled={savingUser}
+                              style={{
+                                padding: "7px 11px",
+                                backgroundColor: user.disabled
+                                  ? "rgba(5,150,105,0.10)"
+                                  : "rgba(220,38,38,0.08)",
+                                border: user.disabled
+                                  ? "1px solid rgba(5,150,105,0.30)"
+                                  : "1px solid rgba(220,38,38,0.30)",
+                                borderRadius: "7px",
+                                color: user.disabled
+                                  ? "#6EE7B7"
+                                  : "#FCA5A5",
+                                cursor: savingUser
+                                  ? "not-allowed"
+                                  : "pointer",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                opacity: savingUser ? 0.6 : 1,
+                              }}
+                            >
+                              {user.disabled
+                                ? "Ativar usuário"
+                                : "Desativar usuário"}
+                            </button>
+                          ) : (
+                            <span
+                              style={{
+                                color: "#64748B",
+                                fontSize: "11px",
+                              }}
+                            >
+                              Sua conta não pode ser desativada
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>   
