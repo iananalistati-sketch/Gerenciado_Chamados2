@@ -19,7 +19,14 @@ import UserManagement from "./components/UserManagement";
  */
 
 function AppContent() {
-  const { user, permissions, logout } = useAuth();
+  const { user, role, permissions, logout } = useAuth();
+
+  console.log("DEBUG PERMISSOES", {
+    email: user?.email,
+    role,
+    permissions,
+    canManageUsers: permissions?.canManageUsers
+  });
   const [data, setData] = useState<string[][]>([]);
   // allData: Armazena os dados de todas as abas carregadas
   const [allData, setAllData] = useState<Record<string, string[][]>>({
