@@ -12,6 +12,7 @@ import FiltroModal from "./components/FiltroModal";
 import Login from "./components/Login";
 import { useAuth } from "./contexts/AuthContext";
 import UserManagement from "./components/UserManagement";
+import ChangePassword from "./components/ChangePassword";
 
 /**
  * App.tsx - Mínimo Funcional
@@ -54,6 +55,10 @@ function AppContent() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showConcluirModal, setShowConcluirModal] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
+  const [
+    showChangePassword,
+    setShowChangePassword,
+  ] = useState(false);
   
   const [rowToConclude, setRowToConclude] =
   useState<{
@@ -1296,6 +1301,25 @@ function AppContent() {
 
             <button
               type="button"
+              onClick={() =>
+                setShowChangePassword(true)
+              }
+              style={{
+                padding: "8px 14px",
+                backgroundColor: "#334155",
+                color: "#E2E8F0",
+                border: "1px solid #475569",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "600",
+              }}
+            >
+              Alterar senha
+            </button>
+
+            <button
+              type="button"
               onClick={handleLogout}
               style={{
                 padding: '8px 14px',
@@ -1649,6 +1673,13 @@ function AppContent() {
         <UserManagement
           isOpen={showUserManagement}
           onClose={() => setShowUserManagement(false)}
+        />
+
+        <ChangePassword
+          isOpen={showChangePassword}
+          onClose={() =>
+            setShowChangePassword(false)
+          }
         />
 
         {/* Modal do Formulário Dinâmico */}
