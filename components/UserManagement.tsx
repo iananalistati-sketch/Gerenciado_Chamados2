@@ -41,6 +41,167 @@ export default function UserManagement({
   const [loadingUsers, setLoadingUsers] =
     useState(false);
 
+  const [editingUserId, setEditingUserId] =
+    useState<string | null>(null);
+
+  const [editingRole, setEditingRole] =
+    useState<UserRole>("viewer");
+
+  const [savingUser, setSavingUser] =
+    useState(false);
+
+  async function handleToggleStatus(
+    user: ManagedUser
+  ) {
+    const action =
+      user.disabled
+        ? "ativar"
+        : "desativar";
+
+    const confirmed =
+      window.confirm(
+        `Confirma ${action} o usuário ${user.email}?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSavingUser(true);
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const currentUser =
+        auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error(
+          "Sessão inválida."
+        );
+      }
+
+      const token =
+        await currentUser.getIdToken();
+
+      const response = await fetch(
+        "/api/users/toggle-status",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            uid: user.uid,
+            disabled: !user.disabled,
+          }),
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+          "Não foi possível alterar o status."
+        );
+      }
+
+      setSuccessMessage(
+        result.message
+      );
+
+      await loadUsers();
+    } catch (error) {
+      console.error(
+        "Erro ao alterar status:",
+        error
+      );
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Erro ao alterar status."
+      );
+    } finally {
+      setSavingUser(false);
+    }
+  }
+
+  async function handleUpdateRole(
+    uid: string
+  ) {
+    try {
+      setSavingUser(true);
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const currentUser =
+        auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error(
+          "Sessão inválida."
+        );
+      }
+
+      const token =
+        await currentUser.getIdToken();
+
+      const response = await fetch(
+        "/api/users/update-role",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            uid,
+            role: editingRole,
+          }),
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+          "Não foi possível atualizar o perfil."
+        );
+      }
+
+      setSuccessMessage(
+        "Perfil atualizado com sucesso."
+      );
+
+      setEditingUserId(null);
+
+      await loadUsers();
+    } catch (error) {
+      console.error(
+        "Erro ao atualizar perfil:",
+        error
+      );
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar perfil."
+      );
+    } finally {
+      setSavingUser(false);
+    }
+  }
+
   async function loadUsers() {
     try {
       setLoadingUsers(true);
@@ -406,7 +567,7 @@ export default function UserManagement({
                   style={{
                     display: "grid",
                     gridTemplateColumns:
-                      "1fr auto auto",
+                      "1fr auto auto auto",
                     gap: "12px",
                     alignItems: "center",
                     padding: "12px 14px",
@@ -476,6 +637,91 @@ export default function UserManagement({
                       ? "Inativo"
                       : "Ativo"}
                   </span>
+
+                  {/* AÇÕES DO USUÁRIO - ADICIONE A PARTIR DAQUI */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "6px",
+                    }}
+                  >
+                    {editingUserId === user.uid ? (
+                      <>
+                        <select
+                          value={editingRole}
+                          onChange={(event) =>
+                            setEditingRole(
+                              event.target.value as UserRole
+                            )
+                          }
+                          style={{
+                            padding: "5px 7px",
+                            backgroundColor: "#0F172A",
+                            color: "#F8FAFC",
+                            border: "1px solid #475569",
+                            borderRadius: "6px",
+                            fontSize: "11px",
+                          }}
+                        >
+                          <option value="admin">
+                            Administrador
+                          </option>
+
+                          <option value="analyst">
+                            Analista
+                          </option>
+
+                          <option value="viewer">
+                            Consulta
+                          </option>
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleUpdateRole(user.uid)
+                          }
+                          disabled={savingUser}
+                        >
+                          Salvar
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditingUserId(null)
+                          }
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingUserId(user.uid);
+                            setEditingRole(user.role);
+                          }}
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleToggleStatus(user)
+                          }
+                          disabled={savingUser}
+                        >
+                          {user.disabled
+                            ? "Ativar"
+                            : "Desativar"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
                 </div>
               ))}
             </div>
