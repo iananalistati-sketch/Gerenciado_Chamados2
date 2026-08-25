@@ -711,88 +711,119 @@ export default function UserManagement({
                 <div
                   key={user.uid}
                   style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "1fr auto auto auto",
-                    gap: "12px",
-                    alignItems: "center",
-                    padding: "12px 14px",
-                    borderBottom:
-                      "1px solid #334155",
+                    padding: "16px",
+                    borderBottom: "1px solid #334155",
+                    backgroundColor: "#1E293B",
                   }}
                 >
-                  <div>
-                    <div
-                      style={{
-                        color: "#F8FAFC",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {user.name ||
-                        user.email}
-                    </div>
-
-                    <div
-                      style={{
-                        color: "#94A3B8",
-                        fontSize: "12px",
-                        marginTop: "2px",
-                      }}
-                    >
-                      {user.email}
-                    </div>
-                  </div>
-
-                  <span
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: "999px",
-                      backgroundColor:
-                        "#334155",
-                      color: "#CBD5E1",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {user.role === "admin"
-                      ? "Administrador"
-                      : user.role ===
-                        "analyst"
-                      ? "Analista"
-                      : "Consulta"}
-                  </span>
-
-                  <span
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: "999px",
-                      backgroundColor:
-                        user.disabled
-                          ? "rgba(220,38,38,0.15)"
-                          : "rgba(5,150,105,0.15)",
-                      color:
-                        user.disabled
-                          ? "#FCA5A5"
-                          : "#6EE7B7",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {user.disabled
-                      ? "Inativo"
-                      : "Ativo"}
-                  </span>
-
-                  {/* AÇÕES DO USUÁRIO - ADICIONE A PARTIR DAQUI */}
+                  {/* Linha superior: usuário + badges */}
                   <div
                     style={{
                       display: "flex",
-                      gap: "6px",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: "12px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        minWidth: 0,
+                        flex: 1,
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: "#F8FAFC",
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {user.name || user.email}
+                      </div>
+
+                      <div
+                        style={{
+                          color: "#94A3B8",
+                          fontSize: "12px",
+                          marginTop: "4px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {user.email}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        gap: "6px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "999px",
+                          backgroundColor: "#334155",
+                          color: "#CBD5E1",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {user.role === "admin"
+                          ? "Administrador"
+                          : user.role === "analyst"
+                          ? "Analista"
+                          : "Consulta"}
+                      </span>
+
+                      <span
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "999px",
+                          backgroundColor: user.disabled
+                            ? "rgba(220,38,38,0.15)"
+                            : "rgba(5,150,105,0.15)",
+                          color: user.disabled
+                            ? "#FCA5A5"
+                            : "#6EE7B7",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {user.disabled
+                          ? "Inativo"
+                          : "Ativo"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Linha inferior: ações */}
+                  <div
+                    style={{
+                      marginTop: "13px",
+                      paddingTop: "11px",
+                      borderTop: "1px solid rgba(51, 65, 85, 0.65)",
                     }}
                   >
                     {editingUserId === user.uid ? (
-                      <>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          flexWrap: "wrap",
+                        }}
+                      >
                         <select
                           value={editingRole}
                           onChange={(event) =>
@@ -800,13 +831,17 @@ export default function UserManagement({
                               event.target.value as UserRole
                             )
                           }
+                          disabled={savingUser}
                           style={{
-                            padding: "5px 7px",
+                            flex: 1,
+                            minWidth: "150px",
+                            padding: "8px 10px",
                             backgroundColor: "#0F172A",
                             color: "#F8FAFC",
                             border: "1px solid #475569",
-                            borderRadius: "6px",
-                            fontSize: "11px",
+                            borderRadius: "7px",
+                            fontSize: "12px",
+                            outline: "none",
                           }}
                         >
                           <option value="admin">
@@ -828,8 +863,23 @@ export default function UserManagement({
                             handleUpdateRole(user.uid)
                           }
                           disabled={savingUser}
+                          style={{
+                            padding: "8px 12px",
+                            backgroundColor: "#3B82F6",
+                            color: "#FFFFFF",
+                            border: "none",
+                            borderRadius: "7px",
+                            cursor: savingUser
+                              ? "not-allowed"
+                              : "pointer",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            opacity: savingUser ? 0.65 : 1,
+                          }}
                         >
-                          Salvar
+                          {savingUser
+                            ? "Salvando..."
+                            : "Salvar"}
                         </button>
 
                         <button
@@ -837,20 +887,48 @@ export default function UserManagement({
                           onClick={() =>
                             setEditingUserId(null)
                           }
+                          disabled={savingUser}
+                          style={{
+                            padding: "8px 12px",
+                            backgroundColor: "transparent",
+                            color: "#94A3B8",
+                            border: "1px solid #475569",
+                            borderRadius: "7px",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                          }}
                         >
                           Cancelar
                         </button>
-                      </>
+                      </div>
                     ) : (
-                      <>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "16px",
+                        }}
+                      >
                         <button
                           type="button"
                           onClick={() => {
                             setEditingUserId(user.uid);
                             setEditingRole(user.role);
+                            setErrorMessage("");
+                            setSuccessMessage("");
+                          }}
+                          style={{
+                            padding: 0,
+                            background: "transparent",
+                            border: "none",
+                            color: "#93C5FD",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            fontWeight: 600,
                           }}
                         >
-                          Editar
+                          Editar perfil
                         </button>
 
                         <button
@@ -859,15 +937,28 @@ export default function UserManagement({
                             handleToggleStatus(user)
                           }
                           disabled={savingUser}
+                          style={{
+                            padding: 0,
+                            background: "transparent",
+                            border: "none",
+                            color: user.disabled
+                              ? "#6EE7B7"
+                              : "#FCA5A5",
+                            cursor: savingUser
+                              ? "not-allowed"
+                              : "pointer",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            opacity: savingUser ? 0.6 : 1,
+                          }}
                         >
                           {user.disabled
-                            ? "Ativar"
-                            : "Desativar"}
+                            ? "Ativar usuário"
+                            : "Desativar usuário"}
                         </button>
-                      </>
+                      </div>
                     )}
                   </div>
-
                 </div>
               ))}
             </div>
