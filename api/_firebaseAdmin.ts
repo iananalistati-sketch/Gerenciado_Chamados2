@@ -5,41 +5,49 @@ import {
 } from "firebase-admin/app";
 
 import {
+  Auth,
   getAuth,
 } from "firebase-admin/auth";
 
-const projectId =
-  process.env.FIREBASE_ADMIN_PROJECT_ID;
+export function getAdminAuth(): Auth {
+  const projectId =
+    process.env.FIREBASE_ADMIN_PROJECT_ID;
 
-const clientEmail =
-  process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+  const clientEmail =
+    process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
 
-const privateKey =
-  process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(
-    /\\n/g,
-    "\n"
-  );
+  let privateKey =
+    process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
-if (
-  !projectId ||
-  !clientEmail ||
-  !privateKey
-) {
-  throw new Error(
-    "Variáveis do Firebase Admin não configuradas."
-  );
+  if (
+    !projectId ||
+    !clientEmail ||
+    !privateKey
+  ) {
+    throw new Error(
+      "Variáveis do Firebase Admin não configuradas."
+    );
+  }
+
+  /*
+   * Remove aspas externas caso tenham sido
+   * incluídas acidentalmente na Vercel.
+   */
+  privateKey = privateKey
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .replace(/\\n/g, "\n");
+
+  const app =
+    getApps().length > 0
+      ? getApps()[0]
+      : initializeApp({
+          credential: cert({
+            projectId,
+            clientEmail,
+            privateKey,
+          }),
+        });
+
+  return getAuth(app);
 }
-
-const app =
-  getApps().length > 0
-    ? getApps()[0]
-    : initializeApp({
-        credential: cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        }),
-      });
-
-export const adminAuth =
-  getAuth(app);

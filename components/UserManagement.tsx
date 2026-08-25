@@ -86,15 +86,31 @@ export default function UserManagement({
         }
       );
 
-      const result =
-        await response.json();
+      const responseText = await response.text();
 
-      if (!response.ok) {
-        throw new Error(
-          result.error ||
-          "Não foi possível cadastrar o usuário."
+        let result: any = {};
+
+        try {
+        result = responseText
+            ? JSON.parse(responseText)
+            : {};
+        } catch {
+        console.error(
+            "Resposta não JSON da API:",
+            responseText
         );
-      }
+
+        throw new Error(
+            `Erro interno da API (${response.status}). Consulte os logs da Vercel.`
+        );
+        }
+
+        if (!response.ok) {
+        throw new Error(
+            result.error ||
+            `Erro ${response.status} ao cadastrar o usuário.`
+        );
+        }
 
       setSuccessMessage(
         "Usuário cadastrado com sucesso."

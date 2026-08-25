@@ -4,7 +4,7 @@ import type {
 } from "@vercel/node";
 
 import {
-  adminAuth,
+  getAdminAuth,
 } from "../_firebaseAdmin";
 
 import {
@@ -28,6 +28,7 @@ export default async function handler(
   }
 
   try {
+    const adminAuth = getAdminAuth();
     await requireAdmin(
       req.headers.authorization
     );
@@ -104,10 +105,28 @@ export default async function handler(
       });
     }
 
-    return res.status(403).json({
+    if (
+      error?.message ===
+      "Usuário sem permissão administrativa."
+    ) {
+      return res.status(403).json({
+        error: error.message,
+      });
+    }
+
+    if (
+      error?.message ===
+      "Token de autenticação não informado."
+    ) {
+      return res.status(401).json({
+        error: error.message,
+      });
+    }
+
+    return res.status(500).json({
       error:
         error?.message ||
-        "Não foi possível criar o usuário.",
+        "Erro interno ao cadastrar usuário.",
     });
   }
 }

@@ -1,4 +1,6 @@
-import { adminAuth } from "./_firebaseAdmin";
+import {
+  getAdminAuth,
+} from "./_firebaseAdmin";
 
 export async function requireAdmin(
   authorizationHeader?: string
@@ -16,6 +18,9 @@ export async function requireAdmin(
 
   const token =
     authorizationHeader.substring(7);
+
+  const adminAuth =
+    getAdminAuth();
 
   const decodedToken =
     await adminAuth.verifyIdToken(token);
