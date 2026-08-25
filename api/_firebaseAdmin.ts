@@ -5,8 +5,11 @@ import {
 } from "firebase-admin/app";
 
 import {
-  Auth,
   getAuth,
+} from "firebase-admin/auth";
+
+import type {
+  Auth,
 } from "firebase-admin/auth";
 
 export function getAdminAuth(): Auth {
