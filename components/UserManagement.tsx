@@ -54,6 +54,22 @@ export default function UserManagement({
   const [savingUser, setSavingUser] =
     useState(false);
 
+  const [resettingUserId, setResettingUserId] =
+    useState<string | null>(null);
+
+  const [newPassword, setNewPassword] =
+    useState("");
+
+  const [
+    confirmNewPassword,
+    setConfirmNewPassword,
+  ] = useState("");
+
+  const [
+    resettingPassword,
+    setResettingPassword,
+  ] = useState(false);
+
   const [activeTab, setActiveTab] =
     useState<UserManagementTab>("users");
 
@@ -209,6 +225,112 @@ export default function UserManagement({
       );
     } finally {
       setSavingUser(false);
+    }
+  }
+
+  async function handleResetPassword(
+    uid: string
+  ) {
+    if (!newPassword) {
+      setErrorMessage(
+        "Informe a nova senha."
+      );
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setErrorMessage(
+        "A nova senha deve possuir pelo menos 6 caracteres."
+      );
+      return;
+    }
+
+    if (
+      newPassword !==
+      confirmNewPassword
+    ) {
+      setErrorMessage(
+        "A confirmação da senha não confere."
+      );
+      return;
+    }
+
+    try {
+      setResettingPassword(true);
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const currentUser =
+        auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error(
+          "Sessão inválida."
+        );
+      }
+
+      const token =
+        await currentUser.getIdToken();
+
+      const response = await fetch(
+        "/api/users/reset-password",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            uid,
+            password: newPassword,
+          }),
+        }
+      );
+
+      const responseText =
+        await response.text();
+
+      let result: any = {};
+
+      try {
+        result = responseText
+          ? JSON.parse(responseText)
+          : {};
+      } catch {
+        throw new Error(
+          `Erro interno da API (${response.status}).`
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+          "Não foi possível redefinir a senha."
+        );
+      }
+
+      setSuccessMessage(
+        "Senha redefinida com sucesso."
+      );
+
+      setResettingUserId(null);
+      setNewPassword("");
+      setConfirmNewPassword("");
+    } catch (error) {
+      console.error(
+        "Erro ao redefinir senha:",
+        error
+      );
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Erro ao redefinir senha."
+      );
+    } finally {
+      setResettingPassword(false);
     }
   }
 
@@ -1017,6 +1139,32 @@ export default function UserManagement({
                             Editar perfil
                           </button>
 
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResettingUserId(user.uid);
+                              setEditingUserId(null);
+                              setNewPassword("");
+                              setConfirmNewPassword("");
+                              setErrorMessage("");
+                              setSuccessMessage("");
+                            }}
+                            style={{
+                              padding: "7px 11px",
+                              backgroundColor:
+                                "rgba(148,163,184,0.08)",
+                              border:
+                                "1px solid rgba(148,163,184,0.25)",
+                              borderRadius: "7px",
+                              color: "#CBD5E1",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Redefinir senha
+                          </button>
+
                           {!isCurrentUser ? (
                             <button
                               type="button"
@@ -1059,8 +1207,147 @@ export default function UserManagement({
                             </span>
                           )}
                         </div>
-                      )}
+                                            )}
                     </div>
+
+                    {resettingUserId === user.uid && (
+                      <div
+                        style={{
+                          marginTop: "14px",
+                          padding: "14px",
+                          backgroundColor: "#0F172A",
+                          border: "1px solid #334155",
+                          borderRadius: "9px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            marginBottom: "12px",
+                          }}
+                        >
+                          <div
+                            style={{
+                              color: "#F8FAFC",
+                              fontSize: "13px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            Redefinir senha
+                          </div>
+
+                          <div
+                            style={{
+                              color: "#64748B",
+                              fontSize: "11px",
+                              marginTop: "3px",
+                            }}
+                          >
+                            Defina uma nova senha para {user.email}.
+                          </div>
+                        </div>
+
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(event) =>
+                            setNewPassword(event.target.value)
+                          }
+                          placeholder="Nova senha"
+                          disabled={resettingPassword}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "10px 12px",
+                            marginBottom: "10px",
+                            backgroundColor: "#1E293B",
+                            color: "#F8FAFC",
+                            border: "1px solid #475569",
+                            borderRadius: "7px",
+                            outline: "none",
+                            fontSize: "12px",
+                          }}
+                        />
+
+                        <input
+                          type="password"
+                          value={confirmNewPassword}
+                          onChange={(event) =>
+                            setConfirmNewPassword(event.target.value)
+                          }
+                          placeholder="Confirmar nova senha"
+                          disabled={resettingPassword}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "10px 12px",
+                            marginBottom: "12px",
+                            backgroundColor: "#1E293B",
+                            color: "#F8FAFC",
+                            border: "1px solid #475569",
+                            borderRadius: "7px",
+                            outline: "none",
+                            fontSize: "12px",
+                          }}
+                        />
+
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            gap: "8px",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResettingUserId(null);
+                              setNewPassword("");
+                              setConfirmNewPassword("");
+                            }}
+                            disabled={resettingPassword}
+                            style={{
+                              padding: "8px 11px",
+                              backgroundColor: "transparent",
+                              color: "#94A3B8",
+                              border: "1px solid #475569",
+                              borderRadius: "7px",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                            }}
+                          >
+                            Cancelar
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleResetPassword(user.uid)
+                            }
+                            disabled={resettingPassword}
+                            style={{
+                              padding: "8px 11px",
+                              backgroundColor: "#3B82F6",
+                              color: "#FFFFFF",
+                              border: "none",
+                              borderRadius: "7px",
+                              cursor: resettingPassword
+                                ? "not-allowed"
+                                : "pointer",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              opacity: resettingPassword
+                                ? 0.65
+                                : 1,
+                            }}
+                          >
+                            {resettingPassword
+                              ? "Salvando..."
+                              : "Salvar nova senha"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 );
               })}
