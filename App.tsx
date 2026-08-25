@@ -1277,7 +1277,7 @@ function AppContent() {
             }}
           >
             <span style={{ fontSize: '13px', color: '#CBD5E1' }}>
-              {user?.email || 'Usuário autenticado'}
+              {user?.displayName || user?.email || 'Usuário autenticado'}
             </span>
 
             {permissions?.canManageUsers && (
