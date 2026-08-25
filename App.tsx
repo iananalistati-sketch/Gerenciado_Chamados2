@@ -11,6 +11,7 @@ import CobrancaModal from "./components/CobrancaModal";
 import FiltroModal from "./components/FiltroModal";
 import Login from "./components/Login";
 import { useAuth } from "./contexts/AuthContext";
+import UserManagement from "./components/UserManagement";
 
 /**
  * App.tsx - Mínimo Funcional
@@ -18,7 +19,7 @@ import { useAuth } from "./contexts/AuthContext";
  */
 
 function AppContent() {
-  const { user, logout } = useAuth();
+  const { user, permissions, logout } = useAuth();
   const [data, setData] = useState<string[][]>([]);
   // allData: Armazena os dados de todas as abas carregadas
   const [allData, setAllData] = useState<Record<string, string[][]>>({
@@ -45,6 +46,7 @@ function AppContent() {
   const [showCobrarModal, setShowCobrarModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showConcluirModal, setShowConcluirModal] = useState(false);
+  const [showUserManagement, setShowUserManagement] = useState(false);
   
   const [rowToConclude, setRowToConclude] =
   useState<{
@@ -1265,6 +1267,26 @@ function AppContent() {
             <span style={{ fontSize: '13px', color: '#CBD5E1' }}>
               {user?.email || 'Usuário autenticado'}
             </span>
+
+            {permissions?.canManageUsers && (
+              <button
+                type="button"
+                onClick={() => setShowUserManagement(true)}
+                style={{
+                  padding: '8px 14px',
+                  backgroundColor: '#334155',
+                  color: '#E2E8F0',
+                  border: '1px solid #475569',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}
+              >
+                Usuários
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleLogout}
@@ -1603,6 +1625,23 @@ function AppContent() {
           updateFilter={updateFilter}
           clearFilters={clearFilters}
           onClose={() => setShowFilterModal(false)}
+        />
+
+        <FiltroModal
+          isOpen={showFilterModal}
+          headers={headers}
+          selectedSheet={selectedSheet}
+          sheetFilters={sheetFilters}
+          normalize={normalize}
+          getColumnConfig={getColumnConfig}
+          updateFilter={updateFilter}
+          clearFilters={clearFilters}
+          onClose={() => setShowFilterModal(false)}
+        />
+
+        <UserManagement
+          isOpen={showUserManagement}
+          onClose={() => setShowUserManagement(false)}
         />
 
         {/* Modal do Formulário Dinâmico */}
