@@ -8,6 +8,10 @@ import { auth } from "../firebase";
 
 type UserRole = "admin" | "analyst" | "viewer";
 
+type UserManagementTab =
+  | "users"
+  | "new";
+
 interface ManagedUser {
   uid: string;
   name: string;
@@ -49,6 +53,9 @@ export default function UserManagement({
 
   const [savingUser, setSavingUser] =
     useState(false);
+
+  const [activeTab, setActiveTab] =
+    useState<UserManagementTab>("users");
 
   async function handleToggleStatus(
     user: ManagedUser
@@ -280,6 +287,7 @@ export default function UserManagement({
 
   useEffect(() => {
     if (isOpen) {
+      setActiveTab("users");
       loadUsers();
     }
   }, [isOpen]);
@@ -374,16 +382,18 @@ export default function UserManagement({
         );
         }
 
-      setSuccessMessage(
-        "Usuário cadastrado com sucesso."
-      );
-
-      await loadUsers();
-
       setName("");
       setEmail("");
       setPassword("");
       setRole("viewer");
+
+      await loadUsers();
+
+      setActiveTab("users");
+
+      setSuccessMessage(
+        "Usuário cadastrado com sucesso."
+      );
     } catch (error) {
       console.error(
         "Erro ao cadastrar usuário:",
@@ -411,78 +421,214 @@ export default function UserManagement({
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor:
-          "rgba(2, 6, 23, 0.82)",
-        backdropFilter: "blur(8px)",
+        backgroundColor: "rgba(2, 6, 23, 0.72)",
+        backdropFilter: "blur(5px)",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px",
+        justifyContent: "flex-end",
         zIndex: 2000,
+      }}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
       }}
     >
       <div
         style={{
-          width: "100%",
-          maxWidth: "520px",
+          width: "min(540px, 100vw)",
+          height: "100vh",
           backgroundColor: "#1E293B",
-          border: "1px solid #334155",
-          borderRadius: "16px",
-          boxShadow:
-            "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-          padding: "28px",
+          borderLeft: "1px solid #334155",
+          boxShadow: "-20px 0 50px rgba(0, 0, 0, 0.35)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          animation: "userDrawerEnter 0.25s ease-out",
+        }}
+        onMouseDown={(event) => {
+          event.stopPropagation();
         }}
       >
+        <style>
+          {`
+            @keyframes userDrawerEnter {
+              from {
+                transform: translateX(100%);
+                opacity: 0;
+              }
+
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+          `}
+        </style>
         <div
           style={{
-            display: "flex",
-            justifyContent:
-              "space-between",
-            alignItems: "center",
-            marginBottom: "24px",
+            padding: "24px 26px 0",
+            borderBottom: "1px solid #334155",
+            backgroundColor: "#1E293B",
+            flexShrink: 0,
           }}
         >
-          <div>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: "24px",
-                color: "#F8FAFC",
-              }}
-            >
-              Administração de Usuários
-            </h2>
-
-            <p
-              style={{
-                margin:
-                  "6px 0 0",
-                color: "#94A3B8",
-                fontSize: "13px",
-              }}
-            >
-              Cadastre novos usuários e
-              defina o perfil de acesso.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
+          <div
             style={{
-              width: "34px",
-              height: "34px",
-              borderRadius: "50%",
-              border: "none",
-              backgroundColor:
-                "#334155",
-              color: "#CBD5E1",
-              cursor: "pointer",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "20px",
+              marginBottom: "22px",
             }}
           >
-            ✕
-          </button>
+            <div>
+              <h2
+                style={{
+                  margin: 0,
+                  color: "#F8FAFC",
+                  fontSize: "22px",
+                }}
+              >
+                Administração de Usuários
+              </h2>
+
+              <p
+                style={{
+                  margin: "6px 0 0",
+                  color: "#94A3B8",
+                  fontSize: "13px",
+                  lineHeight: 1.5,
+                }}
+              >
+                Gerencie usuários e níveis de acesso ao sistema.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              title="Fechar"
+              style={{
+                minWidth: "36px",
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                border: "1px solid #475569",
+                backgroundColor: "#334155",
+                color: "#CBD5E1",
+                cursor: "pointer",
+                fontSize: "16px",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "6px",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("users");
+                setErrorMessage("");
+                setSuccessMessage("");
+              }}
+              style={{
+                padding: "11px 16px",
+                background: "transparent",
+                border: "none",
+                borderBottom:
+                  activeTab === "users"
+                    ? "2px solid #3B82F6"
+                    : "2px solid transparent",
+                color:
+                  activeTab === "users"
+                    ? "#F8FAFC"
+                    : "#94A3B8",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 700,
+              }}
+            >
+              Usuários
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("new");
+                setErrorMessage("");
+                setSuccessMessage("");
+              }}
+              style={{
+                padding: "11px 16px",
+                background: "transparent",
+                border: "none",
+                borderBottom:
+                  activeTab === "new"
+                    ? "2px solid #3B82F6"
+                    : "2px solid transparent",
+                color:
+                  activeTab === "new"
+                    ? "#F8FAFC"
+                    : "#94A3B8",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 700,
+              }}
+            >
+              + Novo usuário
+            </button>
+          </div>
         </div>
+
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            overflowX: "hidden",
+            padding: "24px 26px",
+          }}
+        >
+
+        {errorMessage && (
+          <div
+            style={{
+              marginBottom: "16px",
+              padding: "11px 13px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(220,38,38,0.12)",
+              border: "1px solid rgba(220,38,38,0.35)",
+              color: "#FCA5A5",
+              fontSize: "13px",
+            }}
+          >
+            {errorMessage}
+          </div>
+        )}
+
+        {successMessage && (
+          <div
+            style={{
+              marginBottom: "16px",
+              padding: "11px 13px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(5,150,105,0.12)",
+              border: "1px solid rgba(5,150,105,0.35)",
+              color: "#6EE7B7",
+              fontSize: "13px",
+            }}
+          >
+            {successMessage}
+          </div>
+        )}
+
+        {activeTab === "users" && (
+          <>
 
         <div
           style={{
@@ -726,9 +872,41 @@ export default function UserManagement({
               ))}
             </div>
           )}
-        </div>    
+        </div>   
 
-        <form onSubmit={handleSubmit}>
+          </>
+        )} 
+
+        {activeTab === "new" && (
+          <>
+            <div
+              style={{
+                marginBottom: "24px",
+              }}
+            >
+              <h3
+                style={{
+                  margin: 0,
+                  color: "#F8FAFC",
+                  fontSize: "17px",
+                }}
+              >
+                Cadastrar novo usuário
+              </h3>
+
+              <p
+                style={{
+                  margin: "6px 0 0",
+                  color: "#94A3B8",
+                  fontSize: "12px",
+                  lineHeight: 1.5,
+                }}
+              >
+                Informe os dados iniciais e determine o nível de acesso.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit}>
           <div
             style={{
               marginBottom: "18px",
@@ -879,20 +1057,16 @@ export default function UserManagement({
               value={role}
               onChange={(event) =>
                 setRole(
-                  event.target
-                    .value as UserRole
+                  event.target.value as UserRole
                 )
               }
               disabled={submitting}
               style={{
                 width: "100%",
-                padding:
-                  "12px 14px",
-                backgroundColor:
-                  "#0F172A",
+                padding: "12px 14px",
+                backgroundColor: "#0F172A",
                 color: "#F8FAFC",
-                border:
-                  "1px solid #334155",
+                border: "1px solid #334155",
                 borderRadius: "9px",
                 outline: "none",
               }}
@@ -900,56 +1074,16 @@ export default function UserManagement({
               <option value="admin">
                 Administrador
               </option>
+
               <option value="analyst">
                 Analista
               </option>
+
               <option value="viewer">
                 Consulta
               </option>
             </select>
-          </div>
-
-          {errorMessage && (
-            <div
-              style={{
-                marginBottom:
-                  "16px",
-                padding:
-                  "11px 13px",
-                borderRadius:
-                  "8px",
-                backgroundColor:
-                  "rgba(220,38,38,0.12)",
-                border:
-                  "1px solid rgba(220,38,38,0.35)",
-                color: "#FCA5A5",
-                fontSize: "13px",
-              }}
-            >
-              {errorMessage}
             </div>
-          )}
-
-          {successMessage && (
-            <div
-              style={{
-                marginBottom:
-                  "16px",
-                padding:
-                  "11px 13px",
-                borderRadius:
-                  "8px",
-                backgroundColor:
-                  "rgba(5,150,105,0.12)",
-                border:
-                  "1px solid rgba(5,150,105,0.35)",
-                color: "#6EE7B7",
-                fontSize: "13px",
-              }}
-            >
-              {successMessage}
-            </div>
-          )}
 
           <div
             style={{
@@ -1005,6 +1139,9 @@ export default function UserManagement({
             </button>
           </div>
         </form>
+        </>
+        )}
+      </div>
       </div>
     </div>
   );
