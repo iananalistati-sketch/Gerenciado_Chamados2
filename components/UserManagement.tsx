@@ -1,8 +1,22 @@
-import { FormEvent, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
 import { FirebaseError } from "firebase/app";
 import { auth } from "../firebase";
 
 type UserRole = "admin" | "analyst" | "viewer";
+
+interface ManagedUser {
+  uid: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  disabled: boolean;
+  createdAt?: string;
+  lastLoginAt?: string;
+}
 
 interface UserManagementProps {
   isOpen: boolean;
@@ -21,10 +35,97 @@ export default function UserManagement({
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [users, setUsers] =
+    useState<ManagedUser[]>([]);
+
+  const [loadingUsers, setLoadingUsers] =
+    useState(false);
 
   if (!isOpen) {
     return null;
   }
+
+  async function loadUsers() {
+    try {
+      setLoadingUsers(true);
+      setErrorMessage("");
+
+      const currentUser =
+        auth.currentUser;
+
+      if (!currentUser) {
+        setErrorMessage(
+          "Sessão inválida. Faça login novamente."
+        );
+        return;
+      }
+
+      const token =
+        await currentUser.getIdToken();
+
+      const response = await fetch(
+        "/api/users/list",
+        {
+          method: "GET",
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+          },
+        }
+      );
+
+      const responseText =
+        await response.text();
+
+      let result: any = {};
+
+      try {
+        result = responseText
+          ? JSON.parse(responseText)
+          : {};
+      } catch {
+        throw new Error(
+          `Erro interno da API (${response.status}).`
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+          "Não foi possível carregar os usuários."
+        );
+      }
+
+      setUsers(
+        Array.isArray(result.users)
+          ? result.users
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao carregar usuários:",
+        error
+      );
+
+      if (error instanceof Error) {
+        setErrorMessage(
+          error.message
+        );
+      } else {
+        setErrorMessage(
+          "Não foi possível carregar os usuários."
+        );
+      }
+    } finally {
+      setLoadingUsers(false);
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      loadUsers();
+    }
+  }, [isOpen]);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -115,6 +216,8 @@ export default function UserManagement({
       setSuccessMessage(
         "Usuário cadastrado com sucesso."
       );
+
+      await loadUsers();
 
       setName("");
       setEmail("");
@@ -219,6 +322,165 @@ export default function UserManagement({
             ✕
           </button>
         </div>
+
+        <div
+          style={{
+            marginBottom: "24px",
+            paddingBottom: "24px",
+            borderBottom:
+              "1px solid #334155",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems: "center",
+              marginBottom: "14px",
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                color: "#F8FAFC",
+                fontSize: "16px",
+              }}
+            >
+              Usuários cadastrados
+            </h3>
+
+            <button
+              type="button"
+              onClick={loadUsers}
+              disabled={loadingUsers}
+              style={{
+                padding: "7px 12px",
+                backgroundColor:
+                  "#334155",
+                color: "#CBD5E1",
+                border:
+                  "1px solid #475569",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "12px",
+              }}
+            >
+              {loadingUsers
+                ? "Atualizando..."
+                : "Atualizar"}
+            </button>
+          </div>
+
+          {loadingUsers ? (
+            <div
+              style={{
+                color: "#94A3B8",
+                fontSize: "13px",
+              }}
+            >
+              Carregando usuários...
+            </div>
+          ) : users.length === 0 ? (
+            <div
+              style={{
+                color: "#94A3B8",
+                fontSize: "13px",
+              }}
+            >
+              Nenhum usuário encontrado.
+            </div>
+          ) : (
+            <div
+              style={{
+                maxHeight: "240px",
+                overflowY: "auto",
+                border:
+                  "1px solid #334155",
+                borderRadius: "10px",
+              }}
+            >
+              {users.map(user => (
+                <div
+                  key={user.uid}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "1fr auto auto",
+                    gap: "12px",
+                    alignItems: "center",
+                    padding: "12px 14px",
+                    borderBottom:
+                      "1px solid #334155",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        color: "#F8FAFC",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {user.name ||
+                        user.email}
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#94A3B8",
+                        fontSize: "12px",
+                        marginTop: "2px",
+                      }}
+                    >
+                      {user.email}
+                    </div>
+                  </div>
+
+                  <span
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: "999px",
+                      backgroundColor:
+                        "#334155",
+                      color: "#CBD5E1",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {user.role === "admin"
+                      ? "Administrador"
+                      : user.role ===
+                        "analyst"
+                      ? "Analista"
+                      : "Consulta"}
+                  </span>
+
+                  <span
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: "999px",
+                      backgroundColor:
+                        user.disabled
+                          ? "rgba(220,38,38,0.15)"
+                          : "rgba(5,150,105,0.15)",
+                      color:
+                        user.disabled
+                          ? "#FCA5A5"
+                          : "#6EE7B7",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {user.disabled
+                      ? "Inativo"
+                      : "Ativo"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>    
 
         <form onSubmit={handleSubmit}>
           <div
