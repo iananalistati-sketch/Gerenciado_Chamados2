@@ -41,10 +41,6 @@ export default function UserManagement({
   const [loadingUsers, setLoadingUsers] =
     useState(false);
 
-  if (!isOpen) {
-    return null;
-  }
-
   async function loadUsers() {
     try {
       setLoadingUsers(true);
@@ -126,6 +122,10 @@ export default function UserManagement({
       loadUsers();
     }
   }, [isOpen]);
+
+  if (!isOpen) {
+    return null;
+  }
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
