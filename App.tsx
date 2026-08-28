@@ -1258,11 +1258,31 @@ function AppContent() {
             marginBottom: '32px'
           }}
         >
-          <div>
-            <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#F8FAFC' }}>
-              Gestor de Chamados
-            </h1>
-            <p style={{ color: '#94A3B8', margin: 0 }}>Base de dados via Google Sheets</p>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+            }}
+          >
+            <img
+              src="https://cssjd-ti.s3.us-east-2.amazonaws.com/LOGO.png"
+              alt="São João de Deus"
+              style={{
+                width: "64px",
+                height: "64px",
+                objectFit: "contain",
+                flexShrink: 0,
+              }}
+            />
+
+            <div>
+              <h1>Gestor de Chamados</h1>
+
+              <p>
+                Base de dados via Google Sheets
+              </p>
+            </div>
           </div>
 
           <div
