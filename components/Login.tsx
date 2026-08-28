@@ -123,7 +123,12 @@ export default function Login() {
     <div className="login-page">
       <div className="login-wrapper">
         <div className="login-brand">
-          <div className="login-logo">GC</div>
+          <div className="login-logo">
+            <img
+              src="https://cssjd-ti.s3.us-east-2.amazonaws.com/LOGO.png"
+              alt="Logo"
+            />
+          </div>
 
           <h1>Gestor de Chamados</h1>
 
