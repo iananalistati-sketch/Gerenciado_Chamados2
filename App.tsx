@@ -1269,8 +1269,8 @@ function AppContent() {
               src="https://cssjd-ti.s3.us-east-2.amazonaws.com/LOGO.png"
               alt="São João de Deus"
               style={{
-                width: "64px",
-                height: "64px",
+                width: "200px",
+                height: "auto",
                 objectFit: "contain",
                 flexShrink: 0,
               }}
