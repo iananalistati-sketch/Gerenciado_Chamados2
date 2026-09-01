@@ -1,4 +1,5 @@
 import React from "react";
+import { useTheme } from "../contexts/ThemeContext";
 
 type SortConfig = {
   columnIndex: number | null;
@@ -163,15 +164,18 @@ export default function ChamadosTable({
   onToggleCobranca,
   onConcluir
 }: ChamadosTableProps) {
+
+  const { theme } = useTheme();
+
   if (loading && headers.length === 0) {
     return (
       <div
         style={{
           padding: "40px",
           textAlign: "center",
-          backgroundColor: "#1E293B",
+          backgroundColor: "var(--bg-secondary)",
           borderRadius: "12px",
-          color: "#94A3B8"
+          color: "var(--text-muted)"
         }}
       >
         Carregando dados da planilha...
@@ -222,9 +226,9 @@ export default function ChamadosTable({
       style={{
         width: "100%",
         overflow: "hidden",
-        backgroundColor: "#1E293B",
+        backgroundColor: "var(--bg-secondary)",
         borderRadius: "12px",
-        border: "1px solid #334155",
+        border: "1px solid var(--border-primary)",
         boxShadow:
           "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
       }}
@@ -240,19 +244,19 @@ export default function ChamadosTable({
       >
         <style>{`
           .table-scroll thead th {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: #0F172A;
-            border-bottom: 2px solid #334155;
-          }
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          background-color: var(--bg-primary);
+          border-bottom: 2px solid var(--border-primary);
+        }
 
           .table-scroll td:first-child,
           .table-scroll th:first-child {
             position: sticky;
             left: 0;
             z-index: 11;
-            border-right: 2px solid #334155;
+            border-right: 2px solid var(--border-primary);
             background-color: inherit;
           }
 
@@ -267,7 +271,7 @@ export default function ChamadosTable({
             overflow: hidden;
             text-overflow: ellipsis;
             padding: 10px 8px;
-            border-bottom: 1px solid #334155;
+            border-bottom: 1px solid var(--border-primary);
             vertical-align: middle;
             box-sizing: border-box;
           }
@@ -301,14 +305,14 @@ export default function ChamadosTable({
             borderSpacing: 0,
             fontSize:
               "clamp(11px, 0.75vw, 13px)",
-            color: "#E2E8F0",
+            color: "var(--text-primary)",
             tableLayout: "fixed"
           }}
         >
           <thead>
             <tr
               style={{
-                backgroundColor: "#0F172A"
+                backgroundColor: "var(--bg-primary)"
               }}
             >
               {tableHeaders.map((header, index) => {
@@ -333,8 +337,8 @@ export default function ChamadosTable({
                       color:
                         sortConfig.columnIndex ===
                         index
-                          ? "#F8FAFC"
-                          : "#94A3B8",
+                          ? "var(--text-primary)"
+                          : "var(--text-muted)",
                       textTransform: "uppercase",
                       fontSize: "11px",
                       letterSpacing: "0.5px",
@@ -379,7 +383,7 @@ export default function ChamadosTable({
                 style={{
                   textAlign: "center",
                   fontWeight: "bold",
-                  color: "#94A3B8",
+                  color: "var(--text-muted)",
                   textTransform: "uppercase",
                   fontSize: "11px",
                   letterSpacing: "0.5px",
@@ -396,7 +400,7 @@ export default function ChamadosTable({
                 style={{
                   textAlign: "center",
                   fontWeight: "bold",
-                  color: "#94A3B8",
+                  color: "var(--text-muted)",
                   textTransform: "uppercase",
                   fontSize: "11px",
                   letterSpacing: "0.5px",
@@ -413,7 +417,7 @@ export default function ChamadosTable({
                 style={{
                   textAlign: "center",
                   fontWeight: "bold",
-                  color: "#94A3B8",
+                  color: "var(--text-muted)",
                   textTransform: "uppercase",
                   fontSize: "11px",
                   letterSpacing: "0.5px",
@@ -449,12 +453,12 @@ export default function ChamadosTable({
 
               const rowBackground =
                 index % 2 === 0
-                  ? "#1E293B"
-                  : "#1a2434";
+                  ? "var(--bg-secondary)"
+                  : "var(--bg-primary)";
 
               const activeRowBackground =
                 isRowGreen
-                  ? "#065F46"
+                  ? (theme === "dark" ? "#065F46" : "#D1FAE5")
                   : rowBackground;
 
               return (
@@ -472,8 +476,8 @@ export default function ChamadosTable({
                   onMouseOver={event => {
                     event.currentTarget.style.backgroundColor =
                       isRowGreen
-                        ? "#064E3B"
-                        : "#334155";
+                        ? (theme === "dark" ? "#064E3B" : "#A7F3D0")
+                        : "var(--border-primary)";
                   }}
                   onMouseOut={event => {
                     event.currentTarget.style.backgroundColor =
