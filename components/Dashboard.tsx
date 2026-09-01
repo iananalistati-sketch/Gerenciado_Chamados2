@@ -10,6 +10,7 @@ import {
 } from "chart.js";
 
 import { Bar, Pie } from "react-chartjs-2";
+import { useTheme } from "../contexts/ThemeContext";
 
 ChartJS.register(
   CategoryScale,
@@ -43,8 +44,16 @@ export default function Dashboard({
   stats,
   onFilter
 }: DashboardProps) {
+  const { theme } = useTheme();
+
   const pendingCount =
     totalFiltered - stats.completedCount;
+
+  const chartTextColor =
+    theme === "dark" ? "#94A3B8" : "#64748B";
+
+  const chartGridColor =
+    theme === "dark" ? "#334155" : "#E2E8F0";
 
   return (
     <div
@@ -66,10 +75,10 @@ export default function Dashboard({
       >
         <div
           style={{
-            backgroundColor: "#1E293B",
+            backgroundColor: "var(--bg-secondary)",
             padding: "24px",
             borderRadius: "12px",
-            border: "1px solid #334155"
+            border: "1px solid var(--border-primary)"
           }}
         >
           <p
@@ -88,7 +97,7 @@ export default function Dashboard({
             style={{
               fontSize: "32px",
               fontWeight: "bold",
-              color: "#F8FAFC"
+              color: "var(--text-primary)"
             }}
           >
             {totalFiltered}
@@ -97,17 +106,17 @@ export default function Dashboard({
 
         <div
           style={{
-            backgroundColor: "#1E293B",
+            backgroundColor: "var(--bg-secondary)",
             padding: "24px",
             borderRadius: "12px",
-            border: "1px solid #334155",
+            border: "1px solid var(--border-primary)",
             borderLeft: "4px solid #EF4444"
           }}
         >
           <p
             style={{
               fontSize: "12px",
-              color: "#94A3B8",
+              color: "var(--text-muted)",
               fontWeight: "bold",
               textTransform: "uppercase",
               marginBottom: "8px"
@@ -129,17 +138,17 @@ export default function Dashboard({
 
         <div
           style={{
-            backgroundColor: "#1E293B",
+            backgroundColor: "var(--bg-secondary)",
             padding: "24px",
             borderRadius: "12px",
-            border: "1px solid #334155",
+            border: "1px solid var(--border-primary)",
             borderLeft: "4px solid #10B981"
           }}
         >
           <p
             style={{
               fontSize: "12px",
-              color: "#94A3B8",
+              color: "var(--text-muted)",
               fontWeight: "bold",
               textTransform: "uppercase",
               marginBottom: "8px"
@@ -161,16 +170,16 @@ export default function Dashboard({
 
         <div
           style={{
-            backgroundColor: "#1E293B",
+            backgroundColor: "var(--bg-secondary)",
             padding: "24px",
             borderRadius: "12px",
-            border: "1px solid #334155"
+            border: "1px solid var(--border-primary)"
           }}
         >
           <p
             style={{
               fontSize: "12px",
-              color: "#94A3B8",
+              color: "var(--text-muted)",
               fontWeight: "bold",
               textTransform: "uppercase",
               marginBottom: "8px"
@@ -212,7 +221,7 @@ export default function Dashboard({
           <h4
             style={{
               fontSize: "14px",
-              color: "#94A3B8",
+              color: "var(--text-muted)",
               marginBottom: "20px",
               fontWeight: "bold"
             }}
