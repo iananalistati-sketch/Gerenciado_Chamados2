@@ -1390,9 +1390,9 @@ function AppContent() {
         <div style={{ 
           marginBottom: '32px', 
           padding: '20px', 
-          backgroundColor: '#1E293B', 
+          backgroundColor: 'var(--bg-secondary)',
           borderRadius: '12px',
-          border: '1px solid #334155',
+          border: '1px solid var(--border-primary)',
           display: 'flex',
           alignItems: 'center',
           gap: '15px'
@@ -1411,7 +1411,7 @@ function AppContent() {
               padding: '8px 12px', 
               fontSize: '14px', 
               backgroundColor: 'var(--bg-secondary)',
-              color: '#F8FAFC', 
+              color: 'var(--text-primary)',
               border: '1px solid var(--border-primary)',
               borderRadius: '6px',
               outline: 'none',
@@ -1450,9 +1450,11 @@ function AppContent() {
                 onClick={() => setShowFilterModal(true)}
                 style={{
                   padding: '12px 20px',
-                  backgroundColor: '#1E293B',
-                  color: activeFilterCount > 0 ? '#3B82F6' : '#94A3B8',
-                  border: activeFilterCount > 0 ? '1px solid #3B82F6' : '1px solid #334155',
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: activeFilterCount > 0 ? '#3B82F6' : 'var(--text-muted)',
+                  border: activeFilterCount > 0
+                    ? '1px solid #3B82F6'
+                    : '1px solid var(--border-primary)',
                   borderRadius: '10px',
                   cursor: 'pointer',
                   fontSize: '13px',
@@ -1463,12 +1465,15 @@ function AppContent() {
                   gap: '8px'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#334155';
-                  e.currentTarget.style.color = '#F8FAFC';
+                  e.currentTarget.style.backgroundColor = 'var(--border-primary)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1E293B';
-                  e.currentTarget.style.color = activeFilterCount > 0 ? '#3B82F6' : '#94A3B8';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+                  e.currentTarget.style.color =
+                    activeFilterCount > 0
+                      ? '#3B82F6'
+                      : 'var(--text-muted)';
                 }}
               >
                 <span>🔍</span> 
@@ -1479,9 +1484,15 @@ function AppContent() {
                 onClick={handleToggleDeleted}
                 style={{
                   padding: '12px 20px',
-                  backgroundColor: showDeleted ? '#334155' : '#1E293B',
-                  color: showDeleted ? '#3B82F6' : '#94A3B8',
-                  border: showDeleted ? '1px solid #3B82F6' : '1px solid #334155',
+                  backgroundColor: showDeleted
+                    ? 'var(--bg-hover)'
+                    : 'var(--bg-secondary)',
+                  color: showDeleted
+                    ? '#3B82F6'
+                    : 'var(--text-muted)',
+                  border: showDeleted
+                    ? '1px solid #3B82F6'
+                    : '1px solid var(--border-primary)',
                   borderRadius: '10px',
                   cursor: 'pointer',
                   fontSize: '13px',
@@ -1524,9 +1535,9 @@ function AppContent() {
                 onClick={fetchData} 
                 style={{ 
                   padding: '0 20px', 
-                  backgroundColor: '#1E293B', 
-                  color: '#94A3B8', 
-                  border: '1px solid #334155', 
+                  backgroundColor: 'var(--bg-secondary)', 
+                  color: 'var(--text-muted)', 
+                  border: '1px solid var(--border-primary)',
                   borderRadius: '10px', 
                   cursor: 'pointer',
                   fontSize: '13px',
@@ -1537,12 +1548,12 @@ function AppContent() {
                   gap: '8px'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#334155';
-                  e.currentTarget.style.color = '#F8FAFC';
+                  e.currentTarget.style.backgroundColor = 'var(--border-primary)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1E293B';
-                  e.currentTarget.style.color = '#94A3B8';
+                  e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+                  e.currentTarget.style.color = 'var(--text-muted)';
                 }}
               >
                 ↻ Atualizar
@@ -1629,9 +1640,9 @@ function AppContent() {
               gap: '20px', 
               marginTop: '16px',
               padding: '16px',
-              backgroundColor: '#1E293B',
+              backgroundColor: 'var(--bg-secondary)',
               borderRadius: '12px',
-              border: '1px solid #334155'
+              border: '1px solid var(--border-primary)'
             }}>
                       {(() => {
                         const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
@@ -1643,9 +1654,13 @@ function AppContent() {
                       disabled={currentPage === 1}
                       style={{ 
                         padding: '8px 16px', 
-                        backgroundColor: currentPage === 1 ? '#0F172A' : '#334155', 
-                        color: currentPage === 1 ? '#475569' : '#F8FAFC',
-                        border: '1px solid #475569',
+                        backgroundColor: currentPage === 1
+                          ? 'var(--bg-primary)'
+                          : 'var(--border-primary)', 
+                        color: currentPage === 1
+                          ? 'var(--text-muted)'
+                          : 'var(--text-primary)',
+                        border: '1px solid var(--border-primary)',
                         borderRadius: '8px',
                         cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
                         fontSize: '13px',
@@ -1654,8 +1669,8 @@ function AppContent() {
                     >
                       ← Anterior
                     </button>
-                    <span style={{ fontSize: '14px', color: '#94A3B8', fontWeight: '500' }}>
-                      Página <strong style={{ color: '#F8FAFC' }}>{currentPage}</strong> de <strong style={{ color: '#F8FAFC' }}>{totalPages}</strong>
+                    <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: '500' }}>
+                      Página <strong style={{ color: 'var(--text-primary)' }}>{currentPage}</strong> de <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
                       <span style={{ marginLeft: '10px', opacity: 0.6, fontSize: '12px' }}>
                         ({filteredData.length} registros)
                       </span>
@@ -1665,9 +1680,13 @@ function AppContent() {
                       disabled={currentPage === totalPages}
                       style={{ 
                         padding: '8px 16px', 
-                        backgroundColor: currentPage === totalPages ? '#0F172A' : '#334155', 
-                        color: currentPage === totalPages ? '#475569' : '#F8FAFC',
-                        border: '1px solid #475569',
+                        backgroundColor: currentPage === totalPages
+                          ? 'var(--bg-primary)'
+                          : 'var(--border-primary)', 
+                        color: currentPage === totalPages
+                          ? 'var(--text-muted)'
+                          : 'var(--text-primary)',
+                        border: '1px solid var(--border-primary)',
                         borderRadius: '8px',
                         cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
                         fontSize: '13px',
