@@ -1,1 +1,57 @@
 @import "tailwindcss";
+:root,
+[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-secondary: #111c30;
+  --bg-surface: #1e293b;
+  --bg-surface-hover: #263449;
+  --bg-input: #0f172a;
+
+  --border-primary: #334155;
+  --border-secondary: #475569;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+
+  --accent-primary: #3b82f6;
+  --accent-primary-hover: #2563eb;
+
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+
+  --overlay: rgba(2, 6, 23, 0.72);
+
+  --shadow:
+    0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="light"] {
+  --bg-primary: #f1f5f9;
+  --bg-secondary: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f1f5f9;
+  --bg-input: #ffffff;
+
+  --border-primary: #dbe3ee;
+  --border-secondary: #cbd5e1;
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+
+  --accent-primary: #2563eb;
+  --accent-primary-hover: #1d4ed8;
+
+  --success: #059669;
+  --danger: #dc2626;
+  --warning: #d97706;
+
+  --overlay: rgba(15, 23, 42, 0.35);
+
+  --shadow:
+    0 20px 45px rgba(15, 23, 42, 0.12);
+}

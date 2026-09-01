@@ -11,6 +11,9 @@ import CobrancaModal from "./components/CobrancaModal";
 import FiltroModal from "./components/FiltroModal";
 import Login from "./components/Login";
 import { useAuth } from "./contexts/AuthContext";
+import {
+  useTheme,
+} from "./contexts/ThemeContext";
 
 /**
  * App.tsx - Mínimo Funcional
@@ -19,6 +22,7 @@ import { useAuth } from "./contexts/AuthContext";
 
 function AppContent() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [data, setData] = useState<string[][]>([]);
   // allData: Armazena os dados de todas as abas carregadas
   const [allData, setAllData] = useState<Record<string, string[][]>>({
@@ -1263,8 +1267,33 @@ function AppContent() {
             }}
           >
             <span style={{ fontSize: '13px', color: '#CBD5E1' }}>
-              {user?.email || 'Usuário autenticado'}
+              {user?.displayName || user?.email || 'Usuário autenticado'}
             </span>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={
+                theme === 'dark'
+                  ? 'Ativar tema claro'
+                  : 'Ativar tema escuro'
+              }
+              style={{
+                padding: '8px 14px',
+                backgroundColor: '#334155',
+                color: '#E2E8F0',
+                border: '1px solid #475569',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '600'
+              }}
+            >
+              {theme === 'dark'
+                ? '☀ Claro'
+                : '🌙 Escuro'}
+            </button>
+
             <button
               type="button"
               onClick={handleLogout}
