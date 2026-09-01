@@ -84,7 +84,7 @@ export default function Dashboard({
           <p
             style={{
               fontSize: "12px",
-              color: "#94A3B8",
+              color: "var(--text-secondary)",
               fontWeight: "bold",
               textTransform: "uppercase",
               marginBottom: "8px"
@@ -212,16 +212,16 @@ export default function Dashboard({
         {/* Situação */}
         <div
           style={{
-            backgroundColor: "#1E293B",
+            backgroundColor: "var(--bg-secondary)",
             padding: "20px",
             borderRadius: "12px",
-            border: "1px solid #334155"
+            border: "1px solid var(--border-primary)"
           }}
         >
           <h4
             style={{
               fontSize: "14px",
-              color: "var(--text-muted)",
+              color: "var(--text-secondary)",
               marginBottom: "20px",
               fontWeight: "bold"
             }}
@@ -298,7 +298,7 @@ export default function Dashboard({
                   legend: {
                     position: "right",
                     labels: {
-                      color: "#94A3B8",
+                      color: chartTextColor,
                       font: {
                         size: 10
                       }
@@ -313,16 +313,16 @@ export default function Dashboard({
         {/* Gravidade */}
         <div
           style={{
-            backgroundColor: "#1E293B",
+            backgroundColor: "var(--bg-secondary)",
             padding: "20px",
             borderRadius: "12px",
-            border: "1px solid #334155"
+            border: "1px solid var(--border-primary)"
           }}
         >
           <h4
             style={{
               fontSize: "14px",
-              color: "#94A3B8",
+              color: "var(--text-secondary)",
               marginBottom: "20px",
               fontWeight: "bold"
             }}
@@ -390,15 +390,15 @@ export default function Dashboard({
                 scales: {
                   y: {
                     ticks: {
-                      color: "#94A3B8"
+                      color: chartTextColor
                     },
                     grid: {
-                      color: "#334155"
+                      color: chartGridColor
                     }
                   },
                   x: {
                     ticks: {
-                      color: "#94A3B8"
+                      color: chartTextColor
                     },
                     grid: {
                       display: false
@@ -417,18 +417,18 @@ export default function Dashboard({
         </div>
 
         {/* Responsável */}
-        <div
-          style={{
-            backgroundColor: "#1E293B",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid #334155"
-          }}
-        >
+          <div
+            style={{
+              backgroundColor: "var(--bg-secondary)",
+              padding: "20px",
+              borderRadius: "12px",
+              border: "1px solid var(--border-primary)"
+            }}
+          >
           <h4
             style={{
               fontSize: "14px",
-              color: "#94A3B8",
+              color: "var(--text-secondary)",
               marginBottom: "20px",
               fontWeight: "bold"
             }}
@@ -497,7 +497,7 @@ export default function Dashboard({
                 scales: {
                   y: {
                     ticks: {
-                      color: "#94A3B8"
+                      color: chartTextColor
                     },
                     grid: {
                       display: false
@@ -505,10 +505,10 @@ export default function Dashboard({
                   },
                   x: {
                     ticks: {
-                      color: "#94A3B8"
+                      color: chartTextColor
                     },
                     grid: {
-                      color: "#334155"
+                      color: chartGridColor
                     }
                   }
                 },
