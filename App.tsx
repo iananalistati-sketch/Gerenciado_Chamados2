@@ -1238,10 +1238,11 @@ function AppContent() {
   return (
     <div style={{ 
       minHeight: '100vh',
-      backgroundColor: '#0F172A', 
-      color: '#E2E8F0',
+      backgroundColor: 'var(--bg-primary)', 
+      color: 'var(--text-primary)',
       padding: '40px 20px', 
-      fontFamily: 'Inter, system-ui, -apple-system, sans-serif' 
+      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      transition: 'background-color 0.25s ease, color 0.25s ease'
     }}>
       <div
         style={{
@@ -1293,12 +1294,12 @@ function AppContent() {
               alignItems: 'center',
               gap: '12px',
               padding: '10px 12px',
-              backgroundColor: '#1E293B',
-              border: '1px solid #334155',
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border-primary)',
               borderRadius: '10px'
             }}
           >
-            <span style={{ fontSize: '13px', color: '#CBD5E1' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               {user?.displayName || user?.email || 'Usuário autenticado'}
             </span>
 
@@ -1396,16 +1397,22 @@ function AppContent() {
           alignItems: 'center',
           gap: '15px'
         }}>
-          <label style={{ fontSize: '14px', fontWeight: '600', color: '#94A3B8' }}>Selecionar Aba:</label>
+          <label
+            style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: 'var(--text-muted)'
+            }}
+          >Selecionar Aba:</label>
           <select 
             value={selectedSheet} 
             onChange={(e) => setSelectedSheet(e.target.value)}
             style={{ 
               padding: '8px 12px', 
               fontSize: '14px', 
-              backgroundColor: '#0F172A', 
+              backgroundColor: 'var(--bg-secondary)',
               color: '#F8FAFC', 
-              border: '1px solid #334155',
+              border: '1px solid var(--border-primary)',
               borderRadius: '6px',
               outline: 'none',
               cursor: 'pointer'
@@ -1414,8 +1421,8 @@ function AppContent() {
             <option value="tbChamadosMV">MV</option>
             <option value="tbChamadosForhealth">ForHealth</option>
           </select>
-          <div style={{ width: '1px', height: '24px', backgroundColor: '#334155', margin: '0 10px' }}></div>
-          <span style={{ fontSize: '12px', color: '#64748B' }}>
+          <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-primary)', margin: '0 10px' }}></div>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             A estrutura de campos é atualizada dinamicamente conforme a aba.
           </span>
         </div>
@@ -1812,9 +1819,9 @@ function AppContent() {
                       width: '100%', 
                       padding: '12px', 
                       borderRadius: '8px', 
-                      border: '1px solid #334155', 
-                      backgroundColor: '#0F172A', 
-                      color: '#F8FAFC',
+                      border: '1px solid var(--border-primary)',
+                      backgroundColor: 'var(--bg-input)',
+                      color: 'var(--text-primary)', 
                       fontSize: '14px',
                       outline: 'none',
                       transition: 'border-color 0.2s'
