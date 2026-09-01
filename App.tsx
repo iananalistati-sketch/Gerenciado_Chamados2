@@ -13,6 +13,7 @@ import Login from "./components/Login";
 import { useAuth } from "./contexts/AuthContext";
 import UserManagement from "./components/UserManagement";
 import ChangePassword from "./components/ChangePassword";
+import { useTheme } from "./contexts/ThemeContext";
 
 /**
  * App.tsx - Mínimo Funcional
@@ -21,6 +22,7 @@ import ChangePassword from "./components/ChangePassword";
 
 function AppContent() {
   const { user, role, permissions, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   console.log("DEBUG PERMISSOES", {
     email: user?.email,
@@ -1336,6 +1338,33 @@ function AppContent() {
               }}
             >
               Alterar senha
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={
+                theme === "dark"
+                  ? "Ativar tema claro"
+                  : "Ativar tema escuro"
+              }
+              style={{
+                padding: "8px 14px",
+                backgroundColor: "#334155",
+                color: "#E2E8F0",
+                border: "1px solid #475569",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "600",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              {theme === "dark"
+                ? "☀ Claro"
+                : "🌙 Escuro"}
             </button>
 
             <button
