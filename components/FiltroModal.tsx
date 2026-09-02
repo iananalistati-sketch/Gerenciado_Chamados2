@@ -44,12 +44,12 @@ export default function FiltroModal({
       left: 0, 
       width: '100%', 
       height: '100%', 
-      backgroundColor: 'rgba(2, 6, 23, 0.85)', 
+      backgroundColor: 'rgba(15, 23, 42, 0.65)',
       display: 'flex', 
       justifyContent: 'center', 
       alignItems: 'center', 
       zIndex: 1000,
-      backdropFilter: 'blur(4px)'
+      backdropFilter: 'blur(8px)'
     }}>
       <div style={{ 
         backgroundColor: 'var(--bg-secondary)', 
