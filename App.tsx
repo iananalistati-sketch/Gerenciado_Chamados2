@@ -1765,7 +1765,7 @@ function AppContent() {
             left: 0, 
             width: '100%', 
             height: '100%', 
-            backgroundColor: 'rgba(2, 6, 23, 0.8)', 
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
             display: 'flex', 
             justifyContent: 'center', 
             alignItems: 'center', 
