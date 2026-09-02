@@ -1774,11 +1774,11 @@ function AppContent() {
             backdropFilter: 'blur(8px)'
           }}>
             <div style={{ 
-              backgroundColor: '#1E293B', 
+              backgroundColor: 'var(--bg-secondary)', 
               padding: '32px', 
               borderRadius: '16px',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-              border: '1px solid #334155',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid var(--border-primary)',
               width: '100%',
               maxWidth: '600px',
               maxHeight: '90vh',
@@ -1796,31 +1796,33 @@ function AppContent() {
                   width: 8px;
                 }
                 *::-webkit-scrollbar-track {
-                  background: #1E293B;
+                  background: var(--bg-secondary);
                 }
+
                 *::-webkit-scrollbar-thumb {
-                  background: #334155;
+                  background: var(--border-primary);
                   border-radius: 10px;
                 }
+
                 *::-webkit-scrollbar-thumb:hover {
-                  background: #475569;
+                  background: var(--text-muted);
                 }
               `}</style>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h3 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#F8FAFC' }}>
+                <h3 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                   {isEdit ? 'Editar Chamado' : 'Novo Registro'}
                 </h3>
                 <button 
                   onClick={() => setShowForm(false)}
-                  style={{ background: '#334155', color: '#94A3B8', border: 'none', cursor: 'pointer', fontSize: '14px', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ background: 'var(--bg-primary)', color: 'var(--text-muted)', border: '1px solid var(--border-primary)', cursor: 'pointer', fontSize: '14px', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   title="Fechar"
                 >
                   ✕
                 </button>
               </div>
               
-              <p style={{ fontSize: '14px', color: '#94A3B8', marginBottom: '32px' }}>
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '32px' }}>
                 Insira os detalhes na aba <strong>{selectedSheet}</strong>.
               </p>
               
@@ -1848,7 +1850,7 @@ function AppContent() {
                     
                     return (
                       <div key={index} style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '8px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           {header}
                         </label>
                         
@@ -1859,18 +1861,18 @@ function AppContent() {
                             onChange={(e) => handleInputChange(header, e.target.value)}
                             required
                           >
-                            <option value="" style={{ backgroundColor: '#0F172A' }}>Selecione...</option>
-                            <option value="Aberto" style={{ backgroundColor: '#0F172A' }}>Aberto</option>
-                            <option value="Agendado" style={{ backgroundColor: '#0F172A' }}>Agendado</option>
-                            <option value="Em andamento" style={{ backgroundColor: '#0F172A' }}>Em andamento</option>
-                            <option value="Concluído" style={{ backgroundColor: '#0F172A' }}>Concluído</option>
-                            <option value="Aguardando Atendimento" style={{ backgroundColor: '#0F172A' }}>Aguardando Atendimento</option>
-                            <option value="Pendente Aplicação Pacote" style={{ backgroundColor: '#0F172A' }}>Pendente Aplicação Pacote</option>
-                            <option value="Ticket Rejeitado" style={{ backgroundColor: '#0F172A' }}>Ticket Rejeitado</option>
-                            <option value="Cancelado" style={{ backgroundColor: '#0F172A' }}>Cancelado</option>
-                            <option value="Retorno Cliente" style={{ backgroundColor: '#0F172A' }}>Retorno Cliente</option>
-                            <option value="Em Correção" style={{ backgroundColor: '#0F172A' }}>Em Correção</option>
-                            <option value="Outros" style={{ backgroundColor: '#0F172A' }}>Outros</option>
+                            <option value="" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Selecione...</option>
+                            <option value="Aberto" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Aberto</option>
+                            <option value="Agendado" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Agendado</option>
+                            <option value="Em andamento" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Em andamento</option>
+                            <option value="Concluído" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Concluído</option>
+                            <option value="Aguardando Atendimento" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Aguardando Atendimento</option>
+                            <option value="Pendente Aplicação Pacote" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Pendente Aplicação Pacote</option>
+                            <option value="Ticket Rejeitado" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Ticket Rejeitado</option>
+                            <option value="Cancelado" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Cancelado</option>
+                            <option value="Retorno Cliente" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Retorno Cliente</option>
+                            <option value="Em Correção" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Em Correção</option>
+                            <option value="Outros" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Outros</option>
                           </select>
                         ) : hClean.includes("gravidade") ? (
                             <select 
@@ -1879,11 +1881,11 @@ function AppContent() {
                               onChange={(e) => handleInputChange(header, e.target.value)}
                               required
                             >
-                              <option value="" style={{ backgroundColor: '#0F172A' }}>Selecione...</option>
-                              <option value="Crítico" style={{ backgroundColor: '#0F172A' }}>Crítico</option>
-                              <option value="Urgente" style={{ backgroundColor: '#0F172A' }}>Urgente</option>
-                              <option value="Intermediário" style={{ backgroundColor: '#0F172A' }}>Intermediário</option>
-                              <option value="Baixa" style={{ backgroundColor: '#0F172A' }}>Baixa</option>
+                              <option value="" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Selecione...</option>
+                              <option value="Crítico" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Crítico</option>
+                              <option value="Urgente" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Urgente</option>
+                              <option value="Intermediário" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Intermediário</option>
+                              <option value="Baixa" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Baixa</option>
                             </select>
                         ) : hClean.includes("responsável") || hClean.includes("responsavel") ? (
                           <select 
@@ -1891,9 +1893,9 @@ function AppContent() {
                             value={formData[header] || ''}
                             onChange={(e) => handleInputChange(header, e.target.value)}
                           >
-                            <option value="" style={{ backgroundColor: '#0F172A' }}>Selecione...</option>
+                            <option value="" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Selecione...</option>
                             {Array.from(new Set(data.slice(1).map(row => (row[index] || "").trim()).filter(v => v !== ""))).sort().map(name => (
-                              <option key={name} value={name} style={{ backgroundColor: '#0F172A' }}>{name}</option>
+                              <option key={name} value={name} style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>{name}</option>
                             ))}
                           </select>
                         ) : hClean.includes("método") || hClean.includes("metodo") ? (
@@ -1902,10 +1904,10 @@ function AppContent() {
                             value={formData[header] || 'Email'}
                             onChange={(e) => handleInputChange(header, e.target.value)}
                           >
-                            <option value="Email" style={{ backgroundColor: '#0F172A' }}>Email</option>
-                            <option value="Telefone" style={{ backgroundColor: '#0F172A' }}>Telefone</option>
-                            <option value="WhatsApp" style={{ backgroundColor: '#0F172A' }}>WhatsApp</option>
-                            <option value="Portal" style={{ backgroundColor: '#0F172A' }}>Portal</option>
+                            <option value="Email" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Email</option>
+                            <option value="Telefone" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Telefone</option>
+                            <option value="WhatsApp" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>WhatsApp</option>
+                            <option value="Portal" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Portal</option>
                           </select>
                         ) : hClean.includes("data") ? (
                           <input 
@@ -1935,7 +1937,7 @@ function AppContent() {
                     display: 'flex',
                     gap: '12px',
                     paddingTop: '24px',
-                    borderTop: '1px solid #334155',
+                    borderTop: '1px solid var(--border-primary)',
                     alignItems: 'center',
                     justifyContent: 'space-between'
                   }}
@@ -1979,15 +1981,15 @@ function AppContent() {
                       style={{
                         padding: '14px',
                         backgroundColor: 'transparent',
-                        color: '#94A3B8',
+                        color: 'var(--text-muted)',
                         fontWeight: '600',
                         cursor: 'pointer',
-                        border: '1px solid #334155',
+                        border: '1px solid var(--border-primary)',
                         borderRadius: '10px',
                         transition: 'all 0.2s'
                       }}
                       onMouseOver={(e) =>
-                        e.currentTarget.style.backgroundColor = '#334155'
+                        e.currentTarget.style.backgroundColor = 'var(--border-primary)'
                       }
                       onMouseOut={(e) =>
                         e.currentTarget.style.backgroundColor = 'transparent'
