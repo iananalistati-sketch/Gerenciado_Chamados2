@@ -278,23 +278,23 @@ export default function ChamadosTable({
 
           .table-scroll {
             scrollbar-width: auto;
-            scrollbar-color: #475569 #1E293B;
+            scrollbar-color: var(--text-muted) var(--bg-secondary);
           }
 
           .table-scroll::-webkit-scrollbar {
             height: 12px;
-            background: #1E293B;
+            background: var(--bg-secondary);
             display: block !important;
           }
 
           .table-scroll::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: var(--text-muted);
             border-radius: 6px;
-            border: 3px solid #1E293B;
+            border: 3px solid var(--bg-secondary);
           }
 
           .table-scroll::-webkit-scrollbar-thumb:hover {
-            background: #64748B;
+            background: var(--text-secondary);
           }
         `}</style>
 
@@ -606,7 +606,7 @@ export default function ChamadosTable({
                       }}
                       onMouseOver={event => {
                         event.currentTarget.style.backgroundColor =
-                          "#334155";
+                          "var(--border-primary)";
                       }}
                       onMouseOut={event => {
                         event.currentTarget.style.backgroundColor =

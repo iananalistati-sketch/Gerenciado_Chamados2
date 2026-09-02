@@ -1309,9 +1309,9 @@ function AppContent() {
                 onClick={() => setShowUserManagement(true)}
                 style={{
                   padding: '8px 14px',
-                  backgroundColor: '#334155',
-                  color: '#E2E8F0',
-                  border: '1px solid #475569',
+                  backgroundColor: 'var(--bg-primary)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-primary)',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   fontSize: '13px',
@@ -1329,9 +1329,9 @@ function AppContent() {
               }
               style={{
                 padding: "8px 14px",
-                backgroundColor: "#334155",
-                color: "#E2E8F0",
-                border: "1px solid #475569",
+                backgroundColor: "var(--bg-primary)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border-primary)",
                 borderRadius: "8px",
                 cursor: "pointer",
                 fontSize: "13px",
@@ -1351,9 +1351,9 @@ function AppContent() {
               }
               style={{
                 padding: "8px 14px",
-                backgroundColor: "#334155",
-                color: "#E2E8F0",
-                border: "1px solid #475569",
+                backgroundColor: "var(--bg-primary)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border-primary)",
                 borderRadius: "8px",
                 cursor: "pointer",
                 fontSize: "13px",
