@@ -1733,18 +1733,6 @@ function AppContent() {
           onClose={() => setShowFilterModal(false)}
         />
 
-        <FiltroModal
-          isOpen={showFilterModal}
-          headers={headers}
-          selectedSheet={selectedSheet}
-          sheetFilters={sheetFilters}
-          normalize={normalize}
-          getColumnConfig={getColumnConfig}
-          updateFilter={updateFilter}
-          clearFilters={clearFilters}
-          onClose={() => setShowFilterModal(false)}
-        />
-
         <UserManagement
           isOpen={showUserManagement}
           onClose={() => setShowUserManagement(false)}
