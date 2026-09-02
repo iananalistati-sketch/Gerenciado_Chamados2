@@ -1436,7 +1436,17 @@ function AppContent() {
             data={data}
             loading={loading}
             error={error}
+            currentUserName={
+              user?.displayName ||
+              user?.email ||
+              "Usuário não identificado"
+            }
+            canEdit={
+              role === "admin" ||
+              role === "analyst"
+            }
             onRefresh={fetchData}
+            onSaveRow={handleSaveRow}
           />
         ) : (
           <>

@@ -1,10 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
+import EditarMobileModal from "./EditarMobileModal";
 
 interface ControleMobilesProps {
   data: string[][];
   loading: boolean;
   error: string | null;
+  currentUserName: string;
+  canEdit: boolean;
   onRefresh: () => void;
+  onSaveRow: (
+    rowData: string[],
+    rowIndex: number
+  ) => Promise<void>;
 }
 
 const normalize = (value: string) =>
@@ -21,7 +28,10 @@ export default function ControleMobiles({
   data,
   loading,
   error,
+  currentUserName,
+  canEdit,
   onRefresh,
+  onSaveRow,
 }: ControleMobilesProps) {
   const [search, setSearch] = useState("");
   const [setorFilter, setSetorFilter] = useState("");
@@ -32,6 +42,9 @@ export default function ControleMobiles({
   const [versaoFilter, setVersaoFilter] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
+
+  const [editingRow, setEditingRow] =
+    useState<string[] | null>(null);
 
   const itemsPerPage = 20;
 
@@ -310,6 +323,18 @@ export default function ControleMobiles({
     setVersaoFilter("");
     setCurrentPage(1);
   };
+
+  const handleEdit = (row: string[]) => {
+    if (!canEdit) {
+        return;
+    }
+
+    setEditingRow(row);
+    };
+
+    const handleCloseEdit = () => {
+    setEditingRow(null);
+    };
 
   const hasActiveFilters =
     search ||
@@ -877,7 +902,8 @@ export default function ControleMobiles({
                     "Data atualização",
                     "Status atualização",
                     "Status",
-                  ].map((title) => (
+                    "Ações",
+                    ].map((title) => (
                     <th
                       key={title}
                       style={{
@@ -901,7 +927,7 @@ export default function ControleMobiles({
                 {paginatedRows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       style={{
                         padding: "28px",
                         textAlign: "center",
@@ -1092,6 +1118,44 @@ export default function ControleMobiles({
                               : "Não informado"}
                           </span>
                         </td>
+
+                        <td
+                            style={{
+                                padding: "12px 14px",
+                                whiteSpace: "nowrap",
+                            }}
+                            >
+                            {canEdit ? (
+                                <button
+                                type="button"
+                                onClick={() => handleEdit(row)}
+                                style={{
+                                    padding: "6px 10px",
+                                    backgroundColor:
+                                    "var(--bg-primary)",
+                                    color: "#3B82F6",
+                                    border:
+                                    "1px solid var(--border-primary)",
+                                    borderRadius: "7px",
+                                    cursor: "pointer",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                }}
+                                >
+                                Editar
+                                </button>
+                            ) : (
+                                <span
+                                style={{
+                                    color: "var(--text-muted)",
+                                    fontSize: "11px",
+                                }}
+                                >
+                                Somente leitura
+                                </span>
+                            )}
+                            </td>
+
                       </tr>
                     );
                   })
@@ -1208,7 +1272,18 @@ export default function ControleMobiles({
             </button>
           </div>
         </div>
-      )}
+            )}
+
+      <EditarMobileModal
+        isOpen={editingRow !== null}
+        row={editingRow}
+        headers={headers}
+        allRows={rows}
+        currentUserName={currentUserName}
+        normalize={normalize}
+        onClose={handleCloseEdit}
+        onSave={onSaveRow}
+      />
     </div>
   );
 }
