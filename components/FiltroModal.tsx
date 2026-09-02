@@ -52,24 +52,24 @@ export default function FiltroModal({
       backdropFilter: 'blur(4px)'
     }}>
       <div style={{ 
-        backgroundColor: '#1E293B', 
+        backgroundColor: 'var(--bg-secondary)', 
         width: '90%', 
         maxWidth: '800px', 
         maxHeight: '85vh',
         borderRadius: '16px', 
-        border: '1px solid #334155',
+        border: '1px solid var(--border-primary)',
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
       }}>
-        <div style={{ padding: '24px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '24px', borderBottom: '1px solid var(--border-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#F8FAFC' }}>Filtros Avançados</h2>
-            <p style={{ fontSize: '13px', color: '#94A3B8', marginTop: '4px' }}>Aba: {selectedSheet}</p>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Filtros Avançados</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Aba: {selectedSheet}</p>
           </div>
           <button 
             onClick={() => onClose()}
-            style={{ backgroundColor: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '24px' }}>×</button>
+            style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '24px' }}>×</button>
         </div>
     
         <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
@@ -258,7 +258,7 @@ export default function FiltroModal({
                         : "auto"
                   }}
                 >
-                  <label style={{ fontSize: '12px', lineHeight:"18px", fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase' }}>{h}</label>
+                  <label style={{ fontSize: '12px', lineHeight:"18px", fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</label>
                   
                   {isMultiSelect ? (
     
@@ -273,8 +273,8 @@ export default function FiltroModal({
                           overflowY: "auto",
                           padding: "10px",
                           paddingRight: "6px",
-                          backgroundColor: "#0F172A",
-                          border: "1px solid #334155",
+                          backgroundColor: "var(--bg-primary)",
+                          border: "1px solid var(--border-primary)",
                           borderRadius: "8px",
                           boxSizing: "border-box"
                       }}
@@ -309,10 +309,10 @@ export default function FiltroModal({
                           gap: "8px",
                           cursor: "pointer",
                           fontWeight: 600,
-                          color: "#F8FAFC",
+                          color: "var(--text-primary)",
                           paddingBottom: "4px",
                           marginBottom: "4px",
-                          borderBottom: "1px solid #334155"
+                          borderBottom: "1px solid var(--border-primary)"
                       }}
                   >
                   
@@ -426,8 +426,8 @@ export default function FiltroModal({
                         flexDirection: "column",
                         gap: "8px",
                         padding: "10px",
-                        backgroundColor: "#0F172A",
-                        border: "1px solid #334155",
+                        backgroundColor: "var(--bg-primary)",
+                        border: "1px solid var(--border-primary)",
                         borderRadius: "8px",
                         boxSizing: "border-box"
                       }}
@@ -438,7 +438,7 @@ export default function FiltroModal({
                           flexDirection: "column",
                           gap: "5px",
                           fontSize: "11px",
-                          color: "#94A3B8"
+                          color: "var(--text-muted)"
                         }}
                       >
                         De
@@ -453,9 +453,9 @@ export default function FiltroModal({
                           style={{
                             width: "100%",
                             padding: "9px",
-                            backgroundColor: "#1E293B",
-                            color: "#F8FAFC",
-                            border: "1px solid #334155",
+                            backgroundColor: "var(--bg-secondary)",
+                            color: "var(--text-primary)",
+                            border: "1px solid var(--border-primary)",
                             borderRadius: "6px",
                             outline: "none",
                             boxSizing: "border-box"
@@ -469,7 +469,7 @@ export default function FiltroModal({
                           flexDirection: "column",
                           gap: "5px",
                           fontSize: "11px",
-                          color: "#94A3B8"
+                          color: "var(--text-muted)"
                         }}
                       >
                         Até
@@ -502,9 +502,9 @@ export default function FiltroModal({
                       onChange={(e) => updateFilter(h, e.target.value)}
                       style={{
                           padding: '10px',
-                          backgroundColor: '#0F172A',
-                          color: '#F8FAFC',
-                          border: '1px solid #334155',
+                          backgroundColor: 'var(--bg-primary)',
+                          color: 'var(--text-primary)',
+                          border: '1px solid var(--border-primary)',
                           borderRadius: '8px',
                           outline: 'none'
                       }}
@@ -527,9 +527,9 @@ export default function FiltroModal({
                       placeholder={`Buscar em ${h}...`}
                       style={{
                         padding: '10px',
-                        backgroundColor: '#0F172A',
-                        color: '#F8FAFC',
-                        border: '1px solid #334155',
+                        backgroundColor: 'var(--bg-primary)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border-primary)',
                         borderRadius: '8px',
                         outline: 'none'
                       }}
@@ -541,7 +541,7 @@ export default function FiltroModal({
           </div>
         </div>
     
-        <div style={{ padding: '24px', borderTop: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '24px', borderTop: '1px solid var(--border-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button 
             onClick={clearFilters}
             style={{
