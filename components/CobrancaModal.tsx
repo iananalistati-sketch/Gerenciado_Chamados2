@@ -55,48 +55,55 @@ export default function CobrancaModal({
       padding: "20px", backdropFilter: "blur(8px)"
     }}>
       <div style={{
-        backgroundColor: "#1E293B", padding: "30px", borderRadius: "16px",
+        backgroundColor: "var(--bg-secondary)", padding: "30px", borderRadius: "16px",
         width: "100%", maxWidth: "1200px", maxHeight: "90vh",
-        overflowY: "auto", border: "1px solid #334155",
-        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)"
+        overflowY: "auto", border: "1px solid var(--border-primary)",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-          <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#F8FAFC" }}>
+          <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "var(--text-primary)" }}>
             Tickets em Cobrança ({currentSheetCount})
           </h2>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <span style={{ fontSize: "12px", color: "#94A3B8" }}>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
               Aba: <strong>{selectedSheet}</strong>
             </span>
             <button type="button" onClick={onClose} style={{
-              backgroundColor: "transparent", border: "none", color: "#94A3B8",
+              backgroundColor: "transparent", border: "none", color: "var(--text-muted)",
               cursor: "pointer", fontSize: "24px"
             }}>&times;</button>
           </div>
         </div>
 
         {currentSheetCount === 0 ? (
-          <div style={{ padding: "40px", textAlign: "center", color: "#94A3B8" }}>
+          <div style={{ padding: "40px", textAlign: "center", color: "var(--text-muted)" }}>
             Nenhum ticket da aba <strong>{selectedSheet}</strong> selecionado.
           </div>
         ) : (
-          <div style={{ width: "100%", overflowX: "auto", border: "1px solid #334155", borderRadius: "12px" }}>
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "13px", color: "#E2E8F0", minWidth: "1000px" }}>
+          <div style={{ width: "100%", overflowX: "auto", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
+            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "13px", color: "var(--text-primary)", minWidth: "1000px" }}>
               <thead>
-                <tr style={{ backgroundColor: "#0F172A" }}>
+                <tr style={{ backgroundColor: "var(--bg-primary)" }}>
                   {headers.map((h, i) => (
                     <th key={i} style={{
                       padding: "16px", textAlign: "left", fontWeight: "bold",
-                      color: "#94A3B8", textTransform: "uppercase",
-                      fontSize: "11px", borderBottom: "1px solid #334155"
+                      color: "var(--text-muted)", textTransform: "uppercase",
+                      fontSize: "11px", borderBottom: "1px solid var(--border-primary)"
                     }}>{h}</th>
                   ))}
-                  <th style={{ padding: "16px", borderBottom: "1px solid #334155" }}>Ações</th>
+                  <th style={{ padding: "16px", borderBottom: "1px solid var(--border-primary)", color: "var(--text-muted)" }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {cobrancaData.map((row, i) => (
-                  <tr key={(row as any)._originalIndex ?? i} style={{ backgroundColor: i % 2 === 0 ? "#1E293B" : "#1a2434" }}>
+                  <tr
+                    key={(row as any)._originalIndex ?? i}
+                    style={{
+                      backgroundColor: i % 2 === 0
+                        ? "var(--bg-secondary)"
+                        : "var(--bg-primary)"
+                    }}
+                  >
                     {headers.map((_, j) => {
                       const cell = row[j] || "";
                       if (j === gravidadeIdx) {
@@ -113,7 +120,7 @@ export default function CobrancaModal({
                       }
                       return <td key={j} style={{ padding: "12px 16px", borderBottom: "1px solid #334155" }}>{cell}</td>;
                     })}
-                    <td style={{ padding: "12px 16px", borderBottom: "1px solid #334155", textAlign: "center" }}>
+                    <td style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-primary)", textAlign: "center" }}>
                       <button type="button" onClick={() => handleRemove(row)} style={{
                         backgroundColor: "#EF4444", color: "white", border: "none",
                         padding: "6px 12px", borderRadius: "6px", fontSize: "12px", cursor: "pointer"
@@ -135,8 +142,13 @@ export default function CobrancaModal({
             }}><span>📊</span> Exportar Excel</button>
           )}
           <button type="button" onClick={onClose} style={{
-            padding: "10px 20px", backgroundColor: "#334155", color: "white",
-            border: "none", borderRadius: "8px", fontWeight: "600", cursor: "pointer"
+            padding: "10px 20px",
+            backgroundColor: "var(--bg-primary)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--border-primary)",
+            borderRadius: "8px",
+            fontWeight: "600",
+            cursor: "pointer"
           }}>Fechar</button>
         </div>
       </div>

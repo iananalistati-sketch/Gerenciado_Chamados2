@@ -484,9 +484,9 @@ export default function FiltroModal({
                           style={{
                             width: "100%",
                             padding: "9px",
-                            backgroundColor: "#1E293B",
-                            color: "#F8FAFC",
-                            border: "1px solid #334155",
+                            backgroundColor: "var(--bg-secondary)",
+                            color: "var(--text-primary)",
+                            border: "1px solid var(--border-primary)",
                             borderRadius: "6px",
                             outline: "none",
                             boxSizing: "border-box"
