@@ -14,6 +14,7 @@ import { useAuth } from "./contexts/AuthContext";
 import UserManagement from "./components/UserManagement";
 import ChangePassword from "./components/ChangePassword";
 import { useTheme } from "./contexts/ThemeContext";
+import ControleMobiles from "./components/ControleMobiles";
 
 /**
  * App.tsx - Mínimo Funcional
@@ -34,7 +35,8 @@ function AppContent() {
   // allData: Armazena os dados de todas as abas carregadas
   const [allData, setAllData] = useState<Record<string, string[][]>>({
     tbChamadosMV: [],
-    tbChamadosForhealth: []
+    tbChamadosForhealth: [],
+    tbControleMobiles: []
   });
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -72,7 +74,8 @@ function AppContent() {
     useState("");
   const [sheetFilters, setSheetFilters] = useState<Record<string, Record<string, string>>>({
     tbChamadosMV: {},
-    tbChamadosForhealth: {}
+    tbChamadosForhealth: {},
+    tbControleMobiles: {}
   });
   const [error, setError] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
@@ -1420,6 +1423,7 @@ function AppContent() {
           >
             <option value="tbChamadosMV">MV</option>
             <option value="tbChamadosForhealth">ForHealth</option>
+            <option value="tbControleMobiles">Controle de Mobiles</option>
           </select>
           <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-primary)', margin: '0 10px' }}></div>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -1427,15 +1431,24 @@ function AppContent() {
           </span>
         </div>
 
-        {!loading && data.length > 1 && (
-          <Dashboard
-            totalFiltered={filteredData.length}
-            stats={stats}
-            onFilter={handleDashboardFilter}
+        {selectedSheet === "tbControleMobiles" ? (
+          <ControleMobiles
+            data={data}
+            loading={loading}
+            error={error}
+            onRefresh={fetchData}
           />
-        )}
+        ) : (
+          <>
+            {!loading && data.length > 1 && (
+              <Dashboard
+                totalFiltered={filteredData.length}
+                stats={stats}
+                onFilter={handleDashboardFilter}
+              />
+            )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* Cabeçalho de Ações e Filtros */}
           <div style={{ 
@@ -1699,10 +1712,12 @@ function AppContent() {
                 );
               })()}
             </div>
-          )}
-        </div>
+                    )}
+                </div>
+          </>
+        )}
 
-        <CobrancaModal
+                <CobrancaModal
           isOpen={showCobrarModal}
           data={data}
           selectedSheet={selectedSheet}
