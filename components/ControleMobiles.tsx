@@ -19,6 +19,13 @@ interface ControleMobilesProps {
   onCreateRow: (
     rowData: string[]
   ) => Promise<void>;
+
+  onBulkUpdate: (
+    updates: Array<{
+      rowIndex: number;
+      rowData: string[];
+    }>
+  ) => Promise<void>;
 }
 
 const normalize = (value: string) =>
@@ -40,6 +47,7 @@ export default function ControleMobiles({
   onRefresh,
   onSaveRow,
   onCreateRow,
+  onBulkUpdate,
 }: ControleMobilesProps) {
   const [search, setSearch] = useState("");
   const [setorFilter, setSetorFilter] = useState("");
@@ -508,6 +516,11 @@ export default function ControleMobiles({
         );
       });
 
+    const preparedUpdates: Array<{
+      rowIndex: number;
+      rowData: string[];
+    }> = []; 
+
     for (const row of selectedData) {
       const rowIndex =
         getOriginalIndex(row);
@@ -670,15 +683,21 @@ export default function ControleMobiles({
         }
       }
 
-      await onSaveRow(
-        updatedRow,
-        rowIndex
-      );
+      preparedUpdates.push({
+        rowIndex,
+        rowData: updatedRow,
+      });
     }
 
-    clearSelection();
+    if (preparedUpdates.length === 0) {
+      return;
+    }
 
-    await onRefresh();
+    await onBulkUpdate(
+      preparedUpdates
+    );
+
+    clearSelection();
   };
 
   const hasActiveFilters =

@@ -242,6 +242,63 @@ function AppContent() {
     }
   };
 
+  const handleBulkUpdateMobiles = async (
+    updates: Array<{
+      rowIndex: number;
+      rowData: string[];
+    }>
+  ) => {
+    setLoading(true);
+
+    try {
+      const res = await fetch(
+        "/api/mobiles/batch-update",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            updates,
+          }),
+        }
+      );
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          result.error ||
+            "Erro ao atualizar equipamentos."
+        );
+      }
+
+      await fetchData();
+
+      alert(
+        `${result.updated} equipamento${
+          result.updated !== 1
+            ? "s"
+            : ""
+        } atualizado${
+          result.updated !== 1
+            ? "s"
+            : ""
+        } com sucesso.`
+      );
+    } catch (error: any) {
+      console.error(
+        "Erro na atualização em lote:",
+        error
+      );
+
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
   
@@ -1495,6 +1552,9 @@ function AppContent() {
             onRefresh={fetchData}
             onSaveRow={handleSaveRow}
             onCreateRow={handleCreateMobile}
+            onBulkUpdate={
+              handleBulkUpdateMobiles
+            }
           />
         ) : (
           <>
