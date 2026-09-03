@@ -47,18 +47,18 @@ export default async function handler(
       }
     }
 
-    const privateKey =
-      process.env.GOOGLE_PRIVATE_KEY?.replace(
-        /\\n/g,
-        "\n"
-      );
-
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email:
-          process.env.GOOGLE_CLIENT_EMAIL,
-        private_key: privateKey,
+          process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+
+        private_key:
+          process.env.GOOGLE_PRIVATE_KEY
+            ?.replace(/\\n/g, "\n")
+            .replace(/^["']|["']$/g, "")
+            .trim(),
       },
+
       scopes: [
         "https://www.googleapis.com/auth/spreadsheets",
       ],
