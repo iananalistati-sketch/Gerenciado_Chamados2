@@ -126,6 +126,11 @@ function AppContent() {
 
       const values = await res.json();
 
+      console.log(
+        "DEBUG tbConfigMobiles - retorno API:",
+        values
+      );
+
       if (!res.ok) {
         throw new Error(
           values.error ||
@@ -133,11 +138,17 @@ function AppContent() {
         );
       }
 
-      setMobileConfig(
+      const configValues =
         Array.isArray(values)
           ? values
-          : []
+          : [];
+
+      console.log(
+        "DEBUG tbConfigMobiles - dados carregados:",
+        configValues
       );
+
+      setMobileConfig(configValues);
     } catch (error) {
       console.error(
         "Erro ao carregar tbConfigMobiles:",
