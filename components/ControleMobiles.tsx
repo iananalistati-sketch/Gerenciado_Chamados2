@@ -6,6 +6,7 @@ import AtualizacaoLoteMobilesModal from "./AtualizacaoLoteMobilesModal";
 interface ControleMobilesProps {
   data: string[][];
   mobileConfig: string[][];
+  mobileApps: string[][];
   loading: boolean;
   error: string | null;
   currentUserName: string;
@@ -42,6 +43,7 @@ const normalizeValue = (value: string) =>
 export default function ControleMobiles({
   data,
   mobileConfig,
+  mobileApps,
   loading,
   error,
   currentUserName,
@@ -168,6 +170,68 @@ export default function ControleMobiles({
 
     return "PENDENTE";
   };
+
+  const mobileAppsByColetor =
+    useMemo(() => {
+      const map: Record<
+        string,
+        string[][]
+      > = {};
+
+      if (
+        !mobileApps ||
+        mobileApps.length <= 1
+      ) {
+        return map;
+      }
+
+      const appHeaders =
+        mobileApps[0] || [];
+
+      const coletorIndex =
+        appHeaders.findIndex(
+          (header) =>
+            normalize(header) ===
+            normalize("COLETOR")
+        );
+
+      if (coletorIndex === -1) {
+        return map;
+      }
+
+      mobileApps
+        .slice(1)
+        .forEach((row) => {
+          const coletor = String(
+            row[coletorIndex] || ""
+          ).trim();
+
+          if (!coletor) {
+            return;
+          }
+
+          const key =
+            normalize(coletor);
+
+          if (!map[key]) {
+            map[key] = [];
+          }
+
+          map[key].push(row);
+        });
+
+      return map;
+    }, [mobileApps]);
+
+    console.log(
+      "DEBUG MOBILE APPS:",
+      mobileApps
+    );
+
+    console.log(
+      "DEBUG MOBILE APPS POR COLETOR:",
+      mobileAppsByColetor
+    );
 
   const getOriginalIndex = (
     row: string[]

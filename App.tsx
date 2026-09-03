@@ -39,6 +39,7 @@ function AppContent() {
     tbControleMobiles: []
   });
   const [mobileConfig, setMobileConfig] = useState<string[][]>([]);
+  const [mobileApps, setMobileApps] = useState<string[][]>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [selectedSheet, setSelectedSheet] = useState('tbChamadosMV');
@@ -159,6 +160,44 @@ function AppContent() {
     }
   };
 
+  const fetchMobileApps = async () => {
+    try {
+      const res = await fetch(
+        "/api/data?sheet=tbMobileApps"
+      );
+
+      const values = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          values.error ||
+            "Erro ao carregar os aplicativos dos mobiles."
+        );
+      }
+
+      const appValues =
+        Array.isArray(values)
+          ? values.filter(
+              (row) => Array.isArray(row)
+            )
+          : [];
+
+      appValues.forEach((row, i) => {
+        (row as any)._originalIndex =
+          i + 1;
+      });
+
+      setMobileApps(appValues);
+    } catch (error) {
+      console.error(
+        "Erro ao carregar tbMobileApps:",
+        error
+      );
+
+      setMobileApps([]);
+    }
+  };
+
   useEffect(() => {
     fetchData();
 
@@ -167,6 +206,7 @@ function AppContent() {
       "tbControleMobiles"
     ) {
       fetchMobileConfig();
+      fetchMobileApps();
     }
   }, [selectedSheet]);
 
@@ -1587,6 +1627,7 @@ function AppContent() {
           <ControleMobiles
             data={data}
             mobileConfig={mobileConfig}
+            mobileApps={mobileApps}
             loading={loading}
             error={error}
             currentUserName={
