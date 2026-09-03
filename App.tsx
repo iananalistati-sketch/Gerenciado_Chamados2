@@ -195,6 +195,53 @@ function AppContent() {
     }
   };
 
+  const handleCreateMobile = async (
+  rowData: string[]
+) => {
+  setLoading(true);
+
+  try {
+    const res = await fetch(
+      "/api/create",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          rowData,
+          sheet: "tbControleMobiles",
+        }),
+      }
+    );
+
+    const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          result.error ||
+            "Erro ao cadastrar equipamento."
+        );
+      }
+
+      await fetchData();
+
+      alert(
+        "Equipamento cadastrado com sucesso."
+      );
+    } catch (error: any) {
+      console.error(
+        "Erro ao cadastrar equipamento:",
+        error
+      );
+
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
   
@@ -1447,6 +1494,7 @@ function AppContent() {
             }
             onRefresh={fetchData}
             onSaveRow={handleSaveRow}
+            onCreateRow={handleCreateMobile}
           />
         ) : (
           <>

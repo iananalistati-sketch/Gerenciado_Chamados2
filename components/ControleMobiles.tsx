@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import EditarMobileModal from "./EditarMobileModal";
+import NovoMobileModal from "./NovoMobileModal";
 
 interface ControleMobilesProps {
   data: string[][];
@@ -8,9 +9,14 @@ interface ControleMobilesProps {
   currentUserName: string;
   canEdit: boolean;
   onRefresh: () => void;
+
   onSaveRow: (
     rowData: string[],
     rowIndex: number
+  ) => Promise<void>;
+
+  onCreateRow: (
+    rowData: string[]
   ) => Promise<void>;
 }
 
@@ -32,6 +38,7 @@ export default function ControleMobiles({
   canEdit,
   onRefresh,
   onSaveRow,
+  onCreateRow,
 }: ControleMobilesProps) {
   const [search, setSearch] = useState("");
   const [setorFilter, setSetorFilter] = useState("");
@@ -44,7 +51,10 @@ export default function ControleMobiles({
   const [currentPage, setCurrentPage] = useState(1);
 
   const [editingRow, setEditingRow] =
-    useState<string[] | null>(null);
+  useState<string[] | null>(null);
+
+  const [showCreateModal, setShowCreateModal] =
+    useState(false);
 
   const itemsPerPage = 20;
 
@@ -516,23 +526,57 @@ export default function ControleMobiles({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={loading}
+        <div
           style={{
-            padding: "10px 16px",
-            backgroundColor: "var(--bg-secondary)",
-            color: "var(--text-primary)",
-            border: "1px solid var(--border-primary)",
-            borderRadius: "8px",
-            cursor: loading ? "not-allowed" : "pointer",
-            fontSize: "13px",
-            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            flexWrap: "wrap",
           }}
         >
-          ↻ Atualizar
-        </button>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            style={{
+              padding: "10px 16px",
+              backgroundColor: "var(--bg-secondary)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-primary)",
+              borderRadius: "8px",
+              cursor: loading
+                ? "not-allowed"
+                : "pointer",
+              fontSize: "13px",
+              fontWeight: 600,
+            }}
+          >
+            ↻ Atualizar
+          </button>
+
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() =>
+                setShowCreateModal(true)
+              }
+              style={{
+                padding: "10px 16px",
+                backgroundColor: "#3B82F6",
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 700,
+                boxShadow:
+                  "0 4px 6px -1px rgba(59, 130, 246, 0.2)",
+              }}
+            >
+              + Novo Equipamento
+            </button>
+          )}
+        </div>
       </div>
 
       <div
@@ -1283,6 +1327,16 @@ export default function ControleMobiles({
         normalize={normalize}
         onClose={handleCloseEdit}
         onSave={onSaveRow}
+      />
+      <NovoMobileModal
+        isOpen={showCreateModal}
+        headers={headers}
+        allRows={rows}
+        normalize={normalize}
+        onClose={() =>
+          setShowCreateModal(false)
+        }
+        onCreate={onCreateRow}
       />
     </div>
   );
