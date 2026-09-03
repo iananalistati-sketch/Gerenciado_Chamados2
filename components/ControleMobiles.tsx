@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import EditarMobileModal from "./EditarMobileModal";
 import NovoMobileModal from "./NovoMobileModal";
+import AtualizacaoLoteMobilesModal from "./AtualizacaoLoteMobilesModal";
 
 interface ControleMobilesProps {
   data: string[][];
@@ -56,10 +57,28 @@ export default function ControleMobiles({
   const [showCreateModal, setShowCreateModal] =
     useState(false);
 
+  const [
+    showBulkUpdateModal,
+    setShowBulkUpdateModal,
+  ] = useState(false);
+
+  const [selectedRows, setSelectedRows] =
+    useState<number[]>([]);
+
   const itemsPerPage = 20;
 
   const headers = data[0] || [];
   const rows = data.slice(1);
+
+  const getOriginalIndex = (
+    row: string[]
+  ): number | null => {
+    const value = (row as any)._originalIndex;
+
+    return typeof value === "number"
+      ? value
+      : null;
+  };
 
   const getColumnIndex = (...possibleNames: string[]) =>
     headers.findIndex((header) =>
@@ -345,6 +364,322 @@ export default function ControleMobiles({
     const handleCloseEdit = () => {
     setEditingRow(null);
     };
+  
+  const handleToggleRow = (
+    row: string[]
+  ) => {
+    const rowIndex =
+      getOriginalIndex(row);
+
+    if (rowIndex === null) {
+      return;
+    }
+
+    setSelectedRows((previous) =>
+      previous.includes(rowIndex)
+        ? previous.filter(
+            (item) => item !== rowIndex
+          )
+        : [...previous, rowIndex]
+    );
+  };
+
+  const currentPageIndexes =
+    paginatedRows
+      .map((row) =>
+        getOriginalIndex(row)
+      )
+      .filter(
+        (value): value is number =>
+          value !== null
+      );
+
+  const allCurrentPageSelected =
+    currentPageIndexes.length > 0 &&
+    currentPageIndexes.every(
+      (rowIndex) =>
+        selectedRows.includes(rowIndex)
+    );
+
+  const handleToggleCurrentPage = () => {
+    if (allCurrentPageSelected) {
+      setSelectedRows((previous) =>
+        previous.filter(
+          (rowIndex) =>
+            !currentPageIndexes.includes(
+              rowIndex
+            )
+        )
+      );
+
+      return;
+    }
+
+    setSelectedRows((previous) =>
+      Array.from(
+        new Set([
+          ...previous,
+          ...currentPageIndexes,
+        ])
+      )
+    );
+  };
+
+  const clearSelection = () => {
+    setSelectedRows([]);
+  };  
+
+  const handleBulkUpdate = async (
+    values: {
+      versao: string;
+      dataAtualizacao: string;
+      status: string;
+      statusAtualizacao: string;
+      observacao: string;
+    }
+  ) => {
+    const versaoHeader =
+      headers.find(
+        (header) =>
+          normalize(header) ===
+            normalize("Versão") ||
+          normalize(header) ===
+            normalize("Versao")
+      );
+
+    const dataAtualizacaoHeader =
+      headers.find(
+        (header) =>
+          normalize(header) ===
+            normalize("Data atualização") ||
+          normalize(header) ===
+            normalize("Data atualizacao")
+      );
+
+    const statusHeader =
+      headers.find(
+        (header) =>
+          normalize(header) ===
+          normalize("Status")
+      );
+
+    const statusAtualizacaoHeader =
+      headers.find(
+        (header) =>
+          normalize(header) ===
+            normalize("Status atualização") ||
+          normalize(header) ===
+            normalize("Status atualizacao")
+      );
+
+    const obsHeader =
+      headers.find(
+        (header) =>
+          normalize(header) ===
+          normalize("Obs")
+      );
+
+    const contadorHeader =
+      headers.find(
+        (header) =>
+          normalize(header) ===
+            normalize("Contador atualização") ||
+          normalize(header) ===
+            normalize("Contador atualizacao")
+      );
+
+    const responsavelHeader =
+      headers.find(
+        (header) =>
+          normalize(header) ===
+            normalize("Responsável atualização") ||
+          normalize(header) ===
+            normalize("Responsavel atualizacao")
+      );
+
+    const selectedData =
+      rows.filter((row) => {
+        const rowIndex =
+          getOriginalIndex(row);
+
+        return (
+          rowIndex !== null &&
+          selectedRows.includes(rowIndex)
+        );
+      });
+
+    for (const row of selectedData) {
+      const rowIndex =
+        getOriginalIndex(row);
+
+      if (rowIndex === null) {
+        continue;
+      }
+
+      const updatedRow = [...row];
+
+      const setValue = (
+        header: string | undefined,
+        value: string
+      ) => {
+        if (!header) {
+          return;
+        }
+
+        const index =
+          headers.indexOf(header);
+
+        if (index !== -1) {
+          updatedRow[index] = value;
+        }
+      };
+
+      /*
+      * STATUS OPERACIONAL
+      */
+      if (values.status) {
+        setValue(
+          statusHeader,
+          values.status
+        );
+      }
+
+      /*
+      * STATUS DA ATUALIZAÇÃO
+      *
+      * Nesta etapa ainda permitimos
+      * alteração manual.
+      * Posteriormente ele será calculado
+      * pela tbConfigMobiles.
+      */
+      if (values.statusAtualizacao) {
+        setValue(
+          statusAtualizacaoHeader,
+          values.statusAtualizacao
+        );
+      }
+
+      /*
+      * OBSERVAÇÃO
+      */
+      if (values.observacao) {
+        setValue(
+          obsHeader,
+          values.observacao
+        );
+      }
+
+      /*
+      * DATA INFORMADA MANUALMENTE
+      */
+      if (values.dataAtualizacao) {
+        setValue(
+          dataAtualizacaoHeader,
+          values.dataAtualizacao
+        );
+      }
+
+      /*
+      * ATUALIZAÇÃO DE VERSÃO
+      */
+      if (values.versao) {
+        const versaoIdx =
+          versaoHeader
+            ? headers.indexOf(
+                versaoHeader
+              )
+            : -1;
+
+        const oldVersion =
+          versaoIdx !== -1
+            ? String(
+                row[versaoIdx] || ""
+              ).trim()
+            : "";
+
+        const newVersion =
+          values.versao.trim();
+
+        setValue(
+          versaoHeader,
+          newVersion
+        );
+
+        /*
+        * Só consideramos uma nova
+        * atualização quando a versão
+        * realmente mudou.
+        */
+        if (newVersion !== oldVersion) {
+          if (contadorHeader) {
+            const contadorIdx =
+              headers.indexOf(
+                contadorHeader
+              );
+
+            const currentCounter =
+              Number(
+                String(
+                  row[contadorIdx] || "0"
+                )
+                  .trim()
+                  .replace(",", ".")
+              ) || 0;
+
+            setValue(
+              contadorHeader,
+              String(
+                currentCounter + 1
+              )
+            );
+          }
+
+          /*
+          * Usuário autenticado responsável
+          * pela atualização.
+          */
+          setValue(
+            responsavelHeader,
+            currentUserName
+          );
+
+          /*
+          * Caso nenhuma data tenha sido
+          * informada no modal, usamos hoje.
+          */
+          if (
+            !values.dataAtualizacao &&
+            dataAtualizacaoHeader
+          ) {
+            const now = new Date();
+
+            const localDate =
+              new Date(
+                now.getTime() -
+                  now.getTimezoneOffset() *
+                    60000
+              );
+
+            setValue(
+              dataAtualizacaoHeader,
+              localDate
+                .toISOString()
+                .split("T")[0]
+            );
+          }
+        }
+      }
+
+      await onSaveRow(
+        updatedRow,
+        rowIndex
+      );
+    }
+
+    clearSelection();
+
+    await onRefresh();
+  };
 
   const hasActiveFilters =
     search ||
@@ -827,6 +1162,93 @@ export default function ControleMobiles({
         )}
       </div>
 
+      {canEdit &&
+        selectedRows.length > 0 && (
+          <div
+            style={{
+              padding: "14px 16px",
+              backgroundColor:
+                "var(--bg-secondary)",
+              border:
+                "1px solid #3B82F6",
+              borderRadius: "10px",
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems: "center",
+              gap: "16px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div
+              style={{
+                color:
+                  "var(--text-primary)",
+                fontSize: "13px",
+                fontWeight: 600,
+              }}
+            >
+              {selectedRows.length} equipamento
+              {selectedRows.length !== 1
+                ? "s"
+                : ""}{" "}
+              selecionado
+              {selectedRows.length !== 1
+                ? "s"
+                : ""}
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={clearSelection}
+                style={{
+                  padding: "8px 12px",
+                  backgroundColor:
+                    "var(--bg-primary)",
+                  color:
+                    "var(--text-muted)",
+                  border:
+                    "1px solid var(--border-primary)",
+                  borderRadius: "7px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                }}
+              >
+                Limpar seleção
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowBulkUpdateModal(
+                    true
+                  )
+                }
+                style={{
+                  padding: "8px 14px",
+                  backgroundColor:
+                    "#3B82F6",
+                  color: "#FFFFFF",
+                  border: "none",
+                  borderRadius: "7px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                }}
+              >
+                Atualizar selecionados
+              </button>
+            </div>
+          </div>
+        )}
+
       {loading && (
         <div
           style={{
@@ -936,6 +1358,33 @@ export default function ControleMobiles({
                       "var(--bg-primary)",
                   }}
                 >
+
+                  <th
+                    style={{
+                      width: "42px",
+                      padding: "12px 10px",
+                      textAlign: "center",
+                      borderBottom:
+                        "1px solid var(--border-primary)",
+                    }}
+                  >
+                    {canEdit && (
+                      <input
+                        type="checkbox"
+                        checked={
+                          allCurrentPageSelected
+                        }
+                        onChange={
+                          handleToggleCurrentPage
+                        }
+                        title="Selecionar página atual"
+                        style={{
+                          cursor: "pointer",
+                        }}
+                      />
+                    )}
+                  </th>
+
                   {[
                     "Setor",
                     "Coletor",
@@ -971,7 +1420,7 @@ export default function ControleMobiles({
                 {paginatedRows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={10}
+                      colSpan={11}
                       style={{
                         padding: "28px",
                         textAlign: "center",
@@ -999,6 +1448,35 @@ export default function ControleMobiles({
                             "1px solid var(--border-primary)",
                         }}
                       >
+
+                        {/* CHECKBOX DE SELEÇÃO */}
+                        <td
+                          style={{
+                            width: "42px",
+                            padding: "12px 10px",
+                            textAlign: "center",
+                          }}
+                        >
+                          {canEdit && (
+                            <input
+                              type="checkbox"
+                              checked={
+                                getOriginalIndex(row) !== null &&
+                                selectedRows.includes(
+                                  getOriginalIndex(row) as number
+                                )
+                              }
+                              onChange={() =>
+                                handleToggleRow(row)
+                              }
+                              style={{
+                                cursor: "pointer",
+                              }}
+                            />
+                          )}
+                        </td>
+
+                        {/* SETOR */}
                         <td
                           style={{
                             padding: "12px 14px",
@@ -1338,6 +1816,21 @@ export default function ControleMobiles({
         }
         onCreate={onCreateRow}
       />
+
+      <AtualizacaoLoteMobilesModal
+        isOpen={showBulkUpdateModal}
+        selectedCount={
+          selectedRows.length
+        }
+        currentUserName={
+          currentUserName
+        }
+        onClose={() =>
+          setShowBulkUpdateModal(false)
+        }
+        onApply={handleBulkUpdate}
+      />
+
     </div>
   );
 }
