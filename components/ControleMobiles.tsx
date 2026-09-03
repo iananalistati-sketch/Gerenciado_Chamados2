@@ -5,6 +5,7 @@ import AtualizacaoLoteMobilesModal from "./AtualizacaoLoteMobilesModal";
 
 interface ControleMobilesProps {
   data: string[][];
+  mobileConfig: string[][];
   loading: boolean;
   error: string | null;
   currentUserName: string;
@@ -40,6 +41,7 @@ const normalizeValue = (value: string) =>
 
 export default function ControleMobiles({
   data,
+  mobileConfig,
   loading,
   error,
   currentUserName,
@@ -77,6 +79,95 @@ export default function ControleMobiles({
 
   const headers = data[0] || [];
   const rows = data.slice(1);
+  const targetVersions = useMemo(() => {
+    const map: Record<string, string> = {};
+
+    if (
+      !mobileConfig ||
+      mobileConfig.length <= 1
+    ) {
+      return map;
+    }
+
+    const configHeaders =
+      mobileConfig[0] || [];
+
+    const appIndex =
+      configHeaders.findIndex(
+        (header) =>
+          normalize(header) ===
+          normalize("APP_USO")
+      );
+
+    const versionIndex =
+      configHeaders.findIndex(
+        (header) =>
+          normalize(header) ===
+          normalize("VERSAO_ALVO")
+      );
+
+    if (
+      appIndex === -1 ||
+      versionIndex === -1
+    ) {
+      return map;
+    }
+
+    mobileConfig
+      .slice(1)
+      .forEach((row) => {
+        const app = String(
+          row[appIndex] || ""
+        ).trim();
+
+        const version = String(
+          row[versionIndex] || ""
+        ).trim();
+
+        if (app && version) {
+          map[
+            normalize(app)
+          ] = version;
+        }
+      });
+
+    return map;
+  }, [mobileConfig]);
+
+  const getAutomaticUpdateStatus = (
+    app: string,
+    currentVersion: string
+  ) => {
+    const normalizedApp =
+      normalize(app);
+
+    const targetVersion =
+      targetVersions[
+        normalizedApp
+      ];
+
+    const version =
+      String(
+        currentVersion || ""
+      ).trim();
+
+    if (!version) {
+      return "SEM INFORMAÇÃO";
+    }
+
+    if (!targetVersion) {
+      return "SEM INFORMAÇÃO";
+    }
+
+    if (
+      version ===
+      targetVersion
+    ) {
+      return "ATUALIZADO";
+    }
+
+    return "PENDENTE";
+  };
 
   const getOriginalIndex = (
     row: string[]
@@ -155,8 +246,12 @@ export default function ControleMobiles({
   );
 
   const statusAtualizacaoOptions = useMemo(
-    () => uniqueValues(statusAtualizacaoIdx),
-    [data, statusAtualizacaoIdx]
+    () => [
+      "ATUALIZADO",
+      "PENDENTE",
+      "SEM INFORMAÇÃO",
+    ],
+    []
   );
 
   const versoes = useMemo(
@@ -197,26 +292,42 @@ export default function ControleMobiles({
       : 0;
 
   const totalAtualizados =
-    statusAtualizacaoIdx !== -1
-      ? rows.filter((row) => {
-          const value = normalizeValue(
-            row[statusAtualizacaoIdx] || ""
-          );
+    rows.filter((row) => {
+      const automaticStatus =
+        getAutomaticUpdateStatus(
+          appIdx !== -1
+            ? row[appIdx] || ""
+            : "",
+          versaoIdx !== -1
+            ? row[versaoIdx] || ""
+            : ""
+        );
 
-          return value === "atualizado";
-        }).length
-      : 0;
+      return (
+        normalizeValue(
+          automaticStatus
+        ) === "atualizado"
+      );
+    }).length;
 
   const totalPendentes =
-    statusAtualizacaoIdx !== -1
-      ? rows.filter((row) => {
-          const value = normalizeValue(
-            row[statusAtualizacaoIdx] || ""
-          );
+    rows.filter((row) => {
+      const automaticStatus =
+        getAutomaticUpdateStatus(
+          appIdx !== -1
+            ? row[appIdx] || ""
+            : "",
+          versaoIdx !== -1
+            ? row[versaoIdx] || ""
+            : ""
+        );
 
-          return value === "pendente";
-        }).length
-      : 0;
+      return (
+        normalizeValue(
+          automaticStatus
+        ) === "pendente"
+      );
+    }).length;
 
   const totalNaoLocalizados =
     statusAtualizacaoIdx !== -1
@@ -290,13 +401,27 @@ export default function ControleMobiles({
         return false;
       }
 
-      if (
-        statusAtualizacaoFilter &&
-        normalizeValue(
-          row[statusAtualizacaoIdx] || ""
-        ) !== normalizeValue(statusAtualizacaoFilter)
-      ) {
-        return false;
+      if (statusAtualizacaoFilter) {
+        const automaticStatus =
+          getAutomaticUpdateStatus(
+            appIdx !== -1
+              ? row[appIdx] || ""
+              : "",
+            versaoIdx !== -1
+              ? row[versaoIdx] || ""
+              : ""
+          );
+
+        if (
+          normalizeValue(
+            automaticStatus
+          ) !==
+          normalizeValue(
+            statusAtualizacaoFilter
+          )
+        ) {
+          return false;
+        }
       }
 
       if (
@@ -328,6 +453,7 @@ export default function ControleMobiles({
     versaoIdx,
     statusIdx,
     statusAtualizacaoIdx,
+    targetVersions,
   ]);
 
   useEffect(() => {
@@ -1457,6 +1583,16 @@ export default function ControleMobiles({
                         itemsPerPage +
                       index;
 
+                    const automaticUpdateStatus =
+                      getAutomaticUpdateStatus(
+                        appIdx !== -1
+                          ? row[appIdx] || ""
+                          : "",
+                        versaoIdx !== -1
+                          ? row[versaoIdx] || ""
+                          : ""
+                      );
+
                     return (
                       <tr
                         key={`${row[coletorIdx] || "mobile"}-${
@@ -1605,28 +1741,18 @@ export default function ControleMobiles({
                         >
                           <span
                             style={{
-                              display:
-                                "inline-flex",
+                              display: "inline-flex",
                               alignItems: "center",
                               padding: "5px 9px",
                               borderRadius: "999px",
                               fontSize: "11px",
                               fontWeight: 700,
                               ...getUpdateStatusStyle(
-                                statusAtualizacaoIdx !==
-                                  -1
-                                  ? row[
-                                      statusAtualizacaoIdx
-                                    ] || ""
-                                  : ""
+                                automaticUpdateStatus
                               ),
                             }}
                           >
-                            {statusAtualizacaoIdx !== -1
-                              ? row[
-                                  statusAtualizacaoIdx
-                                ] || "Sem informação"
-                              : "Sem informação"}
+                            {automaticUpdateStatus}
                           </span>
                         </td>
 

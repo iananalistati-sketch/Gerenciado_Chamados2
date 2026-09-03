@@ -38,6 +38,7 @@ function AppContent() {
     tbChamadosForhealth: [],
     tbControleMobiles: []
   });
+  const [mobileConfig, setMobileConfig] = useState<string[][]>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [selectedSheet, setSelectedSheet] = useState('tbChamadosMV');
@@ -117,9 +118,45 @@ function AppContent() {
   }
 };
 
+  const fetchMobileConfig = async () => {
+    try {
+      const res = await fetch(
+        "/api/data?sheet=tbConfigMobiles"
+      );
+
+      const values = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          values.error ||
+            "Erro ao carregar configuração dos mobiles."
+        );
+      }
+
+      setMobileConfig(
+        Array.isArray(values)
+          ? values
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao carregar tbConfigMobiles:",
+        error
+      );
+
+      setMobileConfig([]);
+    }
+  };
 
   useEffect(() => {
     fetchData();
+
+    if (
+      selectedSheet ===
+      "tbControleMobiles"
+    ) {
+      fetchMobileConfig();
+    }
   }, [selectedSheet]);
 
   useEffect(() => {
@@ -1538,6 +1575,7 @@ function AppContent() {
         {selectedSheet === "tbControleMobiles" ? (
           <ControleMobiles
             data={data}
+            mobileConfig={mobileConfig}
             loading={loading}
             error={error}
             currentUserName={
