@@ -88,6 +88,18 @@ export default function AtualizacaoLoteMobilesModal({
       });
 
       onClose();
+
+      /*
+       * A atualização em lote grava os dados na tbMobileApps.
+       * O estado dessa aba é carregado separadamente do cadastro
+       * físico em tbControleMobiles. Recarregamos a aplicação após
+       * a conclusão para garantir que o modal "Apps" reflita
+       * imediatamente os valores persistidos no Google Sheets.
+       *
+       * Esta recarga pode ser substituída futuramente por um refresh
+       * específico da tbMobileApps no App.tsx.
+       */
+      window.location.reload();
     } catch (error: any) {
       alert(
         "Erro ao atualizar aplicativos: " +
