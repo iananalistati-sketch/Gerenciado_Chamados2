@@ -1,4 +1,5 @@
 import React, {
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -27,6 +28,18 @@ const normalize = (value: string) =>
     .trim()
     .toLowerCase();
 
+const getToday = () => {
+  const now = new Date();
+  const localDate = new Date(
+    now.getTime() -
+      now.getTimezoneOffset() * 60000
+  );
+
+  return localDate
+    .toISOString()
+    .split("T")[0];
+};
+
 export default function DetalhesAppsMobileModal({
   isOpen,
   coletor,
@@ -38,38 +51,102 @@ export default function DetalhesAppsMobileModal({
   onSave,
   onClose,
 }: DetalhesAppsMobileModalProps) {
-  const [
-    editingAppRow,
-    setEditingAppRow,
-  ] = useState<string[] | null>(null);
+  const [freshMobileApps, setFreshMobileApps] =
+    useState<string[][]>([]);
+  const [loadingApps, setLoadingApps] =
+    useState(false);
+  const [loadError, setLoadError] =
+    useState("");
 
-  const [
-    editingRowIndex,
-    setEditingRowIndex,
-  ] = useState<number | null>(null);
+  const [editingAppRow, setEditingAppRow] =
+    useState<string[] | null>(null);
+  const [editingRowIndex, setEditingRowIndex] =
+    useState<number | null>(null);
+  const [editedVersion, setEditedVersion] =
+    useState("");
+  const [editedObs, setEditedObs] =
+    useState("");
+  const [saving, setSaving] =
+    useState(false);
+  const [saveError, setSaveError] =
+    useState("");
 
-  const [
-    editedVersion,
-    setEditedVersion,
-  ] = useState("");
+  const loadFreshApps = async () => {
+    if (!isOpen || !coletor) {
+      return;
+    }
 
-  const [
-    editedObs,
-    setEditedObs,
-  ] = useState("");
+    setLoadingApps(true);
+    setLoadError("");
 
-  const [
-    saving,
-    setSaving,
-  ] = useState(false);
+    try {
+      const res = await fetch(
+        `/api/data?sheet=tbMobileApps&_=${Date.now()}`,
+        {
+          cache: "no-store",
+        }
+      );
 
-  const [
-    saveError,
-    setSaveError,
-  ] = useState("");
+      const values = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          values?.error ||
+            "Erro ao carregar aplicativos do mobile."
+        );
+      }
+
+      const rows = Array.isArray(values)
+        ? values.filter(
+            (row) => Array.isArray(row)
+          )
+        : [];
+
+      rows.forEach((row, index) => {
+        (row as any)._originalIndex =
+          index + 1;
+      });
+
+      setFreshMobileApps(rows);
+    } catch (error: any) {
+      console.error(
+        "Erro ao recarregar tbMobileApps:",
+        error
+      );
+
+      setLoadError(
+        error?.message ||
+          "Erro ao carregar aplicativos do mobile."
+      );
+    } finally {
+      setLoadingApps(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      setFreshMobileApps([]);
+      setLoadError("");
+      setEditingAppRow(null);
+      setEditingRowIndex(null);
+      setEditedVersion("");
+      setEditedObs("");
+      setSaveError("");
+      return;
+    }
+
+    void loadFreshApps();
+  }, [isOpen, coletor]);
+
+  const sourceMobileApps =
+    freshMobileApps.length > 0
+      ? freshMobileApps
+      : mobileApps;
 
   const appHeaders =
-    mobileApps[0] || [];
+    sourceMobileApps[0] ||
+    mobileApps[0] ||
+    [];
 
   const getIndex = (
     ...possibleNames: string[]
@@ -82,27 +159,146 @@ export default function DetalhesAppsMobileModal({
       )
     );
 
-  const appIdx =
-    getIndex("APP_USO");
+  const coletorIdx = getIndex("COLETOR");
+  const appIdx = getIndex("APP_USO");
+  const versaoIdx = getIndex("VERSAO");
+  const dataIdx = getIndex("DATA_ATUALIZACAO");
+  const responsavelIdx = getIndex(
+    "RESPONSAVEL_ATUALIZACAO"
+  );
+  const contadorIdx = getIndex(
+    "CONTADOR_ATUALIZACAO"
+  );
+  const obsIdx = getIndex("OBS");
 
-  const versaoIdx =
-    getIndex("VERSAO");
+  const displayRows = useMemo(() => {
+    if (
+      freshMobileApps.length > 1 &&
+      coletorIdx !== -1
+    ) {
+      return freshMobileApps
+        .slice(1)
+        .filter(
+          (row) =>
+            normalize(
+              row[coletorIdx] || ""
+            ) === normalize(coletor)
+        );
+    }
 
-  const dataIdx =
-    getIndex("DATA_ATUALIZACAO");
+    return appRows;
+  }, [
+    freshMobileApps,
+    appRows,
+    coletor,
+    coletorIdx,
+  ]);
 
-  const responsavelIdx =
-    getIndex(
-      "RESPONSAVEL_ATUALIZACAO"
-    );
+  const targetVersions = useMemo(() => {
+    const map: Record<string, string> = {};
 
-  const contadorIdx =
-    getIndex(
-      "CONTADOR_ATUALIZACAO"
-    );
+    if (
+      !mobileConfig ||
+      mobileConfig.length <= 1
+    ) {
+      return map;
+    }
 
-  const obsIdx =
-    getIndex("OBS");
+    const headers = mobileConfig[0] || [];
+
+    const configAppIdx =
+      headers.findIndex(
+        (header) =>
+          normalize(header) ===
+          normalize("APP_USO")
+      );
+
+    const configVersionIdx =
+      headers.findIndex(
+        (header) =>
+          normalize(header) ===
+          normalize("VERSAO_ALVO")
+      );
+
+    if (
+      configAppIdx === -1 ||
+      configVersionIdx === -1
+    ) {
+      return map;
+    }
+
+    mobileConfig
+      .slice(1)
+      .forEach((row) => {
+        const app = String(
+          row[configAppIdx] || ""
+        ).trim();
+
+        const version = String(
+          row[configVersionIdx] || ""
+        ).trim();
+
+        if (app && version) {
+          map[normalize(app)] = version;
+        }
+      });
+
+    return map;
+  }, [mobileConfig]);
+
+  const getStatus = (
+    app: string,
+    currentVersion: string
+  ) => {
+    const current = String(
+      currentVersion || ""
+    ).trim();
+
+    const target =
+      targetVersions[normalize(app)];
+
+    if (!current || !target) {
+      return "SEM INFORMAÇÃO";
+    }
+
+    return current === target
+      ? "ATUALIZADO"
+      : "PENDENTE";
+  };
+
+  const getStatusStyle = (
+    status: string
+  ): React.CSSProperties => {
+    const value = normalize(status);
+
+    if (value === "atualizado") {
+      return {
+        backgroundColor:
+          "rgba(5, 150, 105, 0.14)",
+        color: "#10B981",
+        border:
+          "1px solid rgba(16, 185, 129, 0.35)",
+      };
+    }
+
+    if (value === "pendente") {
+      return {
+        backgroundColor:
+          "rgba(245, 158, 11, 0.14)",
+        color: "#F59E0B",
+        border:
+          "1px solid rgba(245, 158, 11, 0.35)",
+      };
+    }
+
+    return {
+      backgroundColor:
+        "var(--bg-primary)",
+      color: "var(--text-muted)",
+      border:
+        "1px solid var(--border-primary)",
+    };
+  };
 
   const getOriginalIndex = (
     row: string[]
@@ -208,19 +404,7 @@ export default function DetalhesAppsMobileModal({
 
     if (versionChanged) {
       if (dataIdx !== -1) {
-        const now = new Date();
-
-        const localDate =
-          new Date(
-            now.getTime() -
-              now.getTimezoneOffset() *
-                60000
-          );
-
-        updatedRow[dataIdx] =
-          localDate
-            .toISOString()
-            .split("T")[0];
+        updatedRow[dataIdx] = getToday();
       }
 
       if (responsavelIdx !== -1) {
@@ -259,6 +443,7 @@ export default function DetalhesAppsMobileModal({
       );
 
       handleCancelEdit();
+      await loadFreshApps();
     } catch (error: any) {
       setSaveError(
         error?.message ||
@@ -269,131 +454,22 @@ export default function DetalhesAppsMobileModal({
     }
   };
 
-  const targetVersions =
-    useMemo(() => {
-      const map: Record<
-        string,
-        string
-      > = {};
-
-      if (
-        !mobileConfig ||
-        mobileConfig.length <= 1
-      ) {
-        return map;
-      }
-
-      const headers =
-        mobileConfig[0] || [];
-
-      const configAppIdx =
-        headers.findIndex(
-          (header) =>
-            normalize(header) ===
-            normalize("APP_USO")
-        );
-
-      const configVersionIdx =
-        headers.findIndex(
-          (header) =>
-            normalize(header) ===
-            normalize("VERSAO_ALVO")
-        );
-
-      if (
-        configAppIdx === -1 ||
-        configVersionIdx === -1
-      ) {
-        return map;
-      }
-
-      mobileConfig
-        .slice(1)
-        .forEach((row) => {
-          const app = String(
-            row[configAppIdx] || ""
-          ).trim();
-
-          const version =
-            String(
-              row[
-                configVersionIdx
-              ] || ""
-            ).trim();
-
-          if (app && version) {
-            map[
-              normalize(app)
-            ] = version;
-          }
-        });
-
-      return map;
-    }, [mobileConfig]);
-
-  const getStatus = (
-    app: string,
-    currentVersion: string
-  ) => {
-    const current =
-      String(
-        currentVersion || ""
-      ).trim();
-
-    const target =
-      targetVersions[
-        normalize(app)
-      ];
-
-    if (!current || !target) {
-      return "SEM INFORMAÇÃO";
-    }
-
-    if (current === target) {
-      return "ATUALIZADO";
-    }
-
-    return "PENDENTE";
-  };
-
-  const getStatusStyle = (
-    status: string
-  ): React.CSSProperties => {
-    const value =
-      normalize(status);
-
-    if (value === "atualizado") {
-      return {
-        backgroundColor:
-          "rgba(5, 150, 105, 0.14)",
-        color: "#10B981",
-        border:
-          "1px solid rgba(16, 185, 129, 0.35)",
-      };
-    }
-
-    if (value === "pendente") {
-      return {
-        backgroundColor:
-          "rgba(245, 158, 11, 0.14)",
-        color: "#F59E0B",
-        border:
-          "1px solid rgba(245, 158, 11, 0.35)",
-      };
-    }
-
-    return {
-      backgroundColor:
-        "var(--bg-primary)",
-      color: "var(--text-muted)",
-      border:
-        "1px solid var(--border-primary)",
-    };
-  };
-
   if (!isOpen) {
     return null;
   }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "10px 12px",
+    backgroundColor: "var(--bg-input)",
+    color: "var(--text-primary)",
+    border:
+      "1px solid var(--border-primary)",
+    borderRadius: "8px",
+    fontSize: "13px",
+    outline: "none",
+  };
 
   return (
     <div
@@ -421,7 +497,7 @@ export default function DetalhesAppsMobileModal({
       <div
         style={{
           width: "100%",
-          maxWidth: "920px",
+          maxWidth: "980px",
           maxHeight: "85vh",
           overflow: "hidden",
           backgroundColor:
@@ -477,32 +553,84 @@ export default function DetalhesAppsMobileModal({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
+          <div
             style={{
-              width: "34px",
-              height: "34px",
-              borderRadius: "8px",
-              border:
-                "1px solid var(--border-primary)",
-              backgroundColor:
-                "var(--bg-primary)",
-              color:
-                "var(--text-primary)",
-              cursor: "pointer",
-              fontSize: "18px",
+              display: "flex",
+              gap: "8px",
             }}
           >
-            ×
-          </button>
+            <button
+              type="button"
+              onClick={() =>
+                void loadFreshApps()
+              }
+              disabled={loadingApps}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border:
+                  "1px solid var(--border-primary)",
+                backgroundColor:
+                  "var(--bg-primary)",
+                color:
+                  "var(--text-primary)",
+                cursor: loadingApps
+                  ? "not-allowed"
+                  : "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              {loadingApps
+                ? "Atualizando..."
+                : "↻ Atualizar"}
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: "34px",
+                height: "34px",
+                borderRadius: "8px",
+                border:
+                  "1px solid var(--border-primary)",
+                backgroundColor:
+                  "var(--bg-primary)",
+                color:
+                  "var(--text-primary)",
+                cursor: "pointer",
+                fontSize: "18px",
+              }}
+            >
+              ×
+            </button>
+          </div>
         </div>
+
+        {(loadError || saveError) && (
+          <div
+            style={{
+              margin: "14px 20px 0",
+              padding: "10px 12px",
+              borderRadius: "8px",
+              backgroundColor:
+                "rgba(220, 38, 38, 0.12)",
+              color: "#EF4444",
+              border:
+                "1px solid rgba(239, 68, 68, 0.35)",
+              fontSize: "12px",
+            }}
+          >
+            {saveError || loadError}
+          </div>
+        )}
 
         <div
           style={{
             overflowX: "auto",
             overflowY: "auto",
-            maxHeight: "65vh",
+            maxHeight: "58vh",
           }}
         >
           <table
@@ -510,7 +638,7 @@ export default function DetalhesAppsMobileModal({
               width: "100%",
               borderCollapse:
                 "collapse",
-              minWidth: "820px",
+              minWidth: "900px",
             }}
           >
             <thead>
@@ -554,41 +682,50 @@ export default function DetalhesAppsMobileModal({
             </thead>
 
             <tbody>
-              {appRows.length === 0 ? (
+              {loadingApps &&
+              displayRows.length === 0 ? (
                 <tr>
                   <td
                     colSpan={9}
                     style={{
                       padding: "30px",
-                      textAlign:
-                        "center",
+                      textAlign: "center",
                       color:
                         "var(--text-muted)",
                     }}
                   >
-                    Nenhum aplicativo
-                    cadastrado para este
-                    equipamento.
+                    Carregando aplicativos...
+                  </td>
+                </tr>
+              ) : displayRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={9}
+                    style={{
+                      padding: "30px",
+                      textAlign: "center",
+                      color:
+                        "var(--text-muted)",
+                    }}
+                  >
+                    Nenhum aplicativo cadastrado
+                    para este equipamento.
                   </td>
                 </tr>
               ) : (
-                appRows.map(
+                displayRows.map(
                   (row, index) => {
                     const app =
                       appIdx !== -1
                         ? String(
-                            row[
-                              appIdx
-                            ] || ""
+                            row[appIdx] || ""
                           ).trim()
                         : "";
 
                     const version =
                       versaoIdx !== -1
                         ? String(
-                            row[
-                              versaoIdx
-                            ] || ""
+                            row[versaoIdx] || ""
                           ).trim()
                         : "";
 
@@ -611,159 +748,51 @@ export default function DetalhesAppsMobileModal({
                             "1px solid var(--border-primary)",
                         }}
                       >
-                        <td
-                          style={{
-                            padding:
-                              "13px 14px",
-                            color:
-                              "var(--text-primary)",
-                            fontSize:
-                              "13px",
-                            fontWeight:
-                              700,
-                          }}
-                        >
+                        <td style={{ padding: "13px 14px", color: "var(--text-primary)", fontSize: "13px", fontWeight: 700 }}>
                           {app || "-"}
                         </td>
-
-                        <td
-                          style={{
-                            padding:
-                              "13px 14px",
-                            color:
-                              "var(--text-primary)",
-                            fontSize:
-                              "13px",
-                          }}
-                        >
-                          {version ||
-                            "-"}
+                        <td style={{ padding: "13px 14px", color: "var(--text-primary)", fontSize: "13px" }}>
+                          {version || "-"}
                         </td>
-
-                        <td
-                          style={{
-                            padding:
-                              "13px 14px",
-                            color:
-                              "var(--text-primary)",
-                            fontSize:
-                              "13px",
-                          }}
-                        >
-                          {target ||
-                            "-"}
+                        <td style={{ padding: "13px 14px", color: "var(--text-primary)", fontSize: "13px" }}>
+                          {target || "-"}
                         </td>
-
-                        <td
-                          style={{
-                            padding:
-                              "13px 14px",
-                          }}
-                        >
+                        <td style={{ padding: "13px 14px" }}>
                           <span
                             style={{
-                              display:
-                                "inline-flex",
-                              padding:
-                                "5px 9px",
-                              borderRadius:
-                                "999px",
-                              fontSize:
-                                "11px",
-                              fontWeight:
-                                700,
-                              whiteSpace:
-                                "nowrap",
-                              ...getStatusStyle(
-                                status
-                              ),
+                              display: "inline-flex",
+                              padding: "5px 9px",
+                              borderRadius: "999px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              whiteSpace: "nowrap",
+                              ...getStatusStyle(status),
                             }}
                           >
                             {status}
                           </span>
                         </td>
-
-                        <td
-                          style={{
-                            padding:
-                              "13px 14px",
-                            color:
-                              "var(--text-secondary)",
-                            fontSize:
-                              "12px",
-                            whiteSpace:
-                              "nowrap",
-                          }}
-                        >
+                        <td style={{ padding: "13px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>
                           {dataIdx !== -1
-                            ? row[
-                                dataIdx
-                              ] || "-"
+                            ? row[dataIdx] || "-"
                             : "-"}
                         </td>
-
-                        <td
-                          style={{
-                            padding:
-                              "13px 14px",
-                            color:
-                              "var(--text-secondary)",
-                            fontSize:
-                              "12px",
-                            whiteSpace:
-                              "nowrap",
-                          }}
-                        >
-                          {responsavelIdx !==
-                          -1
-                            ? row[
-                                responsavelIdx
-                              ] || "-"
+                        <td style={{ padding: "13px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>
+                          {responsavelIdx !== -1
+                            ? row[responsavelIdx] || "-"
                             : "-"}
                         </td>
-
-                        <td
-                          style={{
-                            padding:
-                              "13px 14px",
-                            color:
-                              "var(--text-secondary)",
-                            fontSize:
-                              "12px",
-                            textAlign:
-                              "center",
-                          }}
-                        >
+                        <td style={{ padding: "13px 14px", color: "var(--text-secondary)", fontSize: "12px", textAlign: "center" }}>
                           {contadorIdx !== -1
-                            ? row[
-                                contadorIdx
-                              ] || "0"
+                            ? row[contadorIdx] || "0"
                             : "0"}
                         </td>
-
-                        <td
-                          style={{
-                            padding:
-                              "13px 14px",
-                            color:
-                              "var(--text-secondary)",
-                            fontSize:
-                              "12px",
-                          }}
-                        >
+                        <td style={{ padding: "13px 14px", color: "var(--text-secondary)", fontSize: "12px", minWidth: "160px" }}>
                           {obsIdx !== -1
-                            ? row[
-                                obsIdx
-                              ] || "-"
+                            ? row[obsIdx] || "-"
                             : "-"}
                         </td>
-
-                        <td
-                          style={{
-                            padding: "13px 14px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
+                        <td style={{ padding: "13px 14px", whiteSpace: "nowrap" }}>
                           {canEdit ? (
                             <button
                               type="button"
@@ -771,16 +800,17 @@ export default function DetalhesAppsMobileModal({
                                 handleEditApp(row)
                               }
                               style={{
-                                padding: "6px 10px",
+                                padding: "7px 11px",
                                 backgroundColor:
                                   "var(--bg-primary)",
-                                color: "#3B82F6",
+                                color:
+                                  "var(--text-primary)",
                                 border:
                                   "1px solid var(--border-primary)",
                                 borderRadius: "7px",
                                 cursor: "pointer",
-                                fontSize: "11px",
-                                fontWeight: 700,
+                                fontSize: "12px",
+                                fontWeight: 600,
                               }}
                             >
                               Editar
@@ -797,7 +827,6 @@ export default function DetalhesAppsMobileModal({
                             </span>
                           )}
                         </td>
-
                       </tr>
                     );
                   }
@@ -807,21 +836,132 @@ export default function DetalhesAppsMobileModal({
           </table>
         </div>
 
+        {editingAppRow && (
+          <div
+            style={{
+              padding: "18px 20px",
+              borderTop:
+                "1px solid var(--border-primary)",
+              display: "grid",
+              gridTemplateColumns:
+                "minmax(180px, 1fr) minmax(260px, 2fr)",
+              gap: "14px",
+            }}
+          >
+            <label
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                color:
+                  "var(--text-secondary)",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              Versão
+              <input
+                value={editedVersion}
+                onChange={(event) =>
+                  setEditedVersion(
+                    event.target.value
+                  )
+                }
+                style={inputStyle}
+              />
+            </label>
+
+            <label
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                color:
+                  "var(--text-secondary)",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              Observação
+              <input
+                value={editedObs}
+                onChange={(event) =>
+                  setEditedObs(
+                    event.target.value
+                  )
+                }
+                style={inputStyle}
+              />
+            </label>
+
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "10px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                disabled={saving}
+                style={{
+                  padding: "9px 14px",
+                  backgroundColor:
+                    "var(--bg-primary)",
+                  color:
+                    "var(--text-primary)",
+                  border:
+                    "1px solid var(--border-primary)",
+                  borderRadius: "8px",
+                  cursor: saving
+                    ? "not-allowed"
+                    : "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveApp}
+                disabled={saving}
+                style={{
+                  padding: "9px 15px",
+                  backgroundColor: "#3B82F6",
+                  color: "#FFFFFF",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: saving
+                    ? "not-allowed"
+                    : "pointer",
+                  fontWeight: 700,
+                }}
+              >
+                {saving
+                  ? "Salvando..."
+                  : "Salvar"}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div
           style={{
             padding: "14px 20px",
             borderTop:
               "1px solid var(--border-primary)",
             display: "flex",
-            justifyContent:
-              "flex-end",
+            justifyContent: "flex-end",
           }}
         >
           <button
             type="button"
             onClick={onClose}
             style={{
-              padding: "9px 16px",
+              padding: "9px 15px",
               backgroundColor:
                 "var(--bg-primary)",
               color:
@@ -830,199 +970,12 @@ export default function DetalhesAppsMobileModal({
                 "1px solid var(--border-primary)",
               borderRadius: "8px",
               cursor: "pointer",
-              fontSize: "12px",
               fontWeight: 600,
             }}
           >
             Fechar
           </button>
         </div>
-        {editingAppRow && (
-  <div
-    style={{
-      margin: "16px 20px 0",
-      padding: "16px",
-      backgroundColor:
-        "var(--bg-primary)",
-      border:
-        "1px solid var(--border-primary)",
-      borderRadius: "10px",
-    }}
-  >
-    <div
-      style={{
-        marginBottom: "14px",
-      }}
-    >
-      <strong
-        style={{
-          color:
-            "var(--text-primary)",
-          fontSize: "14px",
-        }}
-      >
-        Editando aplicativo:{" "}
-        {appIdx !== -1
-          ? editingAppRow[
-              appIdx
-            ] || "-"
-          : "-"}
-      </strong>
-    </div>
-
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns:
-          "minmax(180px, 1fr) minmax(260px, 2fr)",
-        gap: "12px",
-      }}
-    >
-      <div>
-        <label
-          style={{
-            display: "block",
-            marginBottom: "6px",
-            color:
-              "var(--text-muted)",
-            fontSize: "11px",
-            fontWeight: 700,
-          }}
-        >
-          VERSÃO
-        </label>
-
-        <input
-          type="text"
-          value={editedVersion}
-          onChange={(event) =>
-            setEditedVersion(
-              event.target.value
-            )
-          }
-          style={{
-            width: "100%",
-            boxSizing:
-              "border-box",
-            padding: "9px 10px",
-            backgroundColor:
-              "var(--bg-input)",
-            color:
-              "var(--text-primary)",
-            border:
-              "1px solid var(--border-primary)",
-            borderRadius: "7px",
-            outline: "none",
-          }}
-        />
-      </div>
-
-      <div>
-        <label
-          style={{
-            display: "block",
-            marginBottom: "6px",
-            color:
-              "var(--text-muted)",
-            fontSize: "11px",
-            fontWeight: 700,
-          }}
-        >
-          OBSERVAÇÃO
-        </label>
-
-        <input
-          type="text"
-          value={editedObs}
-          onChange={(event) =>
-            setEditedObs(
-              event.target.value
-            )
-          }
-          style={{
-            width: "100%",
-            boxSizing:
-              "border-box",
-            padding: "9px 10px",
-            backgroundColor:
-              "var(--bg-input)",
-            color:
-              "var(--text-primary)",
-            border:
-              "1px solid var(--border-primary)",
-            borderRadius: "7px",
-            outline: "none",
-          }}
-        />
-      </div>
-        </div>
-
-        {saveError && (
-          <div
-            style={{
-              marginTop: "10px",
-              color: "#EF4444",
-              fontSize: "12px",
-            }}
-          >
-            {saveError}
-          </div>
-        )}
-
-        <div
-          style={{
-            marginTop: "14px",
-            display: "flex",
-            justifyContent:
-              "flex-end",
-            gap: "8px",
-          }}
-        >
-          <button
-            type="button"
-            onClick={handleCancelEdit}
-            disabled={saving}
-            style={{
-              padding: "8px 12px",
-              backgroundColor:
-                "var(--bg-secondary)",
-              color:
-                "var(--text-muted)",
-              border:
-                "1px solid var(--border-primary)",
-              borderRadius: "7px",
-              cursor: saving
-                ? "not-allowed"
-                : "pointer",
-            }}
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSaveApp}
-            disabled={saving}
-            style={{
-              padding: "8px 14px",
-              backgroundColor:
-                "#3B82F6",
-              color: "#FFFFFF",
-              border: "none",
-              borderRadius: "7px",
-              cursor: saving
-                ? "not-allowed"
-                : "pointer",
-              fontWeight: 700,
-            }}
-          >
-            {saving
-              ? "Salvando..."
-              : "Salvar"}
-          </button>
-        </div>
-      </div>
-    )}
       </div>
     </div>
   );
