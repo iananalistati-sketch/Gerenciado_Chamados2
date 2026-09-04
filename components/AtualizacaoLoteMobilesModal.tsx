@@ -15,6 +15,18 @@ interface AtualizacaoLoteMobilesModalProps {
   }) => Promise<void>;
 }
 
+const getToday = () => {
+  const now = new Date();
+  const localDate = new Date(
+    now.getTime() -
+      now.getTimezoneOffset() * 60000
+  );
+
+  return localDate
+    .toISOString()
+    .split("T")[0];
+};
+
 export default function AtualizacaoLoteMobilesModal({
   isOpen,
   selectedCount,
@@ -22,28 +34,22 @@ export default function AtualizacaoLoteMobilesModal({
   onClose,
   onApply,
 }: AtualizacaoLoteMobilesModalProps) {
-  const [versao, setVersao] = useState("");
-  const [dataAtualizacao, setDataAtualizacao] =
+  const [appUso, setAppUso] =
     useState("");
-  const [status, setStatus] = useState("");
-  const [
-    statusAtualizacao,
-    setStatusAtualizacao,
-  ] = useState("");
+  const [versao, setVersao] =
+    useState("");
   const [observacao, setObservacao] =
     useState("");
-
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] =
+    useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
+    setAppUso("");
     setVersao("");
-    setDataAtualizacao("");
-    setStatus("");
-    setStatusAtualizacao("");
     setObservacao("");
   }, [isOpen]);
 
@@ -56,15 +62,16 @@ export default function AtualizacaoLoteMobilesModal({
   ) => {
     event.preventDefault();
 
-    if (
-      !versao &&
-      !dataAtualizacao &&
-      !status &&
-      !statusAtualizacao &&
-      !observacao
-    ) {
+    if (!appUso) {
       alert(
-        "Informe pelo menos um campo para atualizar."
+        "Selecione o aplicativo que será atualizado."
+      );
+      return;
+    }
+
+    if (!versao.trim()) {
+      alert(
+        "Informe a nova versão do aplicativo."
       );
       return;
     }
@@ -73,17 +80,17 @@ export default function AtualizacaoLoteMobilesModal({
 
     try {
       await onApply({
-        versao,
-        dataAtualizacao,
-        status,
-        statusAtualizacao,
-        observacao,
+        versao: versao.trim(),
+        dataAtualizacao: getToday(),
+        status: currentUserName,
+        statusAtualizacao: appUso,
+        observacao: observacao.trim(),
       });
 
       onClose();
     } catch (error: any) {
       alert(
-        "Erro ao atualizar equipamentos: " +
+        "Erro ao atualizar aplicativos: " +
           error.message
       );
     } finally {
@@ -97,7 +104,8 @@ export default function AtualizacaoLoteMobilesModal({
     padding: "10px 12px",
     backgroundColor: "var(--bg-input)",
     color: "var(--text-primary)",
-    border: "1px solid var(--border-primary)",
+    border:
+      "1px solid var(--border-primary)",
     borderRadius: "8px",
     fontSize: "13px",
     outline: "none",
@@ -147,7 +155,8 @@ export default function AtualizacaoLoteMobilesModal({
               borderBottom:
                 "1px solid var(--border-primary)",
               display: "flex",
-              justifyContent: "space-between",
+              justifyContent:
+                "space-between",
               alignItems: "center",
               gap: "16px",
             }}
@@ -161,13 +170,14 @@ export default function AtualizacaoLoteMobilesModal({
                   fontSize: "20px",
                 }}
               >
-                Atualização em Lote
+                Atualização de Apps em Lote
               </h2>
 
               <p
                 style={{
                   margin: "5px 0 0",
-                  color: "var(--text-muted)",
+                  color:
+                    "var(--text-muted)",
                   fontSize: "12px",
                 }}
               >
@@ -215,7 +225,34 @@ export default function AtualizacaoLoteMobilesModal({
             }}
           >
             <label style={labelStyle}>
-              Versão
+              Aplicativo
+              <select
+                value={appUso}
+                onChange={(event) =>
+                  setAppUso(
+                    event.target.value
+                  )
+                }
+                style={inputStyle}
+                required
+              >
+                <option value="">
+                  Selecione o aplicativo
+                </option>
+                <option value="ASSISTENCIAL">
+                  ASSISTENCIAL
+                </option>
+                <option value="FARMACIA">
+                  FARMACIA
+                </option>
+                <option value="HIGIENIZACAO">
+                  HIGIENIZACAO
+                </option>
+              </select>
+            </label>
+
+            <label style={labelStyle}>
+              Nova versão
               <input
                 type="text"
                 value={versao}
@@ -226,83 +263,8 @@ export default function AtualizacaoLoteMobilesModal({
                 }
                 placeholder="Ex.: 5.3.0"
                 style={inputStyle}
+                required
               />
-            </label>
-
-            <label style={labelStyle}>
-              Data atualização
-              <input
-                type="date"
-                value={dataAtualizacao}
-                onChange={(event) =>
-                  setDataAtualizacao(
-                    event.target.value
-                  )
-                }
-                style={inputStyle}
-              />
-            </label>
-
-            <label style={labelStyle}>
-              Status operacional
-              <select
-                value={status}
-                onChange={(event) =>
-                  setStatus(
-                    event.target.value
-                  )
-                }
-                style={inputStyle}
-              >
-                <option value="">
-                  Não alterar
-                </option>
-
-                <option value="A">
-                  Ativo
-                </option>
-
-                <option value="I">
-                  Inativo
-                </option>
-
-                <option value="M">
-                  Manutenção
-                </option>
-              </select>
-            </label>
-
-            <label style={labelStyle}>
-              Status atualização
-              <select
-                value={statusAtualizacao}
-                onChange={(event) =>
-                  setStatusAtualizacao(
-                    event.target.value
-                  )
-                }
-                style={inputStyle}
-              >
-                <option value="">
-                  Não alterar
-                </option>
-
-                <option value="ATUALIZADO">
-                  Atualizado
-                </option>
-
-                <option value="PENDENTE">
-                  Pendente
-                </option>
-
-                <option value="SEM INFORMAÇÃO">
-                  Sem informação
-                </option>
-
-                <option value="NÃO SE APLICA">
-                  Não se aplica
-                </option>
-              </select>
             </label>
 
             <label
@@ -320,7 +282,7 @@ export default function AtualizacaoLoteMobilesModal({
                   )
                 }
                 rows={4}
-                placeholder="Deixe em branco para não alterar."
+                placeholder="Ex.: Atualização setembro/2026"
                 style={{
                   ...inputStyle,
                   resize: "vertical",
@@ -340,17 +302,43 @@ export default function AtualizacaoLoteMobilesModal({
                 color:
                   "var(--text-muted)",
                 fontSize: "12px",
+                lineHeight: 1.6,
               }}
             >
-              Responsável pela operação:{" "}
-              <strong
+              <div>
+                Responsável pela operação:{" "}
+                <strong
+                  style={{
+                    color:
+                      "var(--text-primary)",
+                  }}
+                >
+                  {currentUserName}
+                </strong>
+              </div>
+              <div>
+                Data da atualização:{" "}
+                <strong
+                  style={{
+                    color:
+                      "var(--text-primary)",
+                  }}
+                >
+                  {getToday()}
+                </strong>
+              </div>
+              <div
                 style={{
-                  color:
-                    "var(--text-primary)",
+                  marginTop: "8px",
                 }}
               >
-                {currentUserName}
-              </strong>
+                Somente os equipamentos que
+                possuírem o aplicativo
+                selecionado serão atualizados.
+                Equipamentos sem esse App serão
+                ignorados e contabilizados no
+                resultado.
+              </div>
             </div>
           </div>
 
@@ -391,7 +379,8 @@ export default function AtualizacaoLoteMobilesModal({
               disabled={saving}
               style={{
                 padding: "10px 20px",
-                backgroundColor: "#3B82F6",
+                backgroundColor:
+                  "#3B82F6",
                 color: "#FFFFFF",
                 border: "none",
                 borderRadius: "8px",
