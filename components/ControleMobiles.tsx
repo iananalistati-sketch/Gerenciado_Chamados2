@@ -223,15 +223,129 @@ export default function ControleMobiles({
       return map;
     }, [mobileApps]);
 
-    console.log(
-      "DEBUG MOBILE APPS:",
-      mobileApps
-    );
+    const mobileAppHeaders =
+      mobileApps[0] || [];
 
-    console.log(
-      "DEBUG MOBILE APPS POR COLETOR:",
-      mobileAppsByColetor
-    );
+    const mobileAppAppIdx =
+      mobileAppHeaders.findIndex(
+        (header) =>
+          normalize(header) ===
+          normalize("APP_USO")
+      );
+
+    const mobileAppVersaoIdx =
+      mobileAppHeaders.findIndex(
+        (header) =>
+          normalize(header) ===
+          normalize("VERSAO")
+      );
+
+    const getMobileAppStatus = (
+      appRow: string[]
+    ) => {
+      if (
+        mobileAppAppIdx === -1 ||
+        mobileAppVersaoIdx === -1
+      ) {
+        return "SEM INFORMAÇÃO";
+      }
+
+      const appName = String(
+        appRow[mobileAppAppIdx] || ""
+      ).trim();
+
+      const currentVersion = String(
+        appRow[mobileAppVersaoIdx] || ""
+      ).trim();
+
+      return getAutomaticUpdateStatus(
+        appName,
+        currentVersion
+      );
+    };
+
+    const getMobileUpdateSummary = (
+      row: string[]
+    ) => {
+      const coletor =
+        coletorIdx !== -1
+          ? String(
+              row[coletorIdx] || ""
+            ).trim()
+          : "";
+
+      if (!coletor) {
+        return {
+          totalApps: 0,
+          updatedApps: 0,
+          pendingApps: 0,
+          unknownApps: 0,
+          status: "SEM INFORMAÇÃO",
+        };
+      }
+
+      const appRows =
+        mobileAppsByColetor[
+          normalize(coletor)
+        ] || [];
+
+      if (appRows.length === 0) {
+        return {
+          totalApps: 0,
+          updatedApps: 0,
+          pendingApps: 0,
+          unknownApps: 0,
+          status: "SEM INFORMAÇÃO",
+        };
+      }
+
+      let updatedApps = 0;
+      let pendingApps = 0;
+      let unknownApps = 0;
+
+      appRows.forEach((appRow) => {
+        const status =
+          getMobileAppStatus(appRow);
+
+        const normalizedStatus =
+          normalizeValue(status);
+
+        if (
+          normalizedStatus ===
+          "atualizado"
+        ) {
+          updatedApps++;
+          return;
+        }
+
+        if (
+          normalizedStatus ===
+          "pendente"
+        ) {
+          pendingApps++;
+          return;
+        }
+
+        unknownApps++;
+      });
+
+      let status =
+        "ATUALIZADO";
+
+      if (pendingApps > 0) {
+        status = "PENDENTE";
+      } else if (unknownApps > 0) {
+        status = "SEM INFORMAÇÃO";
+      }
+
+      return {
+        totalApps: appRows.length,
+        updatedApps,
+        pendingApps,
+        unknownApps,
+        status,
+      };
+    };
 
   const getOriginalIndex = (
     row: string[]
@@ -357,38 +471,24 @@ export default function ControleMobiles({
 
   const totalAtualizados =
     rows.filter((row) => {
-      const automaticStatus =
-        getAutomaticUpdateStatus(
-          appIdx !== -1
-            ? row[appIdx] || ""
-            : "",
-          versaoIdx !== -1
-            ? row[versaoIdx] || ""
-            : ""
-        );
+      const summary =
+        getMobileUpdateSummary(row);
 
       return (
         normalizeValue(
-          automaticStatus
+          summary.status
         ) === "atualizado"
       );
     }).length;
 
   const totalPendentes =
     rows.filter((row) => {
-      const automaticStatus =
-        getAutomaticUpdateStatus(
-          appIdx !== -1
-            ? row[appIdx] || ""
-            : "",
-          versaoIdx !== -1
-            ? row[versaoIdx] || ""
-            : ""
-        );
+      const summary =
+        getMobileUpdateSummary(row);
 
       return (
         normalizeValue(
-          automaticStatus
+          summary.status
         ) === "pendente"
       );
     }).length;
@@ -466,19 +566,12 @@ export default function ControleMobiles({
       }
 
       if (statusAtualizacaoFilter) {
-        const automaticStatus =
-          getAutomaticUpdateStatus(
-            appIdx !== -1
-              ? row[appIdx] || ""
-              : "",
-            versaoIdx !== -1
-              ? row[versaoIdx] || ""
-              : ""
-          );
+        const updateSummary =
+          getMobileUpdateSummary(row);
 
         if (
           normalizeValue(
-            automaticStatus
+            updateSummary.status
           ) !==
           normalizeValue(
             statusAtualizacaoFilter
@@ -1600,12 +1693,11 @@ export default function ControleMobiles({
                     "SN",
                     "IP",
                     "App de uso",
-                    "Versão",
-                    "Data atualização",
+                    "Apps atualizados",
                     "Status atualização",
                     "Status",
                     "Ações",
-                    ].map((title) => (
+                  ].map((title) => (
                     <th
                       key={title}
                       style={{
@@ -1629,7 +1721,7 @@ export default function ControleMobiles({
                 {paginatedRows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={11}
+                      colSpan={10}
                       style={{
                         padding: "28px",
                         textAlign: "center",
@@ -1646,16 +1738,8 @@ export default function ControleMobiles({
                       (currentPage - 1) *
                         itemsPerPage +
                       index;
-
-                    const automaticUpdateStatus =
-                      getAutomaticUpdateStatus(
-                        appIdx !== -1
-                          ? row[appIdx] || ""
-                          : "",
-                        versaoIdx !== -1
-                          ? row[versaoIdx] || ""
-                          : ""
-                      );
+                    const mobileUpdateSummary =
+                      getMobileUpdateSummary(row);
 
                     return (
                       <tr
@@ -1769,32 +1853,28 @@ export default function ControleMobiles({
                         <td
                           style={{
                             padding: "12px 14px",
-                            color:
-                              "var(--text-primary)",
+                            color: "var(--text-primary)",
                             fontSize: "13px",
-                            fontWeight: 600,
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {versaoIdx !== -1
-                            ? row[versaoIdx] || "-"
-                            : "-"}
-                        </td>
-
-                        <td
-                          style={{
-                            padding: "12px 14px",
-                            color:
-                              "var(--text-secondary)",
-                            fontSize: "12px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {dataAtualizacaoIdx !== -1
-                            ? row[
-                                dataAtualizacaoIdx
-                              ] || "-"
-                            : "-"}
+                          {mobileUpdateSummary.totalApps > 0 ? (
+                            <>
+                              <strong>
+                                {mobileUpdateSummary.updatedApps}
+                              </strong>
+                              {" / "}
+                              {mobileUpdateSummary.totalApps}
+                            </>
+                          ) : (
+                            <span
+                              style={{
+                                color: "var(--text-muted)",
+                              }}
+                            >
+                              Nenhum App
+                            </span>
+                          )}
                         </td>
 
                         <td
@@ -1812,11 +1892,11 @@ export default function ControleMobiles({
                               fontSize: "11px",
                               fontWeight: 700,
                               ...getUpdateStatusStyle(
-                                automaticUpdateStatus
-                              ),
+                                mobileUpdateSummary.status
+                              )
                             }}
                           >
-                            {automaticUpdateStatus}
+                            {mobileUpdateSummary.status}
                           </span>
                         </td>
 
