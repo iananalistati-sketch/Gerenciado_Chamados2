@@ -93,6 +93,34 @@ export default function ControleMobiles({
 
   const headers = data[0] || [];
   const rows = data.slice(1);
+
+  const getColumnIndex = (...possibleNames: string[]) =>
+    headers.findIndex((header) =>
+      possibleNames.some(
+        (name) => normalize(header) === normalize(name)
+      )
+    );
+
+  const setorIdx = getColumnIndex("Setor");
+  const coletorIdx = getColumnIndex("Coletor");
+  const snIdx = getColumnIndex("SN");
+  const finalIdx = getColumnIndex("FINAL");
+  const macIdx = getColumnIndex("MAC");
+  const ipIdx = getColumnIndex("IP");
+  const appIdx = getColumnIndex(
+    "App de uso",
+    "Aplicativo",
+    "App"
+  );
+  const setorLocalizadoIdx = getColumnIndex(
+    "Setor localizado"
+  );
+  const statusIdx = getColumnIndex("Status");
+  const statusAtualizacaoIdx = getColumnIndex(
+    "Status atualização",
+    "Status atualizacao"
+  );
+
   const targetVersions = useMemo(() => {
     const map: Record<string, string> = {};
 
@@ -139,9 +167,7 @@ export default function ControleMobiles({
         ).trim();
 
         if (app && version) {
-          map[
-            normalize(app)
-          ] = version;
+          map[normalize(app)] = version;
         }
       });
 
@@ -152,36 +178,48 @@ export default function ControleMobiles({
     app: string,
     currentVersion: string
   ) => {
-    const normalizedApp =
-      normalize(app);
-
+    const normalizedApp = normalize(app);
     const targetVersion =
-      targetVersions[
-        normalizedApp
-      ];
+      targetVersions[normalizedApp];
 
-    const version =
-      String(
-        currentVersion || ""
-      ).trim();
+    const version = String(
+      currentVersion || ""
+    ).trim();
 
-    if (!version) {
+    if (!version || !targetVersion) {
       return "SEM INFORMAÇÃO";
     }
 
-    if (!targetVersion) {
-      return "SEM INFORMAÇÃO";
-    }
-
-    if (
-      version ===
-      targetVersion
-    ) {
+    if (version === targetVersion) {
       return "ATUALIZADO";
     }
 
     return "PENDENTE";
   };
+
+  const mobileAppHeaders =
+    mobileApps[0] || [];
+
+  const mobileAppColetorIdx =
+    mobileAppHeaders.findIndex(
+      (header) =>
+        normalize(header) ===
+        normalize("COLETOR")
+    );
+
+  const mobileAppAppIdx =
+    mobileAppHeaders.findIndex(
+      (header) =>
+        normalize(header) ===
+        normalize("APP_USO")
+    );
+
+  const mobileAppVersaoIdx =
+    mobileAppHeaders.findIndex(
+      (header) =>
+        normalize(header) ===
+        normalize("VERSAO")
+    );
 
   const mobileAppsByColetor =
     useMemo(() => {
@@ -192,22 +230,9 @@ export default function ControleMobiles({
 
       if (
         !mobileApps ||
-        mobileApps.length <= 1
+        mobileApps.length <= 1 ||
+        mobileAppColetorIdx === -1
       ) {
-        return map;
-      }
-
-      const appHeaders =
-        mobileApps[0] || [];
-
-      const coletorIndex =
-        appHeaders.findIndex(
-          (header) =>
-            normalize(header) ===
-            normalize("COLETOR")
-        );
-
-      if (coletorIndex === -1) {
         return map;
       }
 
@@ -215,15 +240,14 @@ export default function ControleMobiles({
         .slice(1)
         .forEach((row) => {
           const coletor = String(
-            row[coletorIndex] || ""
+            row[mobileAppColetorIdx] || ""
           ).trim();
 
           if (!coletor) {
             return;
           }
 
-          const key =
-            normalize(coletor);
+          const key = normalize(coletor);
 
           if (!map[key]) {
             map[key] = [];
@@ -233,131 +257,110 @@ export default function ControleMobiles({
         });
 
       return map;
-    }, [mobileApps]);
+    }, [mobileApps, mobileAppColetorIdx]);
 
-    const mobileAppHeaders =
-      mobileApps[0] || [];
+  const getMobileAppStatus = (
+    appRow: string[]
+  ) => {
+    if (
+      mobileAppAppIdx === -1 ||
+      mobileAppVersaoIdx === -1
+    ) {
+      return "SEM INFORMAÇÃO";
+    }
 
-    const mobileAppAppIdx =
-      mobileAppHeaders.findIndex(
-        (header) =>
-          normalize(header) ===
-          normalize("APP_USO")
-      );
+    const appName = String(
+      appRow[mobileAppAppIdx] || ""
+    ).trim();
 
-    const mobileAppVersaoIdx =
-      mobileAppHeaders.findIndex(
-        (header) =>
-          normalize(header) ===
-          normalize("VERSAO")
-      );
+    const currentVersion = String(
+      appRow[mobileAppVersaoIdx] || ""
+    ).trim();
 
-    const getMobileAppStatus = (
-      appRow: string[]
-    ) => {
-      if (
-        mobileAppAppIdx === -1 ||
-        mobileAppVersaoIdx === -1
-      ) {
-        return "SEM INFORMAÇÃO";
-      }
+    return getAutomaticUpdateStatus(
+      appName,
+      currentVersion
+    );
+  };
 
-      const appName = String(
-        appRow[mobileAppAppIdx] || ""
-      ).trim();
+  const getAppRowsForEquipment = (
+    row: string[]
+  ) => {
+    if (coletorIdx === -1) {
+      return [];
+    }
 
-      const currentVersion = String(
-        appRow[mobileAppVersaoIdx] || ""
-      ).trim();
+    const coletor = String(
+      row[coletorIdx] || ""
+    ).trim();
 
-      return getAutomaticUpdateStatus(
-        appName,
-        currentVersion
-      );
-    };
+    if (!coletor) {
+      return [];
+    }
 
-    const getMobileUpdateSummary = (
-      row: string[]
-    ) => {
-      const coletor =
-        coletorIdx !== -1
-          ? String(
-              row[coletorIdx] || ""
-            ).trim()
-          : "";
+    return (
+      mobileAppsByColetor[
+        normalize(coletor)
+      ] || []
+    );
+  };
 
-      if (!coletor) {
-        return {
-          totalApps: 0,
-          updatedApps: 0,
-          pendingApps: 0,
-          unknownApps: 0,
-          status: "SEM INFORMAÇÃO",
-        };
-      }
+  const getMobileUpdateSummary = (
+    row: string[]
+  ) => {
+    const appRows =
+      getAppRowsForEquipment(row);
 
-      const appRows =
-        mobileAppsByColetor[
-          normalize(coletor)
-        ] || [];
-
-      if (appRows.length === 0) {
-        return {
-          totalApps: 0,
-          updatedApps: 0,
-          pendingApps: 0,
-          unknownApps: 0,
-          status: "SEM INFORMAÇÃO",
-        };
-      }
-
-      let updatedApps = 0;
-      let pendingApps = 0;
-      let unknownApps = 0;
-
-      appRows.forEach((appRow) => {
-        const status =
-          getMobileAppStatus(appRow);
-
-        const normalizedStatus =
-          normalizeValue(status);
-
-        if (
-          normalizedStatus ===
-          "atualizado"
-        ) {
-          updatedApps++;
-          return;
-        }
-
-        if (
-          normalizedStatus ===
-          "pendente"
-        ) {
-          pendingApps++;
-          return;
-        }
-
-        unknownApps++;
-      });
-
-      let status =
-        "ATUALIZADO";
-
-      if (pendingApps > 0) {
-        status = "PENDENTE";
-      } else if (unknownApps > 0) {
-        status = "SEM INFORMAÇÃO";
-      }
-
+    if (appRows.length === 0) {
       return {
-        totalApps: appRows.length,
-        updatedApps,
-        pendingApps,
-        unknownApps,
-        status,
+        totalApps: 0,
+        updatedApps: 0,
+        pendingApps: 0,
+        unknownApps: 0,
+        status: "SEM INFORMAÇÃO",
       };
+    }
+
+    let updatedApps = 0;
+    let pendingApps = 0;
+    let unknownApps = 0;
+
+    appRows.forEach((appRow) => {
+      const status =
+        getMobileAppStatus(appRow);
+
+      const normalizedStatus =
+        normalizeValue(status);
+
+      if (normalizedStatus === "atualizado") {
+        updatedApps++;
+        return;
+      }
+
+      if (normalizedStatus === "pendente") {
+        pendingApps++;
+        return;
+      }
+
+      unknownApps++;
+    });
+
+    let status = "ATUALIZADO";
+
+    if (pendingApps > 0) {
+      status = "PENDENTE";
+    } else if (unknownApps > 0) {
+      status = "SEM INFORMAÇÃO";
+    }
+
+    return {
+      totalApps: appRows.length,
+      updatedApps,
+      pendingApps,
+      unknownApps,
+      status,
     };
+  };
 
   const getOriginalIndex = (
     row: string[]
@@ -368,40 +371,6 @@ export default function ControleMobiles({
       ? value
       : null;
   };
-
-
-
-  const getColumnIndex = (...possibleNames: string[]) =>
-    headers.findIndex((header) =>
-      possibleNames.some(
-        (name) => normalize(header) === normalize(name)
-      )
-    );
-
-  const setorIdx = getColumnIndex("Setor");
-  const coletorIdx = getColumnIndex("Coletor");
-  const snIdx = getColumnIndex("SN");
-  const finalIdx = getColumnIndex("FINAL");
-  const macIdx = getColumnIndex("MAC");
-  const ipIdx = getColumnIndex("IP");
-  const dataAtualizacaoIdx = getColumnIndex(
-    "Data atualização",
-    "Data atualizacao"
-  );
-  const appIdx = getColumnIndex(
-    "App de uso",
-    "Aplicativo",
-    "App"
-  );
-  const setorLocalizadoIdx = getColumnIndex(
-    "Setor localizado"
-  );
-  const versaoIdx = getColumnIndex("Versão", "Versao");
-  const statusIdx = getColumnIndex("Status");
-  const statusAtualizacaoIdx = getColumnIndex(
-    "Status atualização",
-    "Status atualizacao"
-  );
 
   const viewingAppsColetor =
     viewingAppsRow &&
@@ -446,10 +415,33 @@ export default function ControleMobiles({
     [data, setorIdx]
   );
 
-  const apps = useMemo(
-    () => uniqueValues(appIdx),
-    [data, appIdx]
-  );
+  const apps = useMemo(() => {
+    if (mobileAppAppIdx === -1) {
+      return [];
+    }
+
+    return Array.from(
+      new Set(
+        mobileApps
+          .slice(1)
+          .map((row) =>
+            String(
+              row[mobileAppAppIdx] || ""
+            ).trim()
+          )
+          .filter(
+            (value) =>
+              value &&
+              normalize(value) !== "todos"
+          )
+      )
+    ).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", {
+        sensitivity: "base",
+        numeric: true,
+      })
+    );
+  }, [mobileApps, mobileAppAppIdx]);
 
   const statusOptions = useMemo(
     () => uniqueValues(statusIdx),
@@ -465,10 +457,62 @@ export default function ControleMobiles({
     []
   );
 
-  const versoes = useMemo(
-    () => uniqueValues(versaoIdx),
-    [data, versaoIdx]
-  );
+  const versoes = useMemo(() => {
+    if (mobileAppVersaoIdx === -1) {
+      return [];
+    }
+
+    return Array.from(
+      new Set(
+        mobileApps
+          .slice(1)
+          .filter((row) => {
+            if (
+              !appFilter ||
+              mobileAppAppIdx === -1
+            ) {
+              return true;
+            }
+
+            return (
+              normalizeValue(
+                row[mobileAppAppIdx] || ""
+              ) ===
+              normalizeValue(appFilter)
+            );
+          })
+          .map((row) =>
+            String(
+              row[mobileAppVersaoIdx] || ""
+            ).trim()
+          )
+          .filter(Boolean)
+      )
+    ).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", {
+        sensitivity: "base",
+        numeric: true,
+      })
+    );
+  }, [
+    mobileApps,
+    mobileAppAppIdx,
+    mobileAppVersaoIdx,
+    appFilter,
+  ]);
+
+  useEffect(() => {
+    if (
+      versaoFilter &&
+      !versoes.some(
+        (versao) =>
+          normalizeValue(versao) ===
+          normalizeValue(versaoFilter)
+      )
+    ) {
+      setVersaoFilter("");
+    }
+  }, [appFilter, versoes, versaoFilter]);
 
   const totalEquipamentos = rows.length;
 
@@ -546,27 +590,58 @@ export default function ControleMobiles({
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
+      const appRows =
+        getAppRowsForEquipment(row);
+
+      const appRowsMatchingApp =
+        appFilter &&
+        mobileAppAppIdx !== -1
+          ? appRows.filter(
+              (appRow) =>
+                normalizeValue(
+                  appRow[mobileAppAppIdx] || ""
+                ) ===
+                normalizeValue(appFilter)
+            )
+          : appRows;
+
       const searchValue = normalizeValue(search);
 
       if (searchValue) {
-        const searchableValues = [
+        const physicalSearchValues = [
           setorIdx,
           coletorIdx,
           snIdx,
           finalIdx,
           macIdx,
           ipIdx,
-          appIdx,
           setorLocalizadoIdx,
-          versaoIdx,
         ]
           .filter((index) => index !== -1)
           .map((index) =>
             normalizeValue(row[index] || "")
           );
 
-        const matchesSearch = searchableValues.some(
-          (value) => value.includes(searchValue)
+        const appSearchValues =
+          appRows.flatMap((appRow) => [
+            mobileAppAppIdx !== -1
+              ? normalizeValue(
+                  appRow[mobileAppAppIdx] || ""
+                )
+              : "",
+            mobileAppVersaoIdx !== -1
+              ? normalizeValue(
+                  appRow[mobileAppVersaoIdx] || ""
+                )
+              : "",
+          ]);
+
+        const matchesSearch = [
+          ...physicalSearchValues,
+          ...appSearchValues,
+        ].some(
+          (value) =>
+            value.includes(searchValue)
         );
 
         if (!matchesSearch) {
@@ -584,8 +659,7 @@ export default function ControleMobiles({
 
       if (
         appFilter &&
-        normalizeValue(row[appIdx] || "") !==
-          normalizeValue(appFilter)
+        appRowsMatchingApp.length === 0
       ) {
         return false;
       }
@@ -599,27 +673,56 @@ export default function ControleMobiles({
       }
 
       if (statusAtualizacaoFilter) {
-        const updateSummary =
-          getMobileUpdateSummary(row);
+        if (appFilter) {
+          const hasMatchingAppStatus =
+            appRowsMatchingApp.some(
+              (appRow) =>
+                normalizeValue(
+                  getMobileAppStatus(appRow)
+                ) ===
+                normalizeValue(
+                  statusAtualizacaoFilter
+                )
+            );
 
-        if (
-          normalizeValue(
-            updateSummary.status
-          ) !==
-          normalizeValue(
-            statusAtualizacaoFilter
-          )
-        ) {
-          return false;
+          if (!hasMatchingAppStatus) {
+            return false;
+          }
+        } else {
+          const updateSummary =
+            getMobileUpdateSummary(row);
+
+          if (
+            normalizeValue(
+              updateSummary.status
+            ) !==
+            normalizeValue(
+              statusAtualizacaoFilter
+            )
+          ) {
+            return false;
+          }
         }
       }
 
-      if (
-        versaoFilter &&
-        normalizeValue(row[versaoIdx] || "") !==
-          normalizeValue(versaoFilter)
-      ) {
-        return false;
+      if (versaoFilter) {
+        const versionRows = appFilter
+          ? appRowsMatchingApp
+          : appRows;
+
+        const hasMatchingVersion =
+          mobileAppVersaoIdx !== -1 &&
+          versionRows.some(
+            (appRow) =>
+              normalizeValue(
+                appRow[mobileAppVersaoIdx] || ""
+              ) ===
+              normalizeValue(versaoFilter)
+          );
+
+        if (!hasMatchingVersion) {
+          return false;
+        }
       }
 
       return true;
@@ -638,11 +741,11 @@ export default function ControleMobiles({
     finalIdx,
     macIdx,
     ipIdx,
-    appIdx,
     setorLocalizadoIdx,
-    versaoIdx,
     statusIdx,
-    statusAtualizacaoIdx,
+    mobileAppsByColetor,
+    mobileAppAppIdx,
+    mobileAppVersaoIdx,
     targetVersions,
   ]);
 
@@ -679,15 +782,15 @@ export default function ControleMobiles({
 
   const handleEdit = (row: string[]) => {
     if (!canEdit) {
-        return;
+      return;
     }
 
     setEditingRow(row);
-    };
+  };
 
-    const handleCloseEdit = () => {
+  const handleCloseEdit = () => {
     setEditingRow(null);
-    };
+  };
   
   const handleToggleRow = (
     row: string[]
@@ -751,7 +854,7 @@ export default function ControleMobiles({
 
   const clearSelection = () => {
     setSelectedRows([]);
-  };  
+  };
 
   const handleBulkUpdate = async (
     values: {
@@ -803,24 +906,6 @@ export default function ControleMobiles({
           normalize("Obs")
       );
 
-    const contadorHeader =
-      headers.find(
-        (header) =>
-          normalize(header) ===
-            normalize("Contador atualização") ||
-          normalize(header) ===
-            normalize("Contador atualizacao")
-      );
-
-    const responsavelHeader =
-      headers.find(
-        (header) =>
-          normalize(header) ===
-            normalize("Responsável atualização") ||
-          normalize(header) ===
-            normalize("Responsavel atualizacao")
-      );
-
     const selectedData =
       rows.filter((row) => {
         const rowIndex =
@@ -835,7 +920,7 @@ export default function ControleMobiles({
     const preparedUpdates: Array<{
       rowIndex: number;
       rowData: string[];
-    }> = []; 
+    }> = [];
 
     for (const row of selectedData) {
       const rowIndex =
@@ -855,17 +940,13 @@ export default function ControleMobiles({
           return;
         }
 
-        const index =
-          headers.indexOf(header);
+        const index = headers.indexOf(header);
 
         if (index !== -1) {
           updatedRow[index] = value;
         }
       };
 
-      /*
-      * STATUS OPERACIONAL
-      */
       if (values.status) {
         setValue(
           statusHeader,
@@ -873,14 +954,6 @@ export default function ControleMobiles({
         );
       }
 
-      /*
-      * STATUS DA ATUALIZAÇÃO
-      *
-      * Nesta etapa ainda permitimos
-      * alteração manual.
-      * Posteriormente ele será calculado
-      * pela tbConfigMobiles.
-      */
       if (values.statusAtualizacao) {
         setValue(
           statusAtualizacaoHeader,
@@ -888,9 +961,6 @@ export default function ControleMobiles({
         );
       }
 
-      /*
-      * OBSERVAÇÃO
-      */
       if (values.observacao) {
         setValue(
           obsHeader,
@@ -898,9 +968,6 @@ export default function ControleMobiles({
         );
       }
 
-      /*
-      * DATA INFORMADA MANUALMENTE
-      */
       if (values.dataAtualizacao) {
         setValue(
           dataAtualizacaoHeader,
@@ -908,95 +975,11 @@ export default function ControleMobiles({
         );
       }
 
-      /*
-      * ATUALIZAÇÃO DE VERSÃO
-      */
       if (values.versao) {
-        const versaoIdx =
-          versaoHeader
-            ? headers.indexOf(
-                versaoHeader
-              )
-            : -1;
-
-        const oldVersion =
-          versaoIdx !== -1
-            ? String(
-                row[versaoIdx] || ""
-              ).trim()
-            : "";
-
-        const newVersion =
-          values.versao.trim();
-
         setValue(
           versaoHeader,
-          newVersion
+          values.versao.trim()
         );
-
-        /*
-        * Só consideramos uma nova
-        * atualização quando a versão
-        * realmente mudou.
-        */
-        if (newVersion !== oldVersion) {
-          if (contadorHeader) {
-            const contadorIdx =
-              headers.indexOf(
-                contadorHeader
-              );
-
-            const currentCounter =
-              Number(
-                String(
-                  row[contadorIdx] || "0"
-                )
-                  .trim()
-                  .replace(",", ".")
-              ) || 0;
-
-            setValue(
-              contadorHeader,
-              String(
-                currentCounter + 1
-              )
-            );
-          }
-
-          /*
-          * Usuário autenticado responsável
-          * pela atualização.
-          */
-          setValue(
-            responsavelHeader,
-            currentUserName
-          );
-
-          /*
-          * Caso nenhuma data tenha sido
-          * informada no modal, usamos hoje.
-          */
-          if (
-            !values.dataAtualizacao &&
-            dataAtualizacaoHeader
-          ) {
-            const now = new Date();
-
-            const localDate =
-              new Date(
-                now.getTime() -
-                  now.getTimezoneOffset() *
-                    60000
-              );
-
-            setValue(
-              dataAtualizacaoHeader,
-              localDate
-                .toISOString()
-                .split("T")[0]
-            );
-          }
-        }
       }
 
       preparedUpdates.push({
@@ -1097,22 +1080,6 @@ export default function ControleMobiles({
         backgroundColor: "rgba(245, 158, 11, 0.14)",
         color: "#F59E0B",
         border: "1px solid rgba(245, 158, 11, 0.35)",
-      };
-    }
-
-    if (status === "nao localizado") {
-      return {
-        backgroundColor: "rgba(220, 38, 38, 0.14)",
-        color: "#EF4444",
-        border: "1px solid rgba(239, 68, 68, 0.35)",
-      };
-    }
-
-    if (status === "nao se aplica") {
-      return {
-        backgroundColor: "rgba(100, 116, 139, 0.14)",
-        color: "var(--text-muted)",
-        border: "1px solid var(--border-primary)",
       };
     }
 
@@ -1379,7 +1346,7 @@ export default function ControleMobiles({
             onChange={(event) =>
               setSearch(event.target.value)
             }
-            placeholder="Pesquisar Coletor, SN, IP, MAC..."
+            placeholder="Pesquisar Coletor, SN, IP, MAC, App ou versão..."
             style={inputStyle}
           />
 
@@ -1458,7 +1425,11 @@ export default function ControleMobiles({
             }
             style={inputStyle}
           >
-            <option value="">Todas as versões</option>
+            <option value="">
+              {appFilter
+                ? `Todas as versões de ${appFilter}`
+                : "Todas as versões"}
+            </option>
 
             {versoes.map((versao) => (
               <option key={versao} value={versao}>
@@ -1467,6 +1438,18 @@ export default function ControleMobiles({
             ))}
           </select>
         </div>
+
+        {appFilter && (
+          <div
+            style={{
+              marginTop: "10px",
+              color: "var(--text-muted)",
+              fontSize: "11px",
+            }}
+          >
+            Os filtros de versão e status de atualização estão sendo aplicados ao App <strong style={{ color: "var(--text-primary)" }}>{appFilter}</strong>.
+          </div>
+        )}
 
         {hasActiveFilters && (
           <div
@@ -1693,7 +1676,6 @@ export default function ControleMobiles({
                       "var(--bg-primary)",
                   }}
                 >
-
                   <th
                     style={{
                       width: "42px",
@@ -1784,8 +1766,6 @@ export default function ControleMobiles({
                             "1px solid var(--border-primary)",
                         }}
                       >
-
-                        {/* CHECKBOX DE SELEÇÃO */}
                         <td
                           style={{
                             width: "42px",
@@ -1812,7 +1792,6 @@ export default function ControleMobiles({
                           )}
                         </td>
 
-                        {/* SETOR */}
                         <td
                           style={{
                             padding: "12px 14px",
@@ -2031,7 +2010,6 @@ export default function ControleMobiles({
                             )}
                           </div>
                         </td>
-
                       </tr>
                     );
                   })
@@ -2148,7 +2126,7 @@ export default function ControleMobiles({
             </button>
           </div>
         </div>
-            )}
+      )}
 
       <DetalhesAppsMobileModal
         isOpen={viewingAppsRow !== null}
@@ -2178,6 +2156,7 @@ export default function ControleMobiles({
         onClose={handleCloseEdit}
         onSave={onSaveRow}
       />
+
       <NovoMobileModal
         isOpen={showCreateModal}
         headers={headers}
@@ -2202,7 +2181,6 @@ export default function ControleMobiles({
         }
         onApply={handleBulkUpdate}
       />
-
     </div>
   );
 }
