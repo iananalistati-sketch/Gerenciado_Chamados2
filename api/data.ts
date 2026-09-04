@@ -8,6 +8,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Sheet não informada" });
     }
 
+    res.setHeader(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -19,7 +26,6 @@ export default async function handler(req, res) {
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
 
-    // 🔥 USA DIRETO O AUTH (SEM getClient)
     const sheets = google.sheets({
       version: "v4",
       auth,
@@ -33,7 +39,6 @@ export default async function handler(req, res) {
     const values = response.data.values || [];
 
     res.status(200).json(values);
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
