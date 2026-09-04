@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import EditarMobileModal from "./EditarMobileModal";
 import NovoMobileModal from "./NovoMobileModal";
 import AtualizacaoLoteMobilesModal from "./AtualizacaoLoteMobilesModal";
+import DetalhesAppsMobileModal from "./DetalhesAppsMobileModal";
 
 interface ControleMobilesProps {
   data: string[][];
@@ -64,7 +65,12 @@ export default function ControleMobiles({
   const [currentPage, setCurrentPage] = useState(1);
 
   const [editingRow, setEditingRow] =
-  useState<string[] | null>(null);
+    useState<string[] | null>(null);
+
+  const [
+    viewingAppsRow,
+    setViewingAppsRow,
+  ] = useState<string[] | null>(null);
 
   const [showCreateModal, setShowCreateModal] =
     useState(false);
@@ -357,6 +363,8 @@ export default function ControleMobiles({
       : null;
   };
 
+
+
   const getColumnIndex = (...possibleNames: string[]) =>
     headers.findIndex((header) =>
       possibleNames.some(
@@ -388,6 +396,25 @@ export default function ControleMobiles({
     "Status atualização",
     "Status atualizacao"
   );
+
+  const viewingAppsColetor =
+    viewingAppsRow &&
+    coletorIdx !== -1
+      ? String(
+          viewingAppsRow[
+            coletorIdx
+          ] || ""
+        ).trim()
+      : "";
+
+  const viewingApps =
+    viewingAppsColetor
+      ? mobileAppsByColetor[
+          normalize(
+            viewingAppsColetor
+          )
+        ] || []
+      : [];
 
   const uniqueValues = (columnIndex: number) => {
     if (columnIndex === -1) {
@@ -1931,41 +1958,73 @@ export default function ControleMobiles({
                         </td>
 
                         <td
+                          style={{
+                            padding: "12px 14px",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <div
                             style={{
-                                padding: "12px 14px",
-                                whiteSpace: "nowrap",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
                             }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewingAppsRow(row)
+                              }
+                              style={{
+                                padding: "6px 10px",
+                                backgroundColor:
+                                  "var(--bg-primary)",
+                                color: "#10B981",
+                                border:
+                                  "1px solid var(--border-primary)",
+                                borderRadius: "7px",
+                                cursor: "pointer",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                              }}
                             >
+                              Apps
+                            </button>
+
                             {canEdit ? (
-                                <button
+                              <button
                                 type="button"
-                                onClick={() => handleEdit(row)}
+                                onClick={() =>
+                                  handleEdit(row)
+                                }
                                 style={{
-                                    padding: "6px 10px",
-                                    backgroundColor:
+                                  padding: "6px 10px",
+                                  backgroundColor:
                                     "var(--bg-primary)",
-                                    color: "#3B82F6",
-                                    border:
+                                  color: "#3B82F6",
+                                  border:
                                     "1px solid var(--border-primary)",
-                                    borderRadius: "7px",
-                                    cursor: "pointer",
-                                    fontSize: "11px",
-                                    fontWeight: 700,
+                                  borderRadius: "7px",
+                                  cursor: "pointer",
+                                  fontSize: "11px",
+                                  fontWeight: 700,
                                 }}
-                                >
+                              >
                                 Editar
-                                </button>
+                              </button>
                             ) : (
-                                <span
+                              <span
                                 style={{
-                                    color: "var(--text-muted)",
-                                    fontSize: "11px",
+                                  color:
+                                    "var(--text-muted)",
+                                  fontSize: "11px",
                                 }}
-                                >
+                              >
                                 Somente leitura
-                                </span>
+                              </span>
                             )}
-                            </td>
+                          </div>
+                        </td>
 
                       </tr>
                     );
@@ -2084,6 +2143,17 @@ export default function ControleMobiles({
           </div>
         </div>
             )}
+
+      <DetalhesAppsMobileModal
+        isOpen={viewingAppsRow !== null}
+        coletor={viewingAppsColetor}
+        appRows={viewingApps}
+        mobileApps={mobileApps}
+        mobileConfig={mobileConfig}
+        onClose={() =>
+          setViewingAppsRow(null)
+        }
+      />
 
       <EditarMobileModal
         isOpen={editingRow !== null}
