@@ -283,44 +283,42 @@ function AppContent() {
     }
   };
 
-  const handleCreateMobile = async (
-  rowData: string[]
-) => {
-  setLoading(true);
+  const handleSaveMobileApp = async (
+    rowData: string[],
+    rowIndex: number
+  ) => {
+    setLoading(true);
 
-  try {
-    const res = await fetch(
-      "/api/create",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify({
-          rowData,
-          sheet: "tbControleMobiles",
-        }),
-      }
-    );
+    try {
+      const res = await fetch(
+        "/api/update",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            rowData,
+            rowIndex,
+            sheet: "tbMobileApps",
+          }),
+        }
+      );
 
-    const result = await res.json();
+      const result = await res.json();
 
       if (!res.ok) {
         throw new Error(
           result.error ||
-            "Erro ao cadastrar equipamento."
+            "Erro ao atualizar aplicativo do mobile."
         );
       }
 
-      await fetchData();
-
-      alert(
-        "Equipamento cadastrado com sucesso."
-      );
+      await fetchMobileApps();
     } catch (error: any) {
       console.error(
-        "Erro ao cadastrar equipamento:",
+        "Erro ao atualizar tbMobileApps:",
         error
       );
 
@@ -329,6 +327,53 @@ function AppContent() {
       setLoading(false);
     }
   };
+
+  const handleCreateMobile = async (
+    rowData: string[]
+  ) => {
+    setLoading(true);
+
+    try {
+      const res = await fetch(
+        "/api/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            rowData,
+            sheet: "tbControleMobiles",
+          }),
+        }
+      );
+
+      const result = await res.json();
+
+        if (!res.ok) {
+          throw new Error(
+            result.error ||
+              "Erro ao cadastrar equipamento."
+          );
+        }
+
+        await fetchData();
+
+        alert(
+          "Equipamento cadastrado com sucesso."
+        );
+      } catch (error: any) {
+        console.error(
+          "Erro ao cadastrar equipamento:",
+          error
+        );
+
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const handleBulkUpdateMobiles = async (
     updates: Array<{
@@ -1641,6 +1686,9 @@ function AppContent() {
             }
             onRefresh={fetchData}
             onSaveRow={handleSaveRow}
+            onSaveMobileApp={
+              handleSaveMobileApp
+            }
             onCreateRow={handleCreateMobile}
             onBulkUpdate={
               handleBulkUpdateMobiles

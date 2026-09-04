@@ -6,6 +6,14 @@ interface DetalhesAppsMobileModalProps {
   appRows: string[][];
   mobileApps: string[][];
   mobileConfig: string[][];
+  currentUserName: string;
+  canEdit: boolean;
+
+  onSave: (
+    rowData: string[],
+    rowIndex: number
+  ) => Promise<void>;
+
   onClose: () => void;
 }
 
@@ -22,8 +30,15 @@ export default function DetalhesAppsMobileModal({
   appRows,
   mobileApps,
   mobileConfig,
+  currentUserName,
+  canEdit,
+  onSave,
   onClose,
 }: DetalhesAppsMobileModalProps) {
+  void currentUserName;
+  void canEdit;
+  void onSave;
+
   const appHeaders =
     mobileApps[0] || [];
 

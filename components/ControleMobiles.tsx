@@ -19,6 +19,11 @@ interface ControleMobilesProps {
     rowIndex: number
   ) => Promise<void>;
 
+  onSaveMobileApp: (
+    rowData: string[],
+    rowIndex: number
+  ) => Promise<void>;
+
   onCreateRow: (
     rowData: string[]
   ) => Promise<void>;
@@ -51,6 +56,7 @@ export default function ControleMobiles({
   canEdit,
   onRefresh,
   onSaveRow,
+  onSaveMobileApp,
   onCreateRow,
   onBulkUpdate,
 }: ControleMobilesProps) {
@@ -2150,6 +2156,13 @@ export default function ControleMobiles({
         appRows={viewingApps}
         mobileApps={mobileApps}
         mobileConfig={mobileConfig}
+        currentUserName={
+          currentUserName
+        }
+        canEdit={canEdit}
+        onSave={
+          onSaveMobileApp
+        }
         onClose={() =>
           setViewingAppsRow(null)
         }
