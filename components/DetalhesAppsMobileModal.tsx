@@ -1,4 +1,7 @@
-import React, { useMemo } from "react";
+import React, {
+  useMemo,
+  useState,
+} from "react";
 
 interface DetalhesAppsMobileModalProps {
   isOpen: boolean;
@@ -35,9 +38,35 @@ export default function DetalhesAppsMobileModal({
   onSave,
   onClose,
 }: DetalhesAppsMobileModalProps) {
-  void currentUserName;
-  void canEdit;
-  void onSave;
+  const [
+    editingAppRow,
+    setEditingAppRow,
+  ] = useState<string[] | null>(null);
+
+  const [
+    editingRowIndex,
+    setEditingRowIndex,
+  ] = useState<number | null>(null);
+
+  const [
+    editedVersion,
+    setEditedVersion,
+  ] = useState("");
+
+  const [
+    editedObs,
+    setEditedObs,
+  ] = useState("");
+
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
+
+  const [
+    saveError,
+    setSaveError,
+  ] = useState("");
 
   const appHeaders =
     mobileApps[0] || [];
@@ -74,6 +103,171 @@ export default function DetalhesAppsMobileModal({
 
   const obsIdx =
     getIndex("OBS");
+
+  const getOriginalIndex = (
+    row: string[]
+  ): number | null => {
+    const value =
+      (row as any)._originalIndex;
+
+    return typeof value === "number"
+      ? value
+      : null;
+  };
+
+  const handleEditApp = (
+    row: string[]
+  ) => {
+    if (!canEdit) {
+      return;
+    }
+
+    const rowIndex =
+      getOriginalIndex(row);
+
+    if (rowIndex === null) {
+      setSaveError(
+        "Não foi possível identificar a linha do aplicativo."
+      );
+      return;
+    }
+
+    setEditingAppRow(row);
+    setEditingRowIndex(rowIndex);
+
+    setEditedVersion(
+      versaoIdx !== -1
+        ? String(
+            row[versaoIdx] || ""
+          ).trim()
+        : ""
+    );
+
+    setEditedObs(
+      obsIdx !== -1
+        ? String(
+            row[obsIdx] || ""
+          ).trim()
+        : ""
+    );
+
+    setSaveError("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAppRow(null);
+    setEditingRowIndex(null);
+    setEditedVersion("");
+    setEditedObs("");
+    setSaveError("");
+  };
+
+  const handleSaveApp = async () => {
+    if (
+      !editingAppRow ||
+      editingRowIndex === null
+    ) {
+      return;
+    }
+
+    const newVersion =
+      editedVersion.trim();
+
+    if (!newVersion) {
+      setSaveError(
+        "Informe a versão do aplicativo."
+      );
+      return;
+    }
+
+    const updatedRow = [
+      ...editingAppRow,
+    ];
+
+    const oldVersion =
+      versaoIdx !== -1
+        ? String(
+            editingAppRow[
+              versaoIdx
+            ] || ""
+          ).trim()
+        : "";
+
+    const versionChanged =
+      newVersion !== oldVersion;
+
+    if (versaoIdx !== -1) {
+      updatedRow[versaoIdx] =
+        newVersion;
+    }
+
+    if (obsIdx !== -1) {
+      updatedRow[obsIdx] =
+        editedObs.trim();
+    }
+
+    if (versionChanged) {
+      if (dataIdx !== -1) {
+        const now = new Date();
+
+        const localDate =
+          new Date(
+            now.getTime() -
+              now.getTimezoneOffset() *
+                60000
+          );
+
+        updatedRow[dataIdx] =
+          localDate
+            .toISOString()
+            .split("T")[0];
+      }
+
+      if (responsavelIdx !== -1) {
+        updatedRow[
+          responsavelIdx
+        ] = currentUserName;
+      }
+
+      if (contadorIdx !== -1) {
+        const currentCounter =
+          Number(
+            String(
+              editingAppRow[
+                contadorIdx
+              ] || "0"
+            )
+              .trim()
+              .replace(",", ".")
+          ) || 0;
+
+        updatedRow[
+          contadorIdx
+        ] = String(
+          currentCounter + 1
+        );
+      }
+    }
+
+    try {
+      setSaving(true);
+      setSaveError("");
+
+      await onSave(
+        updatedRow,
+        editingRowIndex
+      );
+
+      handleCancelEdit();
+    } catch (error: any) {
+      setSaveError(
+        error?.message ||
+          "Erro ao atualizar aplicativo."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const targetVersions =
     useMemo(() => {
@@ -335,6 +529,7 @@ export default function DetalhesAppsMobileModal({
                   "Responsável",
                   "Contador",
                   "Observação",
+                  "Ações",
                 ].map((title) => (
                   <th
                     key={title}
@@ -362,7 +557,7 @@ export default function DetalhesAppsMobileModal({
               {appRows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     style={{
                       padding: "30px",
                       textAlign:
@@ -562,6 +757,47 @@ export default function DetalhesAppsMobileModal({
                               ] || "-"
                             : "-"}
                         </td>
+
+                        <td
+                          style={{
+                            padding: "13px 14px",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {canEdit ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleEditApp(row)
+                              }
+                              style={{
+                                padding: "6px 10px",
+                                backgroundColor:
+                                  "var(--bg-primary)",
+                                color: "#3B82F6",
+                                border:
+                                  "1px solid var(--border-primary)",
+                                borderRadius: "7px",
+                                cursor: "pointer",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                              }}
+                            >
+                              Editar
+                            </button>
+                          ) : (
+                            <span
+                              style={{
+                                color:
+                                  "var(--text-muted)",
+                                fontSize: "11px",
+                              }}
+                            >
+                              Somente leitura
+                            </span>
+                          )}
+                        </td>
+
                       </tr>
                     );
                   }
@@ -601,6 +837,192 @@ export default function DetalhesAppsMobileModal({
             Fechar
           </button>
         </div>
+        {editingAppRow && (
+  <div
+    style={{
+      margin: "16px 20px 0",
+      padding: "16px",
+      backgroundColor:
+        "var(--bg-primary)",
+      border:
+        "1px solid var(--border-primary)",
+      borderRadius: "10px",
+    }}
+  >
+    <div
+      style={{
+        marginBottom: "14px",
+      }}
+    >
+      <strong
+        style={{
+          color:
+            "var(--text-primary)",
+          fontSize: "14px",
+        }}
+      >
+        Editando aplicativo:{" "}
+        {appIdx !== -1
+          ? editingAppRow[
+              appIdx
+            ] || "-"
+          : "-"}
+      </strong>
+    </div>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          "minmax(180px, 1fr) minmax(260px, 2fr)",
+        gap: "12px",
+      }}
+    >
+      <div>
+        <label
+          style={{
+            display: "block",
+            marginBottom: "6px",
+            color:
+              "var(--text-muted)",
+            fontSize: "11px",
+            fontWeight: 700,
+          }}
+        >
+          VERSÃO
+        </label>
+
+        <input
+          type="text"
+          value={editedVersion}
+          onChange={(event) =>
+            setEditedVersion(
+              event.target.value
+            )
+          }
+          style={{
+            width: "100%",
+            boxSizing:
+              "border-box",
+            padding: "9px 10px",
+            backgroundColor:
+              "var(--bg-input)",
+            color:
+              "var(--text-primary)",
+            border:
+              "1px solid var(--border-primary)",
+            borderRadius: "7px",
+            outline: "none",
+          }}
+        />
+      </div>
+
+      <div>
+        <label
+          style={{
+            display: "block",
+            marginBottom: "6px",
+            color:
+              "var(--text-muted)",
+            fontSize: "11px",
+            fontWeight: 700,
+          }}
+        >
+          OBSERVAÇÃO
+        </label>
+
+        <input
+          type="text"
+          value={editedObs}
+          onChange={(event) =>
+            setEditedObs(
+              event.target.value
+            )
+          }
+          style={{
+            width: "100%",
+            boxSizing:
+              "border-box",
+            padding: "9px 10px",
+            backgroundColor:
+              "var(--bg-input)",
+            color:
+              "var(--text-primary)",
+            border:
+              "1px solid var(--border-primary)",
+            borderRadius: "7px",
+            outline: "none",
+          }}
+        />
+      </div>
+        </div>
+
+        {saveError && (
+          <div
+            style={{
+              marginTop: "10px",
+              color: "#EF4444",
+              fontSize: "12px",
+            }}
+          >
+            {saveError}
+          </div>
+        )}
+
+        <div
+          style={{
+            marginTop: "14px",
+            display: "flex",
+            justifyContent:
+              "flex-end",
+            gap: "8px",
+          }}
+        >
+          <button
+            type="button"
+            onClick={handleCancelEdit}
+            disabled={saving}
+            style={{
+              padding: "8px 12px",
+              backgroundColor:
+                "var(--bg-secondary)",
+              color:
+                "var(--text-muted)",
+              border:
+                "1px solid var(--border-primary)",
+              borderRadius: "7px",
+              cursor: saving
+                ? "not-allowed"
+                : "pointer",
+            }}
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSaveApp}
+            disabled={saving}
+            style={{
+              padding: "8px 14px",
+              backgroundColor:
+                "#3B82F6",
+              color: "#FFFFFF",
+              border: "none",
+              borderRadius: "7px",
+              cursor: saving
+                ? "not-allowed"
+                : "pointer",
+              fontWeight: 700,
+            }}
+          >
+            {saving
+              ? "Salvando..."
+              : "Salvar"}
+          </button>
+        </div>
+      </div>
+    )}
       </div>
     </div>
   );
