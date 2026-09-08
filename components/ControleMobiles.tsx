@@ -3,6 +3,7 @@ import EditarMobileModal from "./EditarMobileModal";
 import NovoMobileModal from "./NovoMobileModal";
 import AtualizacaoLoteMobilesModal from "./AtualizacaoLoteMobilesModal";
 import DetalhesAppsMobileModal from "./DetalhesAppsMobileModal";
+import ReservasMobilesPanel from "./ReservasMobilesPanel";
 
 interface ControleMobilesProps {
   data: string[][];
@@ -64,41 +65,22 @@ export default function ControleMobiles({
   const [setorFilter, setSetorFilter] = useState("");
   const [appFilter, setAppFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [statusAtualizacaoFilter, setStatusAtualizacaoFilter] =
-    useState("");
+  const [statusAtualizacaoFilter, setStatusAtualizacaoFilter] = useState("");
   const [versaoFilter, setVersaoFilter] = useState("");
-
   const [currentPage, setCurrentPage] = useState(1);
-
-  const [editingRow, setEditingRow] =
-    useState<string[] | null>(null);
-
-  const [
-    viewingAppsRow,
-    setViewingAppsRow,
-  ] = useState<string[] | null>(null);
-
-  const [showCreateModal, setShowCreateModal] =
-    useState(false);
-
-  const [
-    showBulkUpdateModal,
-    setShowBulkUpdateModal,
-  ] = useState(false);
-
-  const [selectedRows, setSelectedRows] =
-    useState<number[]>([]);
+  const [editingRow, setEditingRow] = useState<string[] | null>(null);
+  const [viewingAppsRow, setViewingAppsRow] = useState<string[] | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
 
   const itemsPerPage = 20;
-
   const headers = data[0] || [];
   const rows = data.slice(1);
 
   const getColumnIndex = (...possibleNames: string[]) =>
     headers.findIndex((header) =>
-      possibleNames.some(
-        (name) => normalize(header) === normalize(name)
-      )
+      possibleNames.some((name) => normalize(header) === normalize(name))
     );
 
   const setorIdx = getColumnIndex("Setor");
@@ -107,2090 +89,301 @@ export default function ControleMobiles({
   const finalIdx = getColumnIndex("FINAL");
   const macIdx = getColumnIndex("MAC");
   const ipIdx = getColumnIndex("IP");
-  const appIdx = getColumnIndex(
-    "App de uso",
-    "Aplicativo",
-    "App"
-  );
-  const setorLocalizadoIdx = getColumnIndex(
-    "Setor localizado"
-  );
+  const appIdx = getColumnIndex("App de uso", "Aplicativo", "App");
+  const setorLocalizadoIdx = getColumnIndex("Setor localizado");
   const statusIdx = getColumnIndex("Status");
-  const statusAtualizacaoIdx = getColumnIndex(
-    "Status atualização",
-    "Status atualizacao"
-  );
+  const statusAtualizacaoIdx = getColumnIndex("Status atualização", "Status atualizacao");
 
   const targetVersions = useMemo(() => {
     const map: Record<string, string> = {};
-
-    if (
-      !mobileConfig ||
-      mobileConfig.length <= 1
-    ) {
-      return map;
-    }
-
-    const configHeaders =
-      mobileConfig[0] || [];
-
-    const appIndex =
-      configHeaders.findIndex(
-        (header) =>
-          normalize(header) ===
-          normalize("APP_USO")
-      );
-
-    const versionIndex =
-      configHeaders.findIndex(
-        (header) =>
-          normalize(header) ===
-          normalize("VERSAO_ALVO")
-      );
-
-    if (
-      appIndex === -1 ||
-      versionIndex === -1
-    ) {
-      return map;
-    }
-
-    mobileConfig
-      .slice(1)
-      .forEach((row) => {
-        const app = String(
-          row[appIndex] || ""
-        ).trim();
-
-        const version = String(
-          row[versionIndex] || ""
-        ).trim();
-
-        if (app && version) {
-          map[normalize(app)] = version;
-        }
-      });
-
+    if (!mobileConfig || mobileConfig.length <= 1) return map;
+    const configHeaders = mobileConfig[0] || [];
+    const appIndex = configHeaders.findIndex((header) => normalize(header) === normalize("APP_USO"));
+    const versionIndex = configHeaders.findIndex((header) => normalize(header) === normalize("VERSAO_ALVO"));
+    if (appIndex === -1 || versionIndex === -1) return map;
+    mobileConfig.slice(1).forEach((row) => {
+      const app = String(row[appIndex] || "").trim();
+      const version = String(row[versionIndex] || "").trim();
+      if (app && version) map[normalize(app)] = version;
+    });
     return map;
   }, [mobileConfig]);
 
-  const getAutomaticUpdateStatus = (
-    app: string,
-    currentVersion: string
-  ) => {
-    const normalizedApp = normalize(app);
-    const targetVersion =
-      targetVersions[normalizedApp];
-
-    const version = String(
-      currentVersion || ""
-    ).trim();
-
-    if (!version || !targetVersion) {
-      return "SEM INFORMAÇÃO";
-    }
-
-    if (version === targetVersion) {
-      return "ATUALIZADO";
-    }
-
-    return "PENDENTE";
+  const getAutomaticUpdateStatus = (app: string, currentVersion: string) => {
+    const targetVersion = targetVersions[normalize(app)];
+    const version = String(currentVersion || "").trim();
+    if (!version || !targetVersion) return "SEM INFORMAÇÃO";
+    return version === targetVersion ? "ATUALIZADO" : "PENDENTE";
   };
 
-  const mobileAppHeaders =
-    mobileApps[0] || [];
+  const mobileAppHeaders = mobileApps[0] || [];
+  const mobileAppColetorIdx = mobileAppHeaders.findIndex((header) => normalize(header) === normalize("COLETOR"));
+  const mobileAppAppIdx = mobileAppHeaders.findIndex((header) => normalize(header) === normalize("APP_USO"));
+  const mobileAppVersaoIdx = mobileAppHeaders.findIndex((header) => normalize(header) === normalize("VERSAO"));
 
-  const mobileAppColetorIdx =
-    mobileAppHeaders.findIndex(
-      (header) =>
-        normalize(header) ===
-        normalize("COLETOR")
-    );
+  const mobileAppsByColetor = useMemo(() => {
+    const map: Record<string, string[][]> = {};
+    if (!mobileApps || mobileApps.length <= 1 || mobileAppColetorIdx === -1) return map;
+    mobileApps.slice(1).forEach((row) => {
+      const coletor = String(row[mobileAppColetorIdx] || "").trim();
+      if (!coletor) return;
+      const key = normalize(coletor);
+      if (!map[key]) map[key] = [];
+      map[key].push(row);
+    });
+    return map;
+  }, [mobileApps, mobileAppColetorIdx]);
 
-  const mobileAppAppIdx =
-    mobileAppHeaders.findIndex(
-      (header) =>
-        normalize(header) ===
-        normalize("APP_USO")
-    );
-
-  const mobileAppVersaoIdx =
-    mobileAppHeaders.findIndex(
-      (header) =>
-        normalize(header) ===
-        normalize("VERSAO")
-    );
-
-  const mobileAppsByColetor =
-    useMemo(() => {
-      const map: Record<
-        string,
-        string[][]
-      > = {};
-
-      if (
-        !mobileApps ||
-        mobileApps.length <= 1 ||
-        mobileAppColetorIdx === -1
-      ) {
-        return map;
-      }
-
-      mobileApps
-        .slice(1)
-        .forEach((row) => {
-          const coletor = String(
-            row[mobileAppColetorIdx] || ""
-          ).trim();
-
-          if (!coletor) {
-            return;
-          }
-
-          const key = normalize(coletor);
-
-          if (!map[key]) {
-            map[key] = [];
-          }
-
-          map[key].push(row);
-        });
-
-      return map;
-    }, [mobileApps, mobileAppColetorIdx]);
-
-  const getMobileAppStatus = (
-    appRow: string[]
-  ) => {
-    if (
-      mobileAppAppIdx === -1 ||
-      mobileAppVersaoIdx === -1
-    ) {
-      return "SEM INFORMAÇÃO";
-    }
-
-    const appName = String(
-      appRow[mobileAppAppIdx] || ""
-    ).trim();
-
-    const currentVersion = String(
-      appRow[mobileAppVersaoIdx] || ""
-    ).trim();
-
+  const getMobileAppStatus = (appRow: string[]) => {
+    if (mobileAppAppIdx === -1 || mobileAppVersaoIdx === -1) return "SEM INFORMAÇÃO";
     return getAutomaticUpdateStatus(
-      appName,
-      currentVersion
+      String(appRow[mobileAppAppIdx] || "").trim(),
+      String(appRow[mobileAppVersaoIdx] || "").trim()
     );
   };
 
-  const getAppRowsForEquipment = (
-    row: string[]
-  ) => {
-    if (coletorIdx === -1) {
-      return [];
-    }
-
-    const coletor = String(
-      row[coletorIdx] || ""
-    ).trim();
-
-    if (!coletor) {
-      return [];
-    }
-
-    return (
-      mobileAppsByColetor[
-        normalize(coletor)
-      ] || []
-    );
+  const getAppRowsForEquipment = (row: string[]) => {
+    if (coletorIdx === -1) return [];
+    const coletor = String(row[coletorIdx] || "").trim();
+    return coletor ? mobileAppsByColetor[normalize(coletor)] || [] : [];
   };
 
-  const getMobileUpdateSummary = (
-    row: string[]
-  ) => {
-    const appRows =
-      getAppRowsForEquipment(row);
-
-    if (appRows.length === 0) {
-      return {
-        totalApps: 0,
-        updatedApps: 0,
-        pendingApps: 0,
-        unknownApps: 0,
-        status: "SEM INFORMAÇÃO",
-      };
-    }
-
+  const getMobileUpdateSummary = (row: string[]) => {
+    const appRows = getAppRowsForEquipment(row);
+    if (appRows.length === 0) return { totalApps: 0, updatedApps: 0, pendingApps: 0, unknownApps: 0, status: "SEM INFORMAÇÃO" };
     let updatedApps = 0;
     let pendingApps = 0;
     let unknownApps = 0;
-
     appRows.forEach((appRow) => {
-      const status =
-        getMobileAppStatus(appRow);
-
-      const normalizedStatus =
-        normalizeValue(status);
-
-      if (normalizedStatus === "atualizado") {
-        updatedApps++;
-        return;
-      }
-
-      if (normalizedStatus === "pendente") {
-        pendingApps++;
-        return;
-      }
-
-      unknownApps++;
+      const status = normalizeValue(getMobileAppStatus(appRow));
+      if (status === "atualizado") updatedApps++;
+      else if (status === "pendente") pendingApps++;
+      else unknownApps++;
     });
-
     let status = "ATUALIZADO";
-
-    if (pendingApps > 0) {
-      status = "PENDENTE";
-    } else if (unknownApps > 0) {
-      status = "SEM INFORMAÇÃO";
-    }
-
-    return {
-      totalApps: appRows.length,
-      updatedApps,
-      pendingApps,
-      unknownApps,
-      status,
-    };
+    if (pendingApps > 0) status = "PENDENTE";
+    else if (unknownApps > 0) status = "SEM INFORMAÇÃO";
+    return { totalApps: appRows.length, updatedApps, pendingApps, unknownApps, status };
   };
 
-  const getOriginalIndex = (
-    row: string[]
-  ): number | null => {
+  const getOriginalIndex = (row: string[]): number | null => {
     const value = (row as any)._originalIndex;
-
-    return typeof value === "number"
-      ? value
-      : null;
+    return typeof value === "number" ? value : null;
   };
 
-  const viewingAppsColetor =
-    viewingAppsRow &&
-    coletorIdx !== -1
-      ? String(
-          viewingAppsRow[
-            coletorIdx
-          ] || ""
-        ).trim()
-      : "";
-
-  const viewingApps =
-    viewingAppsColetor
-      ? mobileAppsByColetor[
-          normalize(
-            viewingAppsColetor
-          )
-        ] || []
-      : [];
+  const viewingAppsColetor = viewingAppsRow && coletorIdx !== -1 ? String(viewingAppsRow[coletorIdx] || "").trim() : "";
+  const viewingApps = viewingAppsColetor ? mobileAppsByColetor[normalize(viewingAppsColetor)] || [] : [];
 
   const uniqueValues = (columnIndex: number) => {
-    if (columnIndex === -1) {
-      return [];
-    }
-
-    return Array.from(
-      new Set(
-        rows
-          .map((row) => String(row[columnIndex] || "").trim())
-          .filter(Boolean)
-      )
-    ).sort((a, b) =>
-      a.localeCompare(b, "pt-BR", {
-        sensitivity: "base",
-        numeric: true,
-      })
+    if (columnIndex === -1) return [];
+    return Array.from(new Set(rows.map((row) => String(row[columnIndex] || "").trim()).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base", numeric: true })
     );
   };
 
-  const setores = useMemo(
-    () => uniqueValues(setorIdx),
-    [data, setorIdx]
-  );
-
+  const setores = useMemo(() => uniqueValues(setorIdx), [data, setorIdx]);
   const apps = useMemo(() => {
-    if (mobileAppAppIdx === -1) {
-      return [];
-    }
-
-    return Array.from(
-      new Set(
-        mobileApps
-          .slice(1)
-          .map((row) =>
-            String(
-              row[mobileAppAppIdx] || ""
-            ).trim()
-          )
-          .filter(
-            (value) =>
-              value &&
-              normalize(value) !== "todos"
-          )
-      )
-    ).sort((a, b) =>
-      a.localeCompare(b, "pt-BR", {
-        sensitivity: "base",
-        numeric: true,
-      })
+    if (mobileAppAppIdx === -1) return [];
+    return Array.from(new Set(mobileApps.slice(1).map((row) => String(row[mobileAppAppIdx] || "").trim()).filter((value) => value && normalize(value) !== "todos"))).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base", numeric: true })
     );
   }, [mobileApps, mobileAppAppIdx]);
-
-  const statusOptions = useMemo(
-    () => uniqueValues(statusIdx),
-    [data, statusIdx]
-  );
-
-  const statusAtualizacaoOptions = useMemo(
-    () => [
-      "ATUALIZADO",
-      "PENDENTE",
-      "SEM INFORMAÇÃO",
-    ],
-    []
-  );
+  const statusOptions = useMemo(() => uniqueValues(statusIdx), [data, statusIdx]);
+  const statusAtualizacaoOptions = useMemo(() => ["ATUALIZADO", "PENDENTE", "SEM INFORMAÇÃO"], []);
 
   const versoes = useMemo(() => {
-    if (mobileAppVersaoIdx === -1) {
-      return [];
-    }
-
-    return Array.from(
-      new Set(
-        mobileApps
-          .slice(1)
-          .filter((row) => {
-            if (
-              !appFilter ||
-              mobileAppAppIdx === -1
-            ) {
-              return true;
-            }
-
-            return (
-              normalizeValue(
-                row[mobileAppAppIdx] || ""
-              ) ===
-              normalizeValue(appFilter)
-            );
-          })
-          .map((row) =>
-            String(
-              row[mobileAppVersaoIdx] || ""
-            ).trim()
-          )
-          .filter(Boolean)
-      )
-    ).sort((a, b) =>
-      a.localeCompare(b, "pt-BR", {
-        sensitivity: "base",
-        numeric: true,
-      })
+    if (mobileAppVersaoIdx === -1) return [];
+    return Array.from(new Set(mobileApps.slice(1).filter((row) => !appFilter || mobileAppAppIdx === -1 || normalizeValue(row[mobileAppAppIdx] || "") === normalizeValue(appFilter)).map((row) => String(row[mobileAppVersaoIdx] || "").trim()).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base", numeric: true })
     );
-  }, [
-    mobileApps,
-    mobileAppAppIdx,
-    mobileAppVersaoIdx,
-    appFilter,
-  ]);
+  }, [mobileApps, mobileAppAppIdx, mobileAppVersaoIdx, appFilter]);
 
   useEffect(() => {
-    if (
-      versaoFilter &&
-      !versoes.some(
-        (versao) =>
-          normalizeValue(versao) ===
-          normalizeValue(versaoFilter)
-      )
-    ) {
-      setVersaoFilter("");
-    }
+    if (versaoFilter && !versoes.some((versao) => normalizeValue(versao) === normalizeValue(versaoFilter))) setVersaoFilter("");
   }, [appFilter, versoes, versaoFilter]);
 
   const totalEquipamentos = rows.length;
+  const totalAtivos = statusIdx !== -1 ? rows.filter((row) => String(row[statusIdx] || "").trim().toUpperCase() === "A").length : 0;
+  const totalInativos = statusIdx !== -1 ? rows.filter((row) => String(row[statusIdx] || "").trim().toUpperCase() === "I").length : 0;
+  const totalManutencao = statusIdx !== -1 ? rows.filter((row) => String(row[statusIdx] || "").trim().toUpperCase() === "M").length : 0;
+  const totalEmprestados = statusIdx !== -1 ? rows.filter((row) => String(row[statusIdx] || "").trim().toUpperCase() === "E").length : 0;
+  const totalAtualizados = rows.filter((row) => normalizeValue(getMobileUpdateSummary(row).status) === "atualizado").length;
+  const totalPendentes = rows.filter((row) => normalizeValue(getMobileUpdateSummary(row).status) === "pendente").length;
+  const totalNaoLocalizados = statusAtualizacaoIdx !== -1 ? rows.filter((row) => normalizeValue(row[statusAtualizacaoIdx] || "") === "nao localizado").length : 0;
+  const progressoAtualizacao = totalEquipamentos > 0 ? Math.round((totalAtualizados / totalEquipamentos) * 100) : 0;
 
-  const totalAtivos =
-    statusIdx !== -1
-      ? rows.filter(
-          (row) =>
-            String(row[statusIdx] || "")
-              .trim()
-              .toUpperCase() === "A"
-        ).length
-      : 0;
+  const filteredRows = useMemo(() => rows.filter((row) => {
+    const appRows = getAppRowsForEquipment(row);
+    const appRowsMatchingApp = appFilter && mobileAppAppIdx !== -1 ? appRows.filter((appRow) => normalizeValue(appRow[mobileAppAppIdx] || "") === normalizeValue(appFilter)) : appRows;
+    const searchValue = normalizeValue(search);
+    if (searchValue) {
+      const physicalSearchValues = [setorIdx, coletorIdx, snIdx, finalIdx, macIdx, ipIdx, setorLocalizadoIdx].filter((index) => index !== -1).map((index) => normalizeValue(row[index] || ""));
+      const appSearchValues = appRows.flatMap((appRow) => [mobileAppAppIdx !== -1 ? normalizeValue(appRow[mobileAppAppIdx] || "") : "", mobileAppVersaoIdx !== -1 ? normalizeValue(appRow[mobileAppVersaoIdx] || "") : ""]);
+      if (![...physicalSearchValues, ...appSearchValues].some((value) => value.includes(searchValue))) return false;
+    }
+    if (setorFilter && normalizeValue(row[setorIdx] || "") !== normalizeValue(setorFilter)) return false;
+    if (appFilter && appRowsMatchingApp.length === 0) return false;
+    if (statusFilter && normalizeValue(row[statusIdx] || "") !== normalizeValue(statusFilter)) return false;
+    if (statusAtualizacaoFilter) {
+      if (appFilter) {
+        if (!appRowsMatchingApp.some((appRow) => normalizeValue(getMobileAppStatus(appRow)) === normalizeValue(statusAtualizacaoFilter))) return false;
+      } else if (normalizeValue(getMobileUpdateSummary(row).status) !== normalizeValue(statusAtualizacaoFilter)) return false;
+    }
+    if (versaoFilter) {
+      const versionRows = appFilter ? appRowsMatchingApp : appRows;
+      if (mobileAppVersaoIdx === -1 || !versionRows.some((appRow) => normalizeValue(appRow[mobileAppVersaoIdx] || "") === normalizeValue(versaoFilter))) return false;
+    }
+    return true;
+  }), [rows, search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, ipIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
 
-  const totalInativos =
-    statusIdx !== -1
-      ? rows.filter(
-          (row) =>
-            String(row[statusIdx] || "")
-              .trim()
-              .toUpperCase() === "I"
-        ).length
-      : 0;
+  useEffect(() => setCurrentPage(1), [search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter]);
 
-  const totalManutencao =
-    statusIdx !== -1
-      ? rows.filter(
-          (row) =>
-            String(row[statusIdx] || "")
-              .trim()
-              .toUpperCase() === "M"
-        ).length
-      : 0;
-
-  const totalAtualizados =
-    rows.filter((row) => {
-      const summary =
-        getMobileUpdateSummary(row);
-
-      return (
-        normalizeValue(
-          summary.status
-        ) === "atualizado"
-      );
-    }).length;
-
-  const totalPendentes =
-    rows.filter((row) => {
-      const summary =
-        getMobileUpdateSummary(row);
-
-      return (
-        normalizeValue(
-          summary.status
-        ) === "pendente"
-      );
-    }).length;
-
-  const totalNaoLocalizados =
-    statusAtualizacaoIdx !== -1
-      ? rows.filter((row) => {
-          const value = normalizeValue(
-            row[statusAtualizacaoIdx] || ""
-          );
-
-          return value === "nao localizado";
-        }).length
-      : 0;
-
-  const progressoAtualizacao =
-    totalEquipamentos > 0
-      ? Math.round(
-          (totalAtualizados / totalEquipamentos) * 100
-        )
-      : 0;
-
-  const filteredRows = useMemo(() => {
-    return rows.filter((row) => {
-      const appRows =
-        getAppRowsForEquipment(row);
-
-      const appRowsMatchingApp =
-        appFilter &&
-        mobileAppAppIdx !== -1
-          ? appRows.filter(
-              (appRow) =>
-                normalizeValue(
-                  appRow[mobileAppAppIdx] || ""
-                ) ===
-                normalizeValue(appFilter)
-            )
-          : appRows;
-
-      const searchValue = normalizeValue(search);
-
-      if (searchValue) {
-        const physicalSearchValues = [
-          setorIdx,
-          coletorIdx,
-          snIdx,
-          finalIdx,
-          macIdx,
-          ipIdx,
-          setorLocalizadoIdx,
-        ]
-          .filter((index) => index !== -1)
-          .map((index) =>
-            normalizeValue(row[index] || "")
-          );
-
-        const appSearchValues =
-          appRows.flatMap((appRow) => [
-            mobileAppAppIdx !== -1
-              ? normalizeValue(
-                  appRow[mobileAppAppIdx] || ""
-                )
-              : "",
-            mobileAppVersaoIdx !== -1
-              ? normalizeValue(
-                  appRow[mobileAppVersaoIdx] || ""
-                )
-              : "",
-          ]);
-
-        const matchesSearch = [
-          ...physicalSearchValues,
-          ...appSearchValues,
-        ].some(
-          (value) =>
-            value.includes(searchValue)
-        );
-
-        if (!matchesSearch) {
-          return false;
-        }
-      }
-
-      if (
-        setorFilter &&
-        normalizeValue(row[setorIdx] || "") !==
-          normalizeValue(setorFilter)
-      ) {
-        return false;
-      }
-
-      if (
-        appFilter &&
-        appRowsMatchingApp.length === 0
-      ) {
-        return false;
-      }
-
-      if (
-        statusFilter &&
-        normalizeValue(row[statusIdx] || "") !==
-          normalizeValue(statusFilter)
-      ) {
-        return false;
-      }
-
-      if (statusAtualizacaoFilter) {
-        if (appFilter) {
-          const hasMatchingAppStatus =
-            appRowsMatchingApp.some(
-              (appRow) =>
-                normalizeValue(
-                  getMobileAppStatus(appRow)
-                ) ===
-                normalizeValue(
-                  statusAtualizacaoFilter
-                )
-            );
-
-          if (!hasMatchingAppStatus) {
-            return false;
-          }
-        } else {
-          const updateSummary =
-            getMobileUpdateSummary(row);
-
-          if (
-            normalizeValue(
-              updateSummary.status
-            ) !==
-            normalizeValue(
-              statusAtualizacaoFilter
-            )
-          ) {
-            return false;
-          }
-        }
-      }
-
-      if (versaoFilter) {
-        const versionRows = appFilter
-          ? appRowsMatchingApp
-          : appRows;
-
-        const hasMatchingVersion =
-          mobileAppVersaoIdx !== -1 &&
-          versionRows.some(
-            (appRow) =>
-              normalizeValue(
-                appRow[mobileAppVersaoIdx] || ""
-              ) ===
-              normalizeValue(versaoFilter)
-          );
-
-        if (!hasMatchingVersion) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [
-    rows,
-    search,
-    setorFilter,
-    appFilter,
-    statusFilter,
-    statusAtualizacaoFilter,
-    versaoFilter,
-    setorIdx,
-    coletorIdx,
-    snIdx,
-    finalIdx,
-    macIdx,
-    ipIdx,
-    setorLocalizadoIdx,
-    statusIdx,
-    mobileAppsByColetor,
-    mobileAppAppIdx,
-    mobileAppVersaoIdx,
-    targetVersions,
-  ]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    search,
-    setorFilter,
-    appFilter,
-    statusFilter,
-    statusAtualizacaoFilter,
-    versaoFilter,
-  ]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredRows.length / itemsPerPage)
-  );
-
-  const paginatedRows = filteredRows.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
+  const paginatedRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const clearFilters = () => {
-    setSearch("");
-    setSetorFilter("");
-    setAppFilter("");
-    setStatusFilter("");
-    setStatusAtualizacaoFilter("");
-    setVersaoFilter("");
-    setCurrentPage(1);
+    setSearch(""); setSetorFilter(""); setAppFilter(""); setStatusFilter(""); setStatusAtualizacaoFilter(""); setVersaoFilter(""); setCurrentPage(1);
   };
-
-  const handleEdit = (row: string[]) => {
-    if (!canEdit) {
-      return;
-    }
-
-    setEditingRow(row);
+  const handleEdit = (row: string[]) => { if (canEdit) setEditingRow(row); };
+  const handleCloseEdit = () => setEditingRow(null);
+  const handleToggleRow = (row: string[]) => {
+    const rowIndex = getOriginalIndex(row);
+    if (rowIndex === null) return;
+    setSelectedRows((previous) => previous.includes(rowIndex) ? previous.filter((item) => item !== rowIndex) : [...previous, rowIndex]);
   };
-
-  const handleCloseEdit = () => {
-    setEditingRow(null);
-  };
-  
-  const handleToggleRow = (
-    row: string[]
-  ) => {
-    const rowIndex =
-      getOriginalIndex(row);
-
-    if (rowIndex === null) {
-      return;
-    }
-
-    setSelectedRows((previous) =>
-      previous.includes(rowIndex)
-        ? previous.filter(
-            (item) => item !== rowIndex
-          )
-        : [...previous, rowIndex]
-    );
-  };
-
-  const currentPageIndexes =
-    paginatedRows
-      .map((row) =>
-        getOriginalIndex(row)
-      )
-      .filter(
-        (value): value is number =>
-          value !== null
-      );
-
-  const allCurrentPageSelected =
-    currentPageIndexes.length > 0 &&
-    currentPageIndexes.every(
-      (rowIndex) =>
-        selectedRows.includes(rowIndex)
-    );
-
+  const currentPageIndexes = paginatedRows.map(getOriginalIndex).filter((value): value is number => value !== null);
+  const allCurrentPageSelected = currentPageIndexes.length > 0 && currentPageIndexes.every((rowIndex) => selectedRows.includes(rowIndex));
   const handleToggleCurrentPage = () => {
-    if (allCurrentPageSelected) {
-      setSelectedRows((previous) =>
-        previous.filter(
-          (rowIndex) =>
-            !currentPageIndexes.includes(
-              rowIndex
-            )
-        )
-      );
-
-      return;
-    }
-
-    setSelectedRows((previous) =>
-      Array.from(
-        new Set([
-          ...previous,
-          ...currentPageIndexes,
-        ])
-      )
-    );
+    if (allCurrentPageSelected) setSelectedRows((previous) => previous.filter((rowIndex) => !currentPageIndexes.includes(rowIndex)));
+    else setSelectedRows((previous) => Array.from(new Set([...previous, ...currentPageIndexes])));
   };
+  const clearSelection = () => setSelectedRows([]);
 
-  const clearSelection = () => {
-    setSelectedRows([]);
-  };
-
-  const handleBulkUpdate = async (
-    values: {
-      versao: string;
-      dataAtualizacao: string;
-      status: string;
-      statusAtualizacao: string;
-      observacao: string;
-    }
-  ) => {
-    const versaoHeader =
-      headers.find(
-        (header) =>
-          normalize(header) ===
-            normalize("Versão") ||
-          normalize(header) ===
-            normalize("Versao")
-      );
-
-    const dataAtualizacaoHeader =
-      headers.find(
-        (header) =>
-          normalize(header) ===
-            normalize("Data atualização") ||
-          normalize(header) ===
-            normalize("Data atualizacao")
-      );
-
-    const statusHeader =
-      headers.find(
-        (header) =>
-          normalize(header) ===
-          normalize("Status")
-      );
-
-    const statusAtualizacaoHeader =
-      headers.find(
-        (header) =>
-          normalize(header) ===
-            normalize("Status atualização") ||
-          normalize(header) ===
-            normalize("Status atualizacao")
-      );
-
-    const obsHeader =
-      headers.find(
-        (header) =>
-          normalize(header) ===
-          normalize("Obs")
-      );
-
-    const selectedData =
-      rows.filter((row) => {
-        const rowIndex =
-          getOriginalIndex(row);
-
-        return (
-          rowIndex !== null &&
-          selectedRows.includes(rowIndex)
-        );
-      });
-
-    const preparedUpdates: Array<{
-      rowIndex: number;
-      rowData: string[];
-    }> = [];
-
+  const handleBulkUpdate = async (values: { versao: string; dataAtualizacao: string; status: string; statusAtualizacao: string; observacao: string; }) => {
+    const versaoHeader = headers.find((header) => normalize(header) === normalize("Versão") || normalize(header) === normalize("Versao"));
+    const dataAtualizacaoHeader = headers.find((header) => normalize(header) === normalize("Data atualização") || normalize(header) === normalize("Data atualizacao"));
+    const statusHeader = headers.find((header) => normalize(header) === normalize("Status"));
+    const statusAtualizacaoHeader = headers.find((header) => normalize(header) === normalize("Status atualização") || normalize(header) === normalize("Status atualizacao"));
+    const obsHeader = headers.find((header) => normalize(header) === normalize("Obs"));
+    const selectedData = rows.filter((row) => { const rowIndex = getOriginalIndex(row); return rowIndex !== null && selectedRows.includes(rowIndex); });
+    const preparedUpdates: Array<{ rowIndex: number; rowData: string[] }> = [];
     for (const row of selectedData) {
-      const rowIndex =
-        getOriginalIndex(row);
-
-      if (rowIndex === null) {
-        continue;
-      }
-
+      const rowIndex = getOriginalIndex(row); if (rowIndex === null) continue;
       const updatedRow = [...row];
-
-      const setValue = (
-        header: string | undefined,
-        value: string
-      ) => {
-        if (!header) {
-          return;
-        }
-
-        const index = headers.indexOf(header);
-
-        if (index !== -1) {
-          updatedRow[index] = value;
-        }
-      };
-
-      if (values.status) {
-        setValue(
-          statusHeader,
-          values.status
-        );
-      }
-
-      if (values.statusAtualizacao) {
-        setValue(
-          statusAtualizacaoHeader,
-          values.statusAtualizacao
-        );
-      }
-
-      if (values.observacao) {
-        setValue(
-          obsHeader,
-          values.observacao
-        );
-      }
-
-      if (values.dataAtualizacao) {
-        setValue(
-          dataAtualizacaoHeader,
-          values.dataAtualizacao
-        );
-      }
-
-      if (values.versao) {
-        setValue(
-          versaoHeader,
-          values.versao.trim()
-        );
-      }
-
-      preparedUpdates.push({
-        rowIndex,
-        rowData: updatedRow,
-      });
+      const setValue = (header: string | undefined, value: string) => { if (!header) return; const index = headers.indexOf(header); if (index !== -1) updatedRow[index] = value; };
+      if (values.status) setValue(statusHeader, values.status);
+      if (values.statusAtualizacao) setValue(statusAtualizacaoHeader, values.statusAtualizacao);
+      if (values.observacao) setValue(obsHeader, values.observacao);
+      if (values.dataAtualizacao) setValue(dataAtualizacaoHeader, values.dataAtualizacao);
+      if (values.versao) setValue(versaoHeader, values.versao.trim());
+      preparedUpdates.push({ rowIndex, rowData: updatedRow });
     }
-
-    if (preparedUpdates.length === 0) {
-      return;
-    }
-
-    await onBulkUpdate(
-      preparedUpdates
-    );
-
-    clearSelection();
+    if (preparedUpdates.length === 0) return;
+    await onBulkUpdate(preparedUpdates); clearSelection();
   };
 
-  const hasActiveFilters =
-    search ||
-    setorFilter ||
-    appFilter ||
-    statusFilter ||
-    statusAtualizacaoFilter ||
-    versaoFilter;
-
+  const hasActiveFilters = search || setorFilter || appFilter || statusFilter || statusAtualizacaoFilter || versaoFilter;
   const getStatusLabel = (value: string) => {
-    const status = String(value || "")
-      .trim()
-      .toUpperCase();
-
-    switch (status) {
-      case "A":
-        return "Ativo";
-      case "E":
-        return "Emprestado";
-      case "I":
-        return "Inativo";
-      case "M":
-        return "Manutenção";
-      default:
-        return value || "Não informado";
+    switch (String(value || "").trim().toUpperCase()) {
+      case "A": return "Ativo";
+      case "E": return "Emprestado";
+      case "I": return "Inativo";
+      case "M": return "Manutenção";
+      default: return value || "Não informado";
     }
   };
-
-  const getStatusStyle = (
-    value: string
-  ): React.CSSProperties => {
-    const status = String(value || "")
-      .trim()
-      .toUpperCase();
-
-    if (status === "A") {
-      return {
-        backgroundColor: "rgba(5, 150, 105, 0.14)",
-        color: "#10B981",
-        border: "1px solid rgba(16, 185, 129, 0.35)",
-      };
-    }
-
-    if (status === "E") {
-      return {
-        backgroundColor: "rgba(59, 130, 246, 0.14)",
-        color: "#3B82F6",
-        border: "1px solid rgba(59, 130, 246, 0.35)",
-      };
-    }
-
-    if (status === "M") {
-      return {
-        backgroundColor: "rgba(245, 158, 11, 0.14)",
-        color: "#F59E0B",
-        border: "1px solid rgba(245, 158, 11, 0.35)",
-      };
-    }
-
-    if (status === "I") {
-      return {
-        backgroundColor: "rgba(100, 116, 139, 0.14)",
-        color: "var(--text-muted)",
-        border: "1px solid var(--border-primary)",
-      };
-    }
-
-    return {
-      backgroundColor: "var(--bg-primary)",
-      color: "var(--text-muted)",
-      border: "1px solid var(--border-primary)",
-    };
+  const getStatusStyle = (value: string): React.CSSProperties => {
+    const status = String(value || "").trim().toUpperCase();
+    if (status === "A") return { backgroundColor: "rgba(5, 150, 105, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)" };
+    if (status === "E") return { backgroundColor: "rgba(59, 130, 246, 0.14)", color: "#3B82F6", border: "1px solid rgba(59, 130, 246, 0.35)" };
+    if (status === "M") return { backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)" };
+    if (status === "I") return { backgroundColor: "rgba(100, 116, 139, 0.14)", color: "var(--text-muted)", border: "1px solid var(--border-primary)" };
+    return { backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)" };
   };
-
-  const getUpdateStatusStyle = (
-    value: string
-  ): React.CSSProperties => {
+  const getUpdateStatusStyle = (value: string): React.CSSProperties => {
     const status = normalizeValue(value);
-
-    if (status === "atualizado") {
-      return {
-        backgroundColor: "rgba(5, 150, 105, 0.14)",
-        color: "#10B981",
-        border: "1px solid rgba(16, 185, 129, 0.35)",
-      };
-    }
-
-    if (status === "pendente") {
-      return {
-        backgroundColor: "rgba(245, 158, 11, 0.14)",
-        color: "#F59E0B",
-        border: "1px solid rgba(245, 158, 11, 0.35)",
-      };
-    }
-
-    return {
-      backgroundColor: "var(--bg-primary)",
-      color: "var(--text-muted)",
-      border: "1px solid var(--border-primary)",
-    };
+    if (status === "atualizado") return { backgroundColor: "rgba(5, 150, 105, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)" };
+    if (status === "pendente") return { backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)" };
+    return { backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)" };
   };
-
-  const inputStyle: React.CSSProperties = {
-    padding: "10px 12px",
-    backgroundColor: "var(--bg-input)",
-    color: "var(--text-primary)",
-    border: "1px solid var(--border-primary)",
-    borderRadius: "8px",
-    fontSize: "13px",
-    outline: "none",
-    minHeight: "40px",
-  };
-
+  const inputStyle: React.CSSProperties = { padding: "10px 12px", backgroundColor: "var(--bg-input)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", fontSize: "13px", outline: "none", minHeight: "40px" };
   const cards = [
-    {
-      label: "Total de Equipamentos",
-      value: totalEquipamentos,
-      detail: `${totalAtivos} ativos`,
-    },
-    {
-      label: "Atualizados",
-      value: totalAtualizados,
-      detail: `${progressoAtualizacao}% do total`,
-    },
-    {
-      label: "Pendentes",
-      value: totalPendentes,
-      detail: "Aguardando atualização",
-    },
-    {
-      label: "Não Localizados",
-      value: totalNaoLocalizados,
-      detail: "Conferência pendente",
-    },
+    { label: "Total de Equipamentos", value: totalEquipamentos, detail: `${totalAtivos} ativos` },
+    { label: "Atualizados", value: totalAtualizados, detail: `${progressoAtualizacao}% do total` },
+    { label: "Pendentes", value: totalPendentes, detail: "Aguardando atualização" },
+    { label: "Não Localizados", value: totalNaoLocalizados, detail: "Conferência pendente" },
   ];
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "24px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "16px",
-          flexWrap: "wrap",
-        }}
-      >
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
         <div>
-          <h2
-            style={{
-              margin: 0,
-              color: "var(--text-primary)",
-              fontSize: "24px",
-            }}
-          >
-            Controle de Mobiles
-          </h2>
-
-          <p
-            style={{
-              margin: "6px 0 0",
-              color: "var(--text-muted)",
-              fontSize: "13px",
-            }}
-          >
-            Controle de equipamentos, versões e atualizações.
-          </p>
+          <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: "24px" }}>Controle de Mobiles</h2>
+          <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: "13px" }}>Controle de equipamentos, versões e atualizações.</p>
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}
-        >
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={loading}
-            style={{
-              padding: "10px 16px",
-              backgroundColor: "var(--bg-secondary)",
-              color: "var(--text-primary)",
-              border: "1px solid var(--border-primary)",
-              borderRadius: "8px",
-              cursor: loading
-                ? "not-allowed"
-                : "pointer",
-              fontSize: "13px",
-              fontWeight: 600,
-            }}
-          >
-            ↻ Atualizar
-          </button>
-
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() =>
-                setShowCreateModal(true)
-              }
-              style={{
-                padding: "10px 16px",
-                backgroundColor: "#3B82F6",
-                color: "#FFFFFF",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: 700,
-                boxShadow:
-                  "0 4px 6px -1px rgba(59, 130, 246, 0.2)",
-              }}
-            >
-              + Novo Equipamento
-            </button>
-          )}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <button type="button" onClick={onRefresh} disabled={loading} style={{ padding: "10px 16px", backgroundColor: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: loading ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: 600 }}>↻ Atualizar</button>
+          {canEdit && <button type="button" onClick={() => setShowCreateModal(true)} style={{ padding: "10px 16px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 700, boxShadow: "0 4px 6px -1px rgba(59, 130, 246, 0.2)" }}>+ Novo Equipamento</button>}
         </div>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit, minmax(190px, 1fr))",
-          gap: "16px",
-        }}
-      >
-        {cards.map((card) => (
-          <div
-            key={card.label}
-            style={{
-              padding: "20px",
-              backgroundColor: "var(--bg-secondary)",
-              border: "1px solid var(--border-primary)",
-              borderRadius: "12px",
-            }}
-          >
-            <div
-              style={{
-                color: "var(--text-muted)",
-                fontSize: "13px",
-                fontWeight: 600,
-                marginBottom: "8px",
-              }}
-            >
-              {card.label}
-            </div>
-
-            <div
-              style={{
-                color: "var(--text-primary)",
-                fontSize: "28px",
-                fontWeight: 700,
-              }}
-            >
-              {card.value}
-            </div>
-
-            <div
-              style={{
-                color: "var(--text-muted)",
-                fontSize: "12px",
-                marginTop: "6px",
-              }}
-            >
-              {card.detail}
-            </div>
-          </div>
-        ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
+        {cards.map((card) => <div key={card.label} style={{ padding: "20px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}><div style={{ color: "var(--text-muted)", fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>{card.label}</div><div style={{ color: "var(--text-primary)", fontSize: "28px", fontWeight: 700 }}>{card.value}</div><div style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "6px" }}>{card.detail}</div></div>)}
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            padding: "8px 12px",
-            backgroundColor: "var(--bg-secondary)",
-            border: "1px solid var(--border-primary)",
-            borderRadius: "8px",
-            color: "var(--text-muted)",
-            fontSize: "12px",
-          }}
-        >
-          Ativos:{" "}
-          <strong style={{ color: "var(--text-primary)" }}>
-            {totalAtivos}
-          </strong>
-        </div>
-
-        <div
-          style={{
-            padding: "8px 12px",
-            backgroundColor: "var(--bg-secondary)",
-            border: "1px solid var(--border-primary)",
-            borderRadius: "8px",
-            color: "var(--text-muted)",
-            fontSize: "12px",
-          }}
-        >
-          Manutenção:{" "}
-          <strong style={{ color: "#F59E0B" }}>
-            {totalManutencao}
-          </strong>
-        </div>
-
-        <div
-          style={{
-            padding: "8px 12px",
-            backgroundColor: "var(--bg-secondary)",
-            border: "1px solid var(--border-primary)",
-            borderRadius: "8px",
-            color: "var(--text-muted)",
-            fontSize: "12px",
-          }}
-        >
-          Inativos:{" "}
-          <strong style={{ color: "var(--text-primary)" }}>
-            {totalInativos}
-          </strong>
-        </div>
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+        {[{ label: "Ativos", value: totalAtivos, color: "var(--text-primary)" }, { label: "Emprestados", value: totalEmprestados, color: "#3B82F6" }, { label: "Manutenção", value: totalManutencao, color: "#F59E0B" }, { label: "Inativos", value: totalInativos, color: "var(--text-primary)" }].map((item) => <div key={item.label} style={{ padding: "8px 12px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "8px", color: "var(--text-muted)", fontSize: "12px" }}>{item.label}: <strong style={{ color: item.color }}>{item.value}</strong></div>)}
       </div>
 
-      <div
-        style={{
-          padding: "18px",
-          backgroundColor: "var(--bg-secondary)",
-          border: "1px solid var(--border-primary)",
-          borderRadius: "12px",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "minmax(220px, 2fr) repeat(5, minmax(140px, 1fr))",
-            gap: "12px",
-          }}
-        >
-          <input
-            type="text"
-            value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
-            placeholder="Pesquisar Coletor, SN, IP, MAC, App ou versão..."
-            style={inputStyle}
-          />
+      <ReservasMobilesPanel data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />
 
-          <select
-            value={setorFilter}
-            onChange={(event) =>
-              setSetorFilter(event.target.value)
-            }
-            style={inputStyle}
-          >
-            <option value="">Todos os setores</option>
-
-            {setores.map((setor) => (
-              <option key={setor} value={setor}>
-                {setor}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={appFilter}
-            onChange={(event) =>
-              setAppFilter(event.target.value)
-            }
-            style={inputStyle}
-          >
-            <option value="">Todos os apps</option>
-
-            {apps.map((app) => (
-              <option key={app} value={app}>
-                {app}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value)
-            }
-            style={inputStyle}
-          >
-            <option value="">Todos os status</option>
-
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {getStatusLabel(status)}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={statusAtualizacaoFilter}
-            onChange={(event) =>
-              setStatusAtualizacaoFilter(
-                event.target.value
-              )
-            }
-            style={inputStyle}
-          >
-            <option value="">
-              Todos os status de atualização
-            </option>
-
-            {statusAtualizacaoOptions.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={versaoFilter}
-            onChange={(event) =>
-              setVersaoFilter(event.target.value)
-            }
-            style={inputStyle}
-          >
-            <option value="">
-              {appFilter
-                ? `Todas as versões de ${appFilter}`
-                : "Todas as versões"}
-            </option>
-
-            {versoes.map((versao) => (
-              <option key={versao} value={versao}>
-                {versao}
-              </option>
-            ))}
-          </select>
+      <div style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 2fr) repeat(5, minmax(140px, 1fr))", gap: "12px" }}>
+          <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar Coletor, SN, IP, MAC, App ou versão..." style={inputStyle} />
+          <select value={setorFilter} onChange={(event) => setSetorFilter(event.target.value)} style={inputStyle}><option value="">Todos os setores</option>{setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}</select>
+          <select value={appFilter} onChange={(event) => setAppFilter(event.target.value)} style={inputStyle}><option value="">Todos os apps</option>{apps.map((app) => <option key={app} value={app}>{app}</option>)}</select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={inputStyle}><option value="">Todos os status</option>{statusOptions.map((status) => <option key={status} value={status}>{getStatusLabel(status)}</option>)}</select>
+          <select value={statusAtualizacaoFilter} onChange={(event) => setStatusAtualizacaoFilter(event.target.value)} style={inputStyle}><option value="">Todos os status de atualização</option>{statusAtualizacaoOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>
+          <select value={versaoFilter} onChange={(event) => setVersaoFilter(event.target.value)} style={inputStyle}><option value="">{appFilter ? `Todas as versões de ${appFilter}` : "Todas as versões"}</option>{versoes.map((versao) => <option key={versao} value={versao}>{versao}</option>)}</select>
         </div>
-
-        {appFilter && (
-          <div
-            style={{
-              marginTop: "10px",
-              color: "var(--text-muted)",
-              fontSize: "11px",
-            }}
-          >
-            Os filtros de versão e status de atualização estão sendo aplicados ao App <strong style={{ color: "var(--text-primary)" }}>{appFilter}</strong>.
-          </div>
-        )}
-
-        {hasActiveFilters && (
-          <div
-            style={{
-              marginTop: "12px",
-              display: "flex",
-              justifyContent: "flex-end",
-            }}
-          >
-            <button
-              type="button"
-              onClick={clearFilters}
-              style={{
-                padding: "8px 14px",
-                backgroundColor: "var(--bg-primary)",
-                color: "var(--text-muted)",
-                border:
-                  "1px solid var(--border-primary)",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: 600,
-              }}
-            >
-              Limpar filtros
-            </button>
-          </div>
-        )}
+        {appFilter && <div style={{ marginTop: "10px", color: "var(--text-muted)", fontSize: "11px" }}>Os filtros de versão e status de atualização estão sendo aplicados ao App <strong style={{ color: "var(--text-primary)" }}>{appFilter}</strong>.</div>}
+        {hasActiveFilters && <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}><button type="button" onClick={clearFilters} style={{ padding: "8px 14px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar filtros</button></div>}
       </div>
 
-      {canEdit &&
-        selectedRows.length > 0 && (
-          <div
-            style={{
-              padding: "14px 16px",
-              backgroundColor:
-                "var(--bg-secondary)",
-              border:
-                "1px solid #3B82F6",
-              borderRadius: "10px",
-              display: "flex",
-              justifyContent:
-                "space-between",
-              alignItems: "center",
-              gap: "16px",
-              flexWrap: "wrap",
-            }}
-          >
-            <div
-              style={{
-                color:
-                  "var(--text-primary)",
-                fontSize: "13px",
-                fontWeight: 600,
-              }}
-            >
-              {selectedRows.length} equipamento
-              {selectedRows.length !== 1
-                ? "s"
-                : ""}{" "}
-              selecionado
-              {selectedRows.length !== 1
-                ? "s"
-                : ""}
-            </div>
+      {canEdit && selectedRows.length > 0 && <div style={{ padding: "14px 16px", backgroundColor: "var(--bg-secondary)", border: "1px solid #3B82F6", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div style={{ color: "var(--text-primary)", fontSize: "13px", fontWeight: 600 }}>{selectedRows.length} equipamento{selectedRows.length !== 1 ? "s" : ""} selecionado{selectedRows.length !== 1 ? "s" : ""}</div><div style={{ display: "flex", gap: "10px" }}><button type="button" onClick={clearSelection} style={{ padding: "8px 12px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar seleção</button><button type="button" onClick={() => setShowBulkUpdateModal(true)} style={{ padding: "8px 14px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>Atualizar selecionados</button></div></div>}
 
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
-              }}
-            >
-              <button
-                type="button"
-                onClick={clearSelection}
-                style={{
-                  padding: "8px 12px",
-                  backgroundColor:
-                    "var(--bg-primary)",
-                  color:
-                    "var(--text-muted)",
-                  border:
-                    "1px solid var(--border-primary)",
-                  borderRadius: "7px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                }}
-              >
-                Limpar seleção
-              </button>
+      {loading && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Carregando equipamentos...</div>}
+      {!loading && error && <div style={{ padding: "16px", borderRadius: "10px", backgroundColor: "rgba(220, 38, 38, 0.12)", border: "1px solid #DC2626", color: "#DC2626" }}>{error}</div>}
+      {!loading && !error && data.length <= 1 && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Nenhum equipamento encontrado na aba tbControleMobiles.</div>}
 
-              <button
-                type="button"
-                onClick={() =>
-                  setShowBulkUpdateModal(
-                    true
-                  )
-                }
-                style={{
-                  padding: "8px 14px",
-                  backgroundColor:
-                    "#3B82F6",
-                  color: "#FFFFFF",
-                  border: "none",
-                  borderRadius: "7px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                }}
-              >
-                Atualizar selecionados
-              </button>
-            </div>
-          </div>
-        )}
+      {!loading && !error && data.length > 1 && <div style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", overflow: "hidden" }}>
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div><strong style={{ color: "var(--text-primary)" }}>Equipamentos cadastrados</strong><span style={{ marginLeft: "10px", color: "var(--text-muted)", fontSize: "12px" }}>{filteredRows.length} de {totalEquipamentos} registros</span></div></div>
+        <div style={{ width: "100%", overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1180px" }}>
+          <thead><tr style={{ backgroundColor: "var(--bg-primary)" }}><th style={{ width: "42px", padding: "12px 10px", textAlign: "center", borderBottom: "1px solid var(--border-primary)" }}>{canEdit && <input type="checkbox" checked={allCurrentPageSelected} onChange={handleToggleCurrentPage} title="Selecionar página atual" style={{ cursor: "pointer" }} />}</th>{["Setor", "Coletor", "SN", "IP", "App de uso", "Apps atualizados", "Status atualização", "Status", "Ações"].map((title) => <th key={title} style={{ padding: "12px 14px", textAlign: "left", color: "var(--text-muted)", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", borderBottom: "1px solid var(--border-primary)" }}>{title}</th>)}</tr></thead>
+          <tbody>{paginatedRows.length === 0 ? <tr><td colSpan={10} style={{ padding: "28px", textAlign: "center", color: "var(--text-muted)" }}>Nenhum equipamento encontrado com os filtros selecionados.</td></tr> : paginatedRows.map((row, index) => {
+            const globalIndex = (currentPage - 1) * itemsPerPage + index;
+            const mobileUpdateSummary = getMobileUpdateSummary(row);
+            return <tr key={`${row[coletorIdx] || "mobile"}-${row[snIdx] || globalIndex}-${globalIndex}`} style={{ borderBottom: "1px solid var(--border-primary)" }}>
+              <td style={{ width: "42px", padding: "12px 10px", textAlign: "center" }}>{canEdit && <input type="checkbox" checked={getOriginalIndex(row) !== null && selectedRows.includes(getOriginalIndex(row) as number)} onChange={() => handleToggleRow(row)} style={{ cursor: "pointer" }} />}</td>
+              <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px" }}>{setorIdx !== -1 ? row[setorIdx] || "-" : "-"}</td>
+              <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", fontWeight: 700, whiteSpace: "nowrap" }}>{coletorIdx !== -1 ? row[coletorIdx] || "-" : "-"}</td>
+              <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{snIdx !== -1 ? row[snIdx] || "-" : "-"}</td>
+              <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{ipIdx !== -1 ? row[ipIdx] || "-" : "-"}</td>
+              <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", whiteSpace: "nowrap" }}>{appIdx !== -1 ? row[appIdx] || "-" : "-"}</td>
+              <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", whiteSpace: "nowrap" }}>{mobileUpdateSummary.totalApps > 0 ? <><strong>{mobileUpdateSummary.updatedApps}</strong>{" / "}{mobileUpdateSummary.totalApps}</> : <span style={{ color: "var(--text-muted)" }}>Nenhum App</span>}</td>
+              <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", alignItems: "center", padding: "5px 9px", borderRadius: "999px", fontSize: "11px", fontWeight: 700, ...getUpdateStatusStyle(mobileUpdateSummary.status) }}>{mobileUpdateSummary.status}</span></td>
+              <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", alignItems: "center", padding: "5px 9px", borderRadius: "999px", fontSize: "11px", fontWeight: 700, ...getStatusStyle(statusIdx !== -1 ? row[statusIdx] || "" : "") }}>{statusIdx !== -1 ? getStatusLabel(row[statusIdx] || "") : "Não informado"}</span></td>
+              <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}><div style={{ display: "flex", alignItems: "center", gap: "6px" }}><button type="button" onClick={() => setViewingAppsRow(row)} style={{ padding: "6px 10px", backgroundColor: "var(--bg-primary)", color: "#10B981", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Apps</button>{canEdit ? <button type="button" onClick={() => handleEdit(row)} style={{ padding: "6px 10px", backgroundColor: "var(--bg-primary)", color: "#3B82F6", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Editar</button> : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>Somente leitura</span>}</div></td>
+            </tr>;
+          })}</tbody>
+        </table></div>
+        <div style={{ padding: "14px 18px", borderTop: "1px solid var(--border-primary)", display: "flex", justifyContent: "center", alignItems: "center", gap: "18px", flexWrap: "wrap" }}><button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} style={{ padding: "8px 14px", backgroundColor: "var(--bg-primary)", color: currentPage === 1 ? "var(--text-muted)" : "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: currentPage === 1 ? "not-allowed" : "pointer", fontSize: "12px", fontWeight: 600, opacity: currentPage === 1 ? 0.6 : 1 }}>← Anterior</button><span style={{ color: "var(--text-muted)", fontSize: "12px" }}>Página <strong style={{ color: "var(--text-primary)" }}>{currentPage}</strong> de <strong style={{ color: "var(--text-primary)" }}>{totalPages}</strong></span><button type="button" disabled={currentPage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} style={{ padding: "8px 14px", backgroundColor: "var(--bg-primary)", color: currentPage === totalPages ? "var(--text-muted)" : "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: currentPage === totalPages ? "not-allowed" : "pointer", fontSize: "12px", fontWeight: 600, opacity: currentPage === totalPages ? 0.6 : 1 }}>Próxima →</button></div>
+      </div>}
 
-      {loading && (
-        <div
-          style={{
-            padding: "24px",
-            backgroundColor: "var(--bg-secondary)",
-            border: "1px solid var(--border-primary)",
-            borderRadius: "12px",
-            color: "var(--text-muted)",
-            textAlign: "center",
-          }}
-        >
-          Carregando equipamentos...
-        </div>
-      )}
-
-      {!loading && error && (
-        <div
-          style={{
-            padding: "16px",
-            borderRadius: "10px",
-            backgroundColor:
-              "rgba(220, 38, 38, 0.12)",
-            border: "1px solid #DC2626",
-            color: "#DC2626",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {!loading && !error && data.length <= 1 && (
-        <div
-          style={{
-            padding: "24px",
-            backgroundColor: "var(--bg-secondary)",
-            border: "1px solid var(--border-primary)",
-            borderRadius: "12px",
-            color: "var(--text-muted)",
-            textAlign: "center",
-          }}
-        >
-          Nenhum equipamento encontrado na aba
-          tbControleMobiles.
-        </div>
-      )}
-
-      {!loading && !error && data.length > 1 && (
-        <div
-          style={{
-            backgroundColor: "var(--bg-secondary)",
-            border: "1px solid var(--border-primary)",
-            borderRadius: "12px",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              padding: "16px 20px",
-              borderBottom:
-                "1px solid var(--border-primary)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "16px",
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <strong
-                style={{
-                  color: "var(--text-primary)",
-                }}
-              >
-                Equipamentos cadastrados
-              </strong>
-
-              <span
-                style={{
-                  marginLeft: "10px",
-                  color: "var(--text-muted)",
-                  fontSize: "12px",
-                }}
-              >
-                {filteredRows.length} de{" "}
-                {totalEquipamentos} registros
-              </span>
-            </div>
-          </div>
-
-          <div
-            style={{
-              width: "100%",
-              overflowX: "auto",
-            }}
-          >
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                minWidth: "1180px",
-              }}
-            >
-              <thead>
-                <tr
-                  style={{
-                    backgroundColor:
-                      "var(--bg-primary)",
-                  }}
-                >
-                  <th
-                    style={{
-                      width: "42px",
-                      padding: "12px 10px",
-                      textAlign: "center",
-                      borderBottom:
-                        "1px solid var(--border-primary)",
-                    }}
-                  >
-                    {canEdit && (
-                      <input
-                        type="checkbox"
-                        checked={
-                          allCurrentPageSelected
-                        }
-                        onChange={
-                          handleToggleCurrentPage
-                        }
-                        title="Selecionar página atual"
-                        style={{
-                          cursor: "pointer",
-                        }}
-                      />
-                    )}
-                  </th>
-
-                  {[
-                    "Setor",
-                    "Coletor",
-                    "SN",
-                    "IP",
-                    "App de uso",
-                    "Apps atualizados",
-                    "Status atualização",
-                    "Status",
-                    "Ações",
-                  ].map((title) => (
-                    <th
-                      key={title}
-                      style={{
-                        padding: "12px 14px",
-                        textAlign: "left",
-                        color: "var(--text-muted)",
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        whiteSpace: "nowrap",
-                        borderBottom:
-                          "1px solid var(--border-primary)",
-                      }}
-                    >
-                      {title}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody>
-                {paginatedRows.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={10}
-                      style={{
-                        padding: "28px",
-                        textAlign: "center",
-                        color: "var(--text-muted)",
-                      }}
-                    >
-                      Nenhum equipamento encontrado com os
-                      filtros selecionados.
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedRows.map((row, index) => {
-                    const globalIndex =
-                      (currentPage - 1) *
-                        itemsPerPage +
-                      index;
-                    const mobileUpdateSummary =
-                      getMobileUpdateSummary(row);
-
-                    return (
-                      <tr
-                        key={`${row[coletorIdx] || "mobile"}-${
-                          row[snIdx] || globalIndex
-                        }-${globalIndex}`}
-                        style={{
-                          borderBottom:
-                            "1px solid var(--border-primary)",
-                        }}
-                      >
-                        <td
-                          style={{
-                            width: "42px",
-                            padding: "12px 10px",
-                            textAlign: "center",
-                          }}
-                        >
-                          {canEdit && (
-                            <input
-                              type="checkbox"
-                              checked={
-                                getOriginalIndex(row) !== null &&
-                                selectedRows.includes(
-                                  getOriginalIndex(row) as number
-                                )
-                              }
-                              onChange={() =>
-                                handleToggleRow(row)
-                              }
-                              style={{
-                                cursor: "pointer",
-                              }}
-                            />
-                          )}
-                        </td>
-
-                        <td
-                          style={{
-                            padding: "12px 14px",
-                            color:
-                              "var(--text-primary)",
-                            fontSize: "13px",
-                          }}
-                        >
-                          {setorIdx !== -1
-                            ? row[setorIdx] || "-"
-                            : "-"}
-                        </td>
-
-                        <td
-                          style={{
-                            padding: "12px 14px",
-                            color:
-                              "var(--text-primary)",
-                            fontSize: "13px",
-                            fontWeight: 700,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {coletorIdx !== -1
-                            ? row[coletorIdx] || "-"
-                            : "-"}
-                        </td>
-
-                        <td
-                          style={{
-                            padding: "12px 14px",
-                            color:
-                              "var(--text-secondary)",
-                            fontSize: "12px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {snIdx !== -1
-                            ? row[snIdx] || "-"
-                            : "-"}
-                        </td>
-
-                        <td
-                          style={{
-                            padding: "12px 14px",
-                            color:
-                              "var(--text-secondary)",
-                            fontSize: "12px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {ipIdx !== -1
-                            ? row[ipIdx] || "-"
-                            : "-"}
-                        </td>
-
-                        <td
-                          style={{
-                            padding: "12px 14px",
-                            color:
-                              "var(--text-primary)",
-                            fontSize: "13px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {appIdx !== -1
-                            ? row[appIdx] || "-"
-                            : "-"}
-                        </td>
-
-                        <td
-                          style={{
-                            padding: "12px 14px",
-                            color: "var(--text-primary)",
-                            fontSize: "13px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {mobileUpdateSummary.totalApps > 0 ? (
-                            <>
-                              <strong>
-                                {mobileUpdateSummary.updatedApps}
-                              </strong>
-                              {" / "}
-                              {mobileUpdateSummary.totalApps}
-                            </>
-                          ) : (
-                            <span
-                              style={{
-                                color: "var(--text-muted)",
-                              }}
-                            >
-                              Nenhum App
-                            </span>
-                          )}
-                        </td>
-
-                        <td
-                          style={{
-                            padding: "12px 14px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              padding: "5px 9px",
-                              borderRadius: "999px",
-                              fontSize: "11px",
-                              fontWeight: 700,
-                              ...getUpdateStatusStyle(
-                                mobileUpdateSummary.status
-                              )
-                            }}
-                          >
-                            {mobileUpdateSummary.status}
-                          </span>
-                        </td>
-
-                        <td
-                          style={{
-                            padding: "12px 14px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          <span
-                            style={{
-                              display:
-                                "inline-flex",
-                              alignItems: "center",
-                              padding: "5px 9px",
-                              borderRadius: "999px",
-                              fontSize: "11px",
-                              fontWeight: 700,
-                              ...getStatusStyle(
-                                statusIdx !== -1
-                                  ? row[statusIdx] || ""
-                                  : ""
-                              ),
-                            }}
-                          >
-                            {statusIdx !== -1
-                              ? getStatusLabel(
-                                  row[statusIdx] || ""
-                                )
-                              : "Não informado"}
-                          </span>
-                        </td>
-
-                        <td
-                          style={{
-                            padding: "12px 14px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "6px",
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setViewingAppsRow(row)
-                              }
-                              style={{
-                                padding: "6px 10px",
-                                backgroundColor:
-                                  "var(--bg-primary)",
-                                color: "#10B981",
-                                border:
-                                  "1px solid var(--border-primary)",
-                                borderRadius: "7px",
-                                cursor: "pointer",
-                                fontSize: "11px",
-                                fontWeight: 700,
-                              }}
-                            >
-                              Apps
-                            </button>
-
-                            {canEdit ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleEdit(row)
-                                }
-                                style={{
-                                  padding: "6px 10px",
-                                  backgroundColor:
-                                    "var(--bg-primary)",
-                                  color: "#3B82F6",
-                                  border:
-                                    "1px solid var(--border-primary)",
-                                  borderRadius: "7px",
-                                  cursor: "pointer",
-                                  fontSize: "11px",
-                                  fontWeight: 700,
-                                }}
-                              >
-                                Editar
-                              </button>
-                            ) : (
-                              <span
-                                style={{
-                                  color:
-                                    "var(--text-muted)",
-                                  fontSize: "11px",
-                                }}
-                              >
-                                Somente leitura
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div
-            style={{
-              padding: "14px 18px",
-              borderTop:
-                "1px solid var(--border-primary)",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: "18px",
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              type="button"
-              disabled={currentPage === 1}
-              onClick={() =>
-                setCurrentPage((page) =>
-                  Math.max(1, page - 1)
-                )
-              }
-              style={{
-                padding: "8px 14px",
-                backgroundColor:
-                  "var(--bg-primary)",
-                color:
-                  currentPage === 1
-                    ? "var(--text-muted)"
-                    : "var(--text-primary)",
-                border:
-                  "1px solid var(--border-primary)",
-                borderRadius: "8px",
-                cursor:
-                  currentPage === 1
-                    ? "not-allowed"
-                    : "pointer",
-                fontSize: "12px",
-                fontWeight: 600,
-                opacity:
-                  currentPage === 1 ? 0.6 : 1,
-              }}
-            >
-              ← Anterior
-            </button>
-
-            <span
-              style={{
-                color: "var(--text-muted)",
-                fontSize: "12px",
-              }}
-            >
-              Página{" "}
-              <strong
-                style={{
-                  color: "var(--text-primary)",
-                }}
-              >
-                {currentPage}
-              </strong>{" "}
-              de{" "}
-              <strong
-                style={{
-                  color: "var(--text-primary)",
-                }}
-              >
-                {totalPages}
-              </strong>
-            </span>
-
-            <button
-              type="button"
-              disabled={
-                currentPage === totalPages
-              }
-              onClick={() =>
-                setCurrentPage((page) =>
-                  Math.min(
-                    totalPages,
-                    page + 1
-                  )
-                )
-              }
-              style={{
-                padding: "8px 14px",
-                backgroundColor:
-                  "var(--bg-primary)",
-                color:
-                  currentPage === totalPages
-                    ? "var(--text-muted)"
-                    : "var(--text-primary)",
-                border:
-                  "1px solid var(--border-primary)",
-                borderRadius: "8px",
-                cursor:
-                  currentPage === totalPages
-                    ? "not-allowed"
-                    : "pointer",
-                fontSize: "12px",
-                fontWeight: 600,
-                opacity:
-                  currentPage === totalPages
-                    ? 0.6
-                    : 1,
-              }}
-            >
-              Próxima →
-            </button>
-          </div>
-        </div>
-      )}
-
-      <DetalhesAppsMobileModal
-        isOpen={viewingAppsRow !== null}
-        coletor={viewingAppsColetor}
-        appRows={viewingApps}
-        mobileApps={mobileApps}
-        mobileConfig={mobileConfig}
-        currentUserName={
-          currentUserName
-        }
-        canEdit={canEdit}
-        onSave={
-          onSaveMobileApp
-        }
-        onClose={() =>
-          setViewingAppsRow(null)
-        }
-      />
-
-      <EditarMobileModal
-        isOpen={editingRow !== null}
-        row={editingRow}
-        headers={headers}
-        allRows={rows}
-        currentUserName={currentUserName}
-        normalize={normalize}
-        onClose={handleCloseEdit}
-        onSave={onSaveRow}
-      />
-
-      <NovoMobileModal
-        isOpen={showCreateModal}
-        headers={headers}
-        allRows={rows}
-        normalize={normalize}
-        onClose={() =>
-          setShowCreateModal(false)
-        }
-        onCreate={onCreateRow}
-      />
-
-      <AtualizacaoLoteMobilesModal
-        isOpen={showBulkUpdateModal}
-        selectedCount={
-          selectedRows.length
-        }
-        currentUserName={
-          currentUserName
-        }
-        onClose={() =>
-          setShowBulkUpdateModal(false)
-        }
-        onApply={handleBulkUpdate}
-      />
+      <DetalhesAppsMobileModal isOpen={viewingAppsRow !== null} coletor={viewingAppsColetor} appRows={viewingApps} mobileApps={mobileApps} mobileConfig={mobileConfig} currentUserName={currentUserName} canEdit={canEdit} onSave={onSaveMobileApp} onClose={() => setViewingAppsRow(null)} />
+      <EditarMobileModal isOpen={editingRow !== null} row={editingRow} headers={headers} allRows={rows} currentUserName={currentUserName} normalize={normalize} onClose={handleCloseEdit} onSave={onSaveRow} />
+      <NovoMobileModal isOpen={showCreateModal} headers={headers} allRows={rows} normalize={normalize} onClose={() => setShowCreateModal(false)} onCreate={onCreateRow} />
+      <AtualizacaoLoteMobilesModal isOpen={showBulkUpdateModal} selectedCount={selectedRows.length} currentUserName={currentUserName} onClose={() => setShowBulkUpdateModal(false)} onApply={handleBulkUpdate} />
     </div>
   );
 }
