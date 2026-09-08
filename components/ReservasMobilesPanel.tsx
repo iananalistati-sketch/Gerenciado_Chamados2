@@ -93,6 +93,7 @@ export default function ReservasMobilesPanel({
   const reserveCollectorIdx = loanIndex("COLETOR_RESERVA");
   const reserveSnIdx = loanIndex("SN_RESERVA");
   const originalCollectorIdx = loanIndex("COLETOR_SUBSTITUIDO");
+  const originalSnIdx = loanIndex("SN_SUBSTITUIDO");
   const destinationIdx = loanIndex("SETOR_DESTINO");
   const dateIdx = loanIndex("DATA_EMPRESTIMO");
   const responsibleIdx = loanIndex("RESPONSAVEL_EMPRESTIMO");
@@ -223,24 +224,6 @@ export default function ReservasMobilesPanel({
             Disponibilidade das reservas e empréstimos temporários em andamento.
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={fetchLoans}
-          disabled={loadingLoans}
-          style={{
-            padding: "8px 12px",
-            backgroundColor: "var(--bg-primary)",
-            color: "var(--text-primary)",
-            border: "1px solid var(--border-primary)",
-            borderRadius: "8px",
-            cursor: loadingLoans ? "not-allowed" : "pointer",
-            fontSize: "12px",
-            fontWeight: 600,
-          }}
-        >
-          ↻ Atualizar empréstimos
-        </button>
       </div>
 
       <div
@@ -276,10 +259,10 @@ export default function ReservasMobilesPanel({
       )}
 
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1020px" }}>
           <thead>
             <tr style={{ backgroundColor: "var(--bg-primary)" }}>
-              {["Reserva", "SN", "Substituindo", "Setor destino", "Localização atual", "Data", "Responsável", "Motivo", "Ação"].map(
+              {["Reserva", "SN Reserva", "Substituindo", "SN Substituído", "Setor destino", "Localização atual", "Data", "Responsável", "Motivo", "Ação"].map(
                 (title) => (
                   <th
                     key={title}
@@ -301,7 +284,7 @@ export default function ReservasMobilesPanel({
           <tbody>
             {openLoans.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ padding: "18px", textAlign: "center", color: "var(--text-muted)", fontSize: "12px" }}>
+                <td colSpan={10} style={{ padding: "18px", textAlign: "center", color: "var(--text-muted)", fontSize: "12px" }}>
                   {loadingLoans ? "Carregando empréstimos..." : "Nenhum empréstimo aberto."}
                 </td>
               </tr>
@@ -315,6 +298,7 @@ export default function ReservasMobilesPanel({
                     <td style={{ padding: "10px 12px", color: "#3B82F6", fontWeight: 700 }}>{reserveCollector}</td>
                     <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{reserveSnIdx !== -1 ? loan[reserveSnIdx] || "-" : "-"}</td>
                     <td style={{ padding: "10px 12px", color: "var(--text-primary)", fontWeight: 600 }}>{originalCollectorIdx !== -1 ? loan[originalCollectorIdx] || "-" : "-"}</td>
+                    <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{originalSnIdx !== -1 ? loan[originalSnIdx] || "-" : "-"}</td>
                     <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{destinationIdx !== -1 ? loan[destinationIdx] || "-" : "-"}</td>
                     <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{getReserveLocation(String(reserveCollector))}</td>
                     <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{dateIdx !== -1 ? loan[dateIdx] || "-" : "-"}</td>
