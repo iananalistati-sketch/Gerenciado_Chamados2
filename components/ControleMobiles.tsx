@@ -1015,6 +1015,8 @@ export default function ControleMobiles({
     switch (status) {
       case "A":
         return "Ativo";
+      case "E":
+        return "Emprestado";
       case "I":
         return "Inativo";
       case "M":
@@ -1036,6 +1038,14 @@ export default function ControleMobiles({
         backgroundColor: "rgba(5, 150, 105, 0.14)",
         color: "#10B981",
         border: "1px solid rgba(16, 185, 129, 0.35)",
+      };
+    }
+
+    if (status === "E") {
+      return {
+        backgroundColor: "rgba(59, 130, 246, 0.14)",
+        color: "#3B82F6",
+        border: "1px solid rgba(59, 130, 246, 0.35)",
       };
     }
 
