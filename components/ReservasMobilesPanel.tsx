@@ -62,13 +62,6 @@ export default function ReservasMobilesPanel({
       String(row[statusIdx] || "").trim().toUpperCase() === "E"
   );
 
-  const reservasDisponiveisForaTi = reservasDisponiveis.filter((row) => {
-    if (localizadoIdx === -1) return false;
-    const location = String(row[localizadoIdx] || "").trim();
-    if (!location) return false;
-    return normalize(location) !== normalize("TI-SUPORTE");
-  });
-
   const fetchLoans = useCallback(async () => {
     setLoadingLoans(true);
     setError(null);
@@ -116,33 +109,64 @@ export default function ReservasMobilesPanel({
       String(row[loanStatusIdx] || "").trim().toUpperCase() === "ABERTO"
   );
 
-  const getReserveRow = (collector: string) =>
-    reservas.find(
-      (item) =>
-        coletorIdx !== -1 &&
-        normalize(item[coletorIdx] || "") === normalize(collector)
+  const getReserveCollector = (row: string[]) =>
+    coletorIdx !== -1 ? String(row[coletorIdx] || "").trim() : "";
+
+  const getReserveLocationRaw = (row: string[]) =>
+    localizadoIdx !== -1 ? String(row[localizadoIdx] || "").trim() : "";
+
+  const getOpenLoanForReserve = (collector: string) =>
+    openLoans.find(
+      (loan) =>
+        reserveCollectorIdx !== -1 &&
+        normalize(loan[reserveCollectorIdx] || "") === normalize(collector)
     );
 
-  const getReserveLocationRaw = (collector: string) => {
-    const row = getReserveRow(collector);
-    if (!row || localizadoIdx === -1) return "";
-    return String(row[localizadoIdx] || "").trim();
+  const getExpectedLocation = (row: string[]) => {
+    const status = statusIdx !== -1 ? String(row[statusIdx] || "").trim().toUpperCase() : "";
+
+    if (status === "A") return "TI-SUPORTE";
+
+    if (status === "E") {
+      const collector = getReserveCollector(row);
+      const loan = collector ? getOpenLoanForReserve(collector) : undefined;
+      if (!loan || destinationIdx === -1) return "";
+      return String(loan[destinationIdx] || "").trim();
+    }
+
+    return "";
   };
 
+  const isReserveLocationDivergent = (row: string[]) => {
+    const currentLocation = getReserveLocationRaw(row);
+    const expectedLocation = getExpectedLocation(row);
+
+    if (!currentLocation || !expectedLocation) return false;
+    return normalize(currentLocation) !== normalize(expectedLocation);
+  };
+
+  const reservasLocalizacaoDivergente = reservas.filter(isReserveLocationDivergent);
+
+  const reservasDisponiveisForaTi = reservasDisponiveis.filter(
+    (row) => isReserveLocationDivergent(row)
+  );
+
+  const getReserveRow = (collector: string) =>
+    reservas.find(
+      (item) => normalize(getReserveCollector(item)) === normalize(collector)
+    );
+
   const getReserveLocation = (collector: string) => {
-    const rawLocation = getReserveLocationRaw(collector);
-    return rawLocation || "TI-SUPORTE";
+    const row = getReserveRow(collector);
+    if (!row) return "-";
+    return getReserveLocationRaw(row) || "-";
   };
 
   const isLoanLocationDivergent = (loan: string[]) => {
-    const reserveCollector =
+    const collector =
       reserveCollectorIdx !== -1 ? String(loan[reserveCollectorIdx] || "").trim() : "";
-    const destination =
-      destinationIdx !== -1 ? String(loan[destinationIdx] || "").trim() : "";
-    const currentLocation = getReserveLocationRaw(reserveCollector);
-
-    if (!reserveCollector || !destination || !currentLocation) return false;
-    return normalize(destination) !== normalize(currentLocation);
+    const reserveRow = collector ? getReserveRow(collector) : undefined;
+    return reserveRow ? isReserveLocationDivergent(reserveRow) : false;
   };
 
   const openLoansLocationDivergent = openLoans.filter(isLoanLocationDivergent);
@@ -150,14 +174,11 @@ export default function ReservasMobilesPanel({
   const visibleReserves = useMemo(() => {
     if (activePanel === "available") return reservasDisponiveis;
     if (activePanel === "loaned") return reservasEmprestadas;
+    if (activePanel === "divergent") return reservasLocalizacaoDivergente;
     return reservas;
-  }, [activePanel, reservas, reservasDisponiveis, reservasEmprestadas]);
+  }, [activePanel, reservas, reservasDisponiveis, reservasEmprestadas, reservasLocalizacaoDivergente]);
 
-  const visibleOpenLoans = activePanel === "divergent"
-    ? openLoansLocationDivergent
-    : openLoans;
-
-  const showingLoans = activePanel === "openLoans" || activePanel === "divergent";
+  const showingLoans = activePanel === "openLoans";
 
   const finishLoan = async (loan: string[]) => {
     if (!canEdit) return;
@@ -197,8 +218,7 @@ export default function ReservasMobilesPanel({
       }
     }
 
-    const observation =
-      window.prompt("Observação da devolução (opcional):", "") ?? "";
+    const observation = window.prompt("Observação da devolução (opcional):", "") ?? "";
 
     setFinishingCollector(reserveCollector);
 
@@ -270,42 +290,17 @@ export default function ReservasMobilesPanel({
   };
 
   return (
-    <div
-      style={{
-        padding: "18px",
-        backgroundColor: "var(--bg-secondary)",
-        border: "1px solid var(--border-primary)",
-        borderRadius: "12px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          flexWrap: "wrap",
-          marginBottom: "16px",
-        }}
-      >
+    <div style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
         <div>
-          <strong style={{ color: "var(--text-primary)", fontSize: "15px" }}>
-            Reservas TI-SUPORTE
-          </strong>
+          <strong style={{ color: "var(--text-primary)", fontSize: "15px" }}>Reservas TI-SUPORTE</strong>
           <div style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "4px" }}>
-            Clique nos painéis para alternar entre reservas disponíveis, emprestadas e empréstimos em andamento.
+            Clique nos painéis para alternar entre reservas disponíveis, emprestadas, divergências e empréstimos em andamento.
           </div>
         </div>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-          gap: "12px",
-          marginBottom: "18px",
-        }}
-      >
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "18px" }}>
         <button type="button" onClick={() => setActivePanel("all")} style={panelStyle("all", "#3B82F6")} title="Mostrar todas as reservas da TI-SUPORTE">
           <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Total de reservas</div>
           <strong style={{ color: "var(--text-primary)", fontSize: "24px" }}>{reservas.length}</strong>
@@ -322,36 +317,22 @@ export default function ReservasMobilesPanel({
           <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Empréstimos abertos</div>
           <strong style={{ color: "#F59E0B", fontSize: "24px" }}>{openLoans.length}</strong>
         </button>
-        <button type="button" onClick={() => setActivePanel("divergent")} style={panelStyle("divergent", "#DC2626")} title="Mostrar empréstimos cuja localização atual difere do setor de destino">
-          <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Fora do destino</div>
-          <strong style={{ color: "#DC2626", fontSize: "24px" }}>{openLoansLocationDivergent.length}</strong>
+        <button type="button" onClick={() => setActivePanel("divergent")} style={panelStyle("divergent", "#DC2626")} title="Mostrar reservas cuja localização atual difere da localização esperada">
+          <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Localização divergente</div>
+          <strong style={{ color: "#DC2626", fontSize: "24px" }}>{reservasLocalizacaoDivergente.length}</strong>
         </button>
       </div>
 
       {reservasDisponiveisForaTi.length > 0 && (
-        <div
-          style={{
-            marginBottom: "14px",
-            padding: "10px 12px",
-            borderRadius: "8px",
-            border: "1px solid rgba(220, 38, 38, 0.35)",
-            backgroundColor: "rgba(220, 38, 38, 0.08)",
-            color: "#DC2626",
-            fontSize: "12px",
-          }}
-        >
+        <div style={{ marginBottom: "14px", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(220, 38, 38, 0.35)", backgroundColor: "rgba(220, 38, 38, 0.08)", color: "#DC2626", fontSize: "12px" }}>
           ⚠ {reservasDisponiveisForaTi.length} reserva{reservasDisponiveisForaTi.length !== 1 ? "s" : ""} disponível{reservasDisponiveisForaTi.length !== 1 ? "is" : ""} fora da TI-SUPORTE: {reservasDisponiveisForaTi
-            .map((row) => (coletorIdx !== -1 ? String(row[coletorIdx] || "").trim() : ""))
+            .map((row) => getReserveCollector(row))
             .filter(Boolean)
             .join(", ")}.
         </div>
       )}
 
-      {error && (
-        <div style={{ color: "#DC2626", fontSize: "12px", marginBottom: "12px" }}>
-          {error}
-        </div>
-      )}
+      {error && <div style={{ color: "#DC2626", fontSize: "12px", marginBottom: "12px" }}>{error}</div>}
 
       {!showingLoans ? (
         <div>
@@ -360,13 +341,15 @@ export default function ReservasMobilesPanel({
               ? "Reservas disponíveis"
               : activePanel === "loaned"
                 ? "Reservas emprestadas"
-                : "Todas as reservas cadastradas na TI-SUPORTE"}
+                : activePanel === "divergent"
+                  ? "Reservas com localização divergente"
+                  : "Todas as reservas cadastradas na TI-SUPORTE"}
           </div>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "650px" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "760px" }}>
               <thead>
                 <tr style={{ backgroundColor: "var(--bg-primary)" }}>
-                  {["Reserva", "SN", "Status", "Localização atual", "Situação da localização"].map((title) => (
+                  {["Reserva", "SN", "Status", "Localização atual", "Localização esperada", "Situação da localização"].map((title) => (
                     <th key={title} style={{ padding: "10px 12px", textAlign: "left", color: "var(--text-muted)", fontSize: "11px", borderBottom: "1px solid var(--border-primary)", whiteSpace: "nowrap" }}>
                       {title}
                     </th>
@@ -376,30 +359,34 @@ export default function ReservasMobilesPanel({
               <tbody>
                 {visibleReserves.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: "18px", textAlign: "center", color: "var(--text-muted)", fontSize: "12px" }}>
+                    <td colSpan={6} style={{ padding: "18px", textAlign: "center", color: "var(--text-muted)", fontSize: "12px" }}>
                       Nenhuma reserva encontrada para este filtro.
                     </td>
                   </tr>
                 ) : (
                   visibleReserves.map((row, index) => {
-                    const collector = coletorIdx !== -1 ? String(row[coletorIdx] || "").trim() : "-";
+                    const collector = getReserveCollector(row) || "-";
                     const status = statusIdx !== -1 ? String(row[statusIdx] || "").trim() : "";
-                    const location = localizadoIdx !== -1 ? String(row[localizadoIdx] || "").trim() : "";
-                    const availableOutsideTi = status.toUpperCase() === "A" && location && normalize(location) !== normalize("TI-SUPORTE");
+                    const location = getReserveLocationRaw(row);
+                    const expectedLocation = getExpectedLocation(row);
+                    const locationDivergent = isReserveLocationDivergent(row);
+                    const divergenceLabel = status.toUpperCase() === "A" ? "⚠ Fora da TI-SUPORTE" : "⚠ Fora do destino";
+
                     return (
                       <tr key={`${collector}-${snIdx !== -1 ? row[snIdx] || index : index}`} style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                        <td style={{ padding: "10px 12px", color: "var(--text-primary)", fontWeight: 700 }}>{collector || "-"}</td>
+                        <td style={{ padding: "10px 12px", color: "var(--text-primary)", fontWeight: 700 }}>{collector}</td>
                         <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{snIdx !== -1 ? row[snIdx] || "-" : "-"}</td>
                         <td style={{ padding: "10px 12px" }}>
                           <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: "999px", fontSize: "10px", fontWeight: 700, ...getStatusStyle(status) }}>
                             {getStatusLabel(status)}
                           </span>
                         </td>
-                        <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{location || "TI-SUPORTE"}</td>
+                        <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{location || "-"}</td>
+                        <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{expectedLocation || "-"}</td>
                         <td style={{ padding: "10px 12px", fontSize: "11px" }}>
-                          {availableOutsideTi ? (
-                            <span style={{ display: "inline-flex", padding: "4px 7px", borderRadius: "999px", backgroundColor: "rgba(220, 38, 38, 0.10)", color: "#DC2626", border: "1px solid rgba(220, 38, 38, 0.30)", fontWeight: 700 }}>
-                              ⚠ Fora da TI-SUPORTE
+                          {locationDivergent ? (
+                            <span title={`Localização esperada: ${expectedLocation}`} style={{ display: "inline-flex", padding: "4px 7px", borderRadius: "999px", backgroundColor: "rgba(220, 38, 38, 0.10)", color: "#DC2626", border: "1px solid rgba(220, 38, 38, 0.30)", fontWeight: 700 }}>
+                              {divergenceLabel}
                             </span>
                           ) : (
                             <span style={{ color: "var(--text-muted)" }}>Sem divergência</span>
@@ -415,9 +402,7 @@ export default function ReservasMobilesPanel({
         </div>
       ) : (
         <div>
-          <div style={{ marginBottom: "10px", color: "var(--text-muted)", fontSize: "12px" }}>
-            {activePanel === "divergent" ? "Empréstimos abertos fora do setor de destino" : "Empréstimos temporários em aberto"}
-          </div>
+          <div style={{ marginBottom: "10px", color: "var(--text-muted)", fontSize: "12px" }}>Empréstimos temporários em aberto</div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1020px" }}>
               <thead>
@@ -430,18 +415,14 @@ export default function ReservasMobilesPanel({
                 </tr>
               </thead>
               <tbody>
-                {visibleOpenLoans.length === 0 ? (
+                {openLoans.length === 0 ? (
                   <tr>
                     <td colSpan={10} style={{ padding: "18px", textAlign: "center", color: "var(--text-muted)", fontSize: "12px" }}>
-                      {loadingLoans
-                        ? "Carregando empréstimos..."
-                        : activePanel === "divergent"
-                          ? "Nenhum empréstimo aberto com divergência de localização."
-                          : "Nenhum empréstimo aberto."}
+                      {loadingLoans ? "Carregando empréstimos..." : "Nenhum empréstimo aberto."}
                     </td>
                   </tr>
                 ) : (
-                  visibleOpenLoans.map((loan, index) => {
+                  openLoans.map((loan, index) => {
                     const reserveCollector = reserveCollectorIdx !== -1 ? loan[reserveCollectorIdx] || "-" : "-";
                     const key = idIdx !== -1 ? loan[idIdx] || `${reserveCollector}-${index}` : `${reserveCollector}-${index}`;
                     const currentLocation = getReserveLocation(String(reserveCollector));
@@ -470,12 +451,7 @@ export default function ReservasMobilesPanel({
                         <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{reasonIdx !== -1 ? loan[reasonIdx] || "-" : "-"}</td>
                         <td style={{ padding: "10px 12px" }}>
                           {canEdit ? (
-                            <button
-                              type="button"
-                              onClick={() => finishLoan(loan)}
-                              disabled={finishingCollector === reserveCollector}
-                              style={{ padding: "7px 10px", backgroundColor: "#10B981", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: finishingCollector === reserveCollector ? "not-allowed" : "pointer", fontSize: "11px", fontWeight: 700 }}
-                            >
+                            <button type="button" onClick={() => finishLoan(loan)} disabled={finishingCollector === reserveCollector} style={{ padding: "7px 10px", backgroundColor: "#10B981", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: finishingCollector === reserveCollector ? "not-allowed" : "pointer", fontSize: "11px", fontWeight: 700 }}>
                               {finishingCollector === reserveCollector ? "Finalizando..." : "Finalizar empréstimo"}
                             </button>
                           ) : (
@@ -489,6 +465,12 @@ export default function ReservasMobilesPanel({
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {openLoansLocationDivergent.length > 0 && activePanel === "openLoans" && (
+        <div style={{ marginTop: "10px", color: "var(--text-muted)", fontSize: "11px" }}>
+          {openLoansLocationDivergent.length} empréstimo{openLoansLocationDivergent.length !== 1 ? "s" : ""} aberto{openLoansLocationDivergent.length !== 1 ? "s" : ""} com localização divergente.
         </div>
       )}
     </div>
