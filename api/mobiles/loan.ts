@@ -55,6 +55,8 @@ export default async function handler(req: any, res: any) {
       responsible,
       reason,
       observation,
+      updateLocation = true,
+      destinationSector,
     } = req.body || {};
 
     if (!String(originalCollector || "").trim()) {
@@ -78,6 +80,16 @@ export default async function handler(req: any, res: any) {
     if (!String(reason || "").trim()) {
       return res.status(400).json({
         error: "Motivo do empréstimo não informado.",
+      });
+    }
+
+    if (
+      updateLocation &&
+      !String(destinationSector || "").trim()
+    ) {
+      return res.status(400).json({
+        error:
+          "Informe o setor de localização que receberá o equipamento reserva.",
       });
     }
 
@@ -110,8 +122,7 @@ export default async function handler(req: any, res: any) {
       auth,
     });
 
-    const spreadsheetId =
-      process.env.SPREADSHEET_ID;
+    const spreadsheetId = process.env.SPREADSHEET_ID;
 
     if (!spreadsheetId) {
       return res.status(500).json({
@@ -257,6 +268,12 @@ export default async function handler(req: any, res: any) {
     const originalSector = String(
       original.row[setorIdx] || ""
     ).trim();
+    const originalLocation = String(
+      original.row[setorLocalizadoIdx] || ""
+    ).trim();
+    const effectiveDestination = String(
+      destinationSector || originalLocation || originalSector
+    ).trim();
     const originalSn = String(
       original.row[snIdx] || ""
     ).trim();
@@ -334,7 +351,11 @@ export default async function handler(req: any, res: any) {
       reserveUpdated.push("");
     }
     reserveUpdated[statusIdx] = "E";
-    reserveUpdated[setorLocalizadoIdx] = originalSector;
+
+    if (updateLocation) {
+      originalUpdated[setorLocalizadoIdx] = "TI-SUPORTE";
+      reserveUpdated[setorLocalizadoIdx] = effectiveDestination;
+    }
 
     const loanId = makeLoanId();
     const loanDate = toLocalIsoDateTime();
@@ -374,7 +395,7 @@ export default async function handler(req: any, res: any) {
       "SETOR_ORIGEM"
     );
     setLoanValue(
-      originalSector,
+      effectiveDestination || originalSector,
       "SETOR_DESTINO"
     );
     setLoanValue(
@@ -433,7 +454,9 @@ export default async function handler(req: any, res: any) {
         String(originalCollector).trim(),
       reserveCollector:
         String(reserveCollector).trim(),
-      destinationSector: originalSector,
+      destinationSector:
+        updateLocation ? effectiveDestination : "",
+      locationUpdated: Boolean(updateLocation),
     });
   } catch (error: any) {
     console.error("ERRO MOBILE LOAN:", error);
