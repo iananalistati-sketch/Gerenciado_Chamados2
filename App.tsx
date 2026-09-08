@@ -1,356 +1,1671 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "./firebase";
-import Login from "./components/Login";
-import ChangePassword from "./components/ChangePassword";
-import UserManagement from "./components/UserManagement";
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import ConcluirModal from "./components/ConcluirModal";
 import Dashboard from "./components/Dashboard";
 import ChamadosTable from "./components/ChamadosTable";
-import ControleMobiles from "./components/ControleMobiles";
-import MobileTargetVersionsManager from "./components/MobileTargetVersionsManager";
 import CobrancaModal from "./components/CobrancaModal";
-import ConcluirModal from "./components/ConcluirModal";
 import FiltroModal from "./components/FiltroModal";
+import Login from "./components/Login";
 import { useAuth } from "./contexts/AuthContext";
-import {
-  canManageUsers,
-  canViewUserManagement,
-  canEditMobileControl,
-  canManageMobileTargetVersions,
-} from "./auth/permissions";
+import UserManagement from "./components/UserManagement";
+import ChangePassword from "./components/ChangePassword";
+import { useTheme } from "./contexts/ThemeContext";
+import ControleMobiles from "./components/ControleMobiles";
 
-const normalize = (value: string) =>
-  String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
+/**
+ * App.tsx - Mínimo Funcional
+ * Focado apenas na lógica de leitura e escrita no Google Sheets.
+ */
 
-const App: React.FC = () => {
-  const {
-    user,
-    loading: authLoading,
+function AppContent() {
+  const { user, role, permissions, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+
+  console.log("DEBUG PERMISSOES", {
+    email: user?.email,
     role,
-    mustChangePassword,
-    logout,
-  } = useAuth();
-
-  const [selectedSheet, setSelectedSheet] = useState("MV");
+    permissions,
+    canManageUsers: permissions?.canManageUsers
+  });
   const [data, setData] = useState<string[][]>([]);
+  // allData: Armazena os dados de todas as abas carregadas
+  const [allData, setAllData] = useState<Record<string, string[][]>>({
+    tbChamadosMV: [],
+    tbChamadosForhealth: [],
+    tbControleMobiles: []
+  });
   const [mobileConfig, setMobileConfig] = useState<string[][]>([]);
   const [mobileApps, setMobileApps] = useState<string[][]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [cobrancaRow, setCobrancaRow] = useState<string[] | null>(null);
-  const [concluirRow, setConcluirRow] = useState<string[] | null>(null);
-  const [userManagementOpen, setUserManagementOpen] = useState(false);
-  const [mobileVersionsOpen, setMobileVersionsOpen] = useState(false);
-
-  const [filters, setFilters] = useState({
-    search: "",
-    status: "",
-    gravidade: "",
-    responsavel: "",
-    cobranca: "",
-    excluido: "NAO",
-    dataAberturaInicio: "",
-    dataAberturaFim: "",
-    ultimaInteracaoInicio: "",
-    ultimaInteracaoFim: "",
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [selectedSheet, setSelectedSheet] = useState('tbChamadosMV');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState<{
+    columnIndex: number | null;
+    direction: "asc" | "desc";
+  }>({
+    columnIndex: null,
+    direction: "asc"
   });
+  const itemsPerPage = 10;
+  const [showForm, setShowForm] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
+  //const [editingRow, setEditingRow] = useState<any>(null);
+  const [editingRow, setEditingRow] = useState<any | null>(null);
+  const [showCobrarModal, setShowCobrarModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showConcluirModal, setShowConcluirModal] = useState(false);
+  const [showUserManagement, setShowUserManagement] = useState(false);
+  const [
+    showChangePassword,
+    setShowChangePassword,
+  ] = useState(false);
+  
+  const [rowToConclude, setRowToConclude] =
+  useState<{
+      row: string[];
+      rowIndex: number;
+  } | null>(null);
+  
+  const [conclusionDate, setConclusionDate] =
+    useState("");
+  const [sheetFilters, setSheetFilters] = useState<Record<string, Record<string, string>>>({
+    tbChamadosMV: {},
+    tbChamadosForhealth: {},
+    tbControleMobiles: {}
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
 
-  const currentUserName = user?.email || "";
-  const canEditMobiles = canEditMobileControl(role);
-  const canManageMobileVersions = canManageMobileTargetVersions(role);
+  // Helper para normalizar cabeçalhos (remove acentos, espaços e padroniza caixa)
+  const normalize = (str: string) => 
+    (str || "")
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
 
-  const fetchData = useCallback(async () => {
-    if (!selectedSheet) return;
+  const fetchData = async () => {
+  setLoading(true);
+  setError(null);
 
-    setLoading(true);
-    setError(null);
+  try {
+    const res = await fetch(`/api/data?sheet=${selectedSheet}`);
+    const json = await res.json();
+    
+    const values = Array.isArray(json)
+      ? json.filter((row) => Array.isArray(row))
+      : [];
+    
+    // 🔥 ADICIONE ISSO AQUI
+    values.forEach((row, i) => {
+      (row as any)._originalIndex = i + 1;
+    });
 
+
+
+    setData(values);
+    setAllData(prev => ({ ...prev, [selectedSheet]: values }));
+    setFormData({});
+  } catch (e: any) {
+    setError(e.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const fetchMobileConfig = async () => {
     try {
-      const response = await fetch(`/api/data?sheet=${encodeURIComponent(selectedSheet)}`);
-      const result = await response.json();
+      const res = await fetch(
+        "/api/data?sheet=tbConfigMobiles"
+      );
 
-      if (!response.ok) {
-        throw new Error(result?.error || "Erro ao carregar dados.");
+      const values = await res.json();
+
+      console.log(
+        "DEBUG tbConfigMobiles - retorno API:",
+        values
+      );
+
+      if (!res.ok) {
+        throw new Error(
+          values.error ||
+            "Erro ao carregar configuração dos mobiles."
+        );
       }
 
-      const safeData = Array.isArray(result)
-        ? result.filter((row) => Array.isArray(row))
-        : [];
+      const configValues =
+        Array.isArray(values)
+          ? values
+          : [];
 
-      safeData.forEach((row, index) => {
-        if (index > 0) {
-          (row as any)._originalIndex = index + 1;
-        }
+      console.log(
+        "DEBUG tbConfigMobiles - dados carregados:",
+        configValues
+      );
+
+      setMobileConfig(configValues);
+    } catch (error) {
+      console.error(
+        "Erro ao carregar tbConfigMobiles:",
+        error
+      );
+
+      setMobileConfig([]);
+    }
+  };
+
+  const fetchMobileApps = async () => {
+    try {
+      const res = await fetch(
+        "/api/data?sheet=tbMobileApps"
+      );
+
+      const values = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          values.error ||
+            "Erro ao carregar os aplicativos dos mobiles."
+        );
+      }
+
+      const appValues =
+        Array.isArray(values)
+          ? values.filter(
+              (row) => Array.isArray(row)
+            )
+          : [];
+
+      appValues.forEach((row, i) => {
+        (row as any)._originalIndex =
+          i + 1;
       });
 
-      setData(safeData);
-    } catch (err: any) {
-      console.error("Erro ao carregar dados:", err);
-      setError(err.message || "Erro ao carregar dados.");
-      setData([]);
-    } finally {
-      setLoading(false);
+      setMobileApps(appValues);
+    } catch (error) {
+      console.error(
+        "Erro ao carregar tbMobileApps:",
+        error
+      );
+
+      setMobileApps([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+
+    if (
+      selectedSheet ===
+      "tbControleMobiles"
+    ) {
+      fetchMobileConfig();
+      fetchMobileApps();
     }
   }, [selectedSheet]);
 
-  const fetchMobileConfig = useCallback(async () => {
-    try {
-      const response = await fetch("/api/data?sheet=tbConfigMobiles");
-      const result = await response.json();
-      if (!response.ok) throw new Error(result?.error || "Erro ao carregar configurações de mobiles.");
-      setMobileConfig(Array.isArray(result) ? result.filter((row) => Array.isArray(row)) : []);
-    } catch (err) {
-      console.error("Erro ao carregar tbConfigMobiles:", err);
-      setMobileConfig([]);
-    }
-  }, []);
-
-  const fetchMobileApps = useCallback(async () => {
-    try {
-      const response = await fetch("/api/data?sheet=tbMobileApps");
-      const result = await response.json();
-      if (!response.ok) throw new Error(result?.error || "Erro ao carregar apps dos mobiles.");
-      const safeData = Array.isArray(result) ? result.filter((row) => Array.isArray(row)) : [];
-      safeData.forEach((row, index) => {
-        if (index > 0) {
-          (row as any)._originalIndex = index + 1;
-        }
-      });
-      setMobileApps(safeData);
-    } catch (err) {
-      console.error("Erro ao carregar tbMobileApps:", err);
-      setMobileApps([]);
-    }
-  }, []);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedSheet]);
 
   useEffect(() => {
-    if (!user) return;
-    fetchData();
-  }, [user, fetchData]);
-
-  useEffect(() => {
-    if (!user) return;
-    fetchMobileConfig();
-    fetchMobileApps();
-  }, [user, fetchMobileConfig, fetchMobileApps]);
-
-  const handleRefresh = useCallback(async () => {
-    await Promise.all([fetchData(), fetchMobileConfig(), fetchMobileApps()]);
-  }, [fetchData, fetchMobileConfig, fetchMobileApps]);
-
-  const handleUpdateRow = useCallback(
-    async (rowData: string[], rowIndex: number) => {
-      const response = await fetch("/api/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sheet: selectedSheet,
-          rowIndex,
-          rowData,
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result?.error || "Erro ao atualizar registro.");
+    const headers = data[0] || [];
+  
+    const excluidoHeader = headers.find(
+      header => normalize(header) === "excluido"
+    );
+  
+    if (!excluidoHeader) {
+      return;
+    }
+  
+    setSheetFilters(prev => {
+      const currentSheetFilters =
+        prev[selectedSheet] || {};
+  
+      if (
+        Object.prototype.hasOwnProperty.call(
+          currentSheetFilters,
+          excluidoHeader
+        )
+      ) {
+        return prev;
       }
+  
+      return {
+        ...prev,
+        [selectedSheet]: {
+          ...currentSheetFilters,
+          [excluidoHeader]: "NAO"
+        }
+      };
+    });
+  }, [data, selectedSheet]);
 
-      await fetchData();
-    },
-    [selectedSheet, fetchData]
-  );
+    const handleSaveRow = async (rowData: string[], rowIndex: number) => {
+      setLoading(true);
 
-  const handleSaveMobileApp = useCallback(
-    async (rowData: string[], rowIndex: number) => {
-      const response = await fetch("/api/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      console.log("SALVANDO LINHA", { rowData, rowIndex, selectedSheet });
+      
+      console.log("DEBUG ENVIO:", {
+        data: rowData,
+        rowIndex,
+        sheet: selectedSheet
+      });
+    
+      try {
+      const res = await fetch('/api/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sheet: "tbMobileApps",
-          rowIndex,
           rowData,
+          rowIndex,
+          sheet: selectedSheet
         }),
       });
+  
+      if (res.ok) {
+        fetchData();
+      } else {
+        const err = await res.json();
+        alert('Erro ao salvar linha: ' + (err.error));
+      }
+    } catch (e: any) {
+      alert('Erro de rede: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result?.error || "Erro ao atualizar App do mobile.");
+  const handleSaveMobileApp = async (
+    rowData: string[],
+    rowIndex: number
+  ) => {
+    setLoading(true);
+
+    try {
+      const res = await fetch(
+        "/api/update",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            rowData,
+            rowIndex,
+            sheet: "tbMobileApps",
+          }),
+        }
+      );
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          result.error ||
+            "Erro ao atualizar aplicativo do mobile."
+        );
       }
 
       await fetchMobileApps();
-    },
-    [fetchMobileApps]
-  );
-
-  const handleCreateRow = useCallback(
-    async (rowData: string[]) => {
-      const response = await fetch("/api/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sheet: selectedSheet,
-          rowData,
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result?.error || "Erro ao criar registro.");
-      }
-
-      await handleRefresh();
-    },
-    [selectedSheet, handleRefresh]
-  );
-
-  const handleBulkUpdate = useCallback(
-    async (
-      updates: Array<{
-        rowIndex: number;
-        rowData: string[];
-      }>
-    ) => {
-      for (const update of updates) {
-        const response = await fetch("/api/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sheet: selectedSheet,
-            rowIndex: update.rowIndex,
-            rowData: update.rowData,
-          }),
-        });
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result?.error || "Erro ao atualizar registro em lote.");
-        }
-      }
-      await fetchData();
-    },
-    [selectedSheet, fetchData]
-  );
-
-  const headers = data[0] || [];
-  const rows = data.slice(1);
-
-  const filteredRows = useMemo(() => {
-    if (!rows.length) return [];
-
-    const getIndex = (...names: string[]) =>
-      headers.findIndex((header) =>
-        names.some((name) => normalize(header) === normalize(name))
+    } catch (error: any) {
+      console.error(
+        "Erro ao atualizar tbMobileApps:",
+        error
       );
 
-    const tituloIdx = getIndex("Título", "Titulo");
-    const descricaoIdx = getIndex("Descrição", "Descricao");
-    const situacaoIdx = getIndex("Situação", "Situacao");
-    const gravidadeIdx = getIndex("Gravidade");
-    const responsavelIdx = getIndex("Responsável", "Responsavel");
-    const cobrancaIdx = getIndex("Cobrança", "Cobranca");
-    const excluidoIdx = getIndex("Excluído", "Excluido");
-    const aberturaIdx = getIndex("Abertura", "Data Abertura");
-    const ultimaInteracaoIdx = getIndex("Última Interação", "Ultima Interacao");
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const parseDate = (value: string) => {
-      const text = String(value || "").trim();
-      if (!text) return null;
-      const br = text.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-      if (br) return new Date(Number(br[3]), Number(br[2]) - 1, Number(br[1]));
-      const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-      const date = new Date(text);
-      return Number.isNaN(date.getTime()) ? null : date;
+  const handleCreateMobile = async (
+    rowData: string[]
+  ) => {
+    setLoading(true);
+
+    try {
+      const res = await fetch(
+        "/api/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            rowData,
+            sheet: "tbControleMobiles",
+          }),
+        }
+      );
+
+      const result = await res.json();
+
+        if (!res.ok) {
+          throw new Error(
+            result.error ||
+              "Erro ao cadastrar equipamento."
+          );
+        }
+
+        await fetchData();
+
+        alert(
+          "Equipamento cadastrado com sucesso."
+        );
+      } catch (error: any) {
+        console.error(
+          "Erro ao cadastrar equipamento:",
+          error
+        );
+
+        throw error;
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const parseInputDate = (value: string, endOfDay = false) => {
-      if (!value) return null;
-      const [year, month, day] = value.split("-").map(Number);
-      if (!year || !month || !day) return null;
-      return new Date(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
-    };
+  const handleBulkUpdateMobiles = async (
+    updates: Array<{
+      rowIndex: number;
+      rowData: string[];
+    }>
+  ) => {
+    setLoading(true);
 
-    const search = normalize(filters.search);
-    const openingStart = parseInputDate(filters.dataAberturaInicio);
-    const openingEnd = parseInputDate(filters.dataAberturaFim, true);
-    const interactionStart = parseInputDate(filters.ultimaInteracaoInicio);
-    const interactionEnd = parseInputDate(filters.ultimaInteracaoFim, true);
+    try {
+      const res = await fetch(
+        "/api/mobiles/batch-update",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            updates,
+          }),
+        }
+      );
 
-    return rows.filter((row) => {
-      if (search) {
-        const haystack = [
-          tituloIdx !== -1 ? row[tituloIdx] : "",
-          descricaoIdx !== -1 ? row[descricaoIdx] : "",
-        ]
-          .map((value) => normalize(value || ""))
-          .join(" ");
-        if (!haystack.includes(search)) return false;
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          result.error ||
+            "Erro ao atualizar equipamentos."
+        );
       }
 
-      if (filters.status && situacaoIdx !== -1 && normalize(row[situacaoIdx] || "") !== normalize(filters.status)) return false;
-      if (filters.gravidade && gravidadeIdx !== -1 && normalize(row[gravidadeIdx] || "") !== normalize(filters.gravidade)) return false;
-      if (filters.responsavel && responsavelIdx !== -1 && normalize(row[responsavelIdx] || "") !== normalize(filters.responsavel)) return false;
-      if (filters.cobranca && cobrancaIdx !== -1 && normalize(row[cobrancaIdx] || "") !== normalize(filters.cobranca)) return false;
-      if (filters.excluido && excluidoIdx !== -1 && normalize(row[excluidoIdx] || "") !== normalize(filters.excluido)) return false;
+      await fetchData();
 
-      if ((openingStart || openingEnd) && aberturaIdx !== -1) {
-        const date = parseDate(row[aberturaIdx] || "");
-        if (!date) return false;
-        if (openingStart && date < openingStart) return false;
-        if (openingEnd && date > openingEnd) return false;
-      }
+      alert(
+        `${result.updated} equipamento${
+          result.updated !== 1
+            ? "s"
+            : ""
+        } atualizado${
+          result.updated !== 1
+            ? "s"
+            : ""
+        } com sucesso.`
+      );
+    } catch (error: any) {
+      console.error(
+        "Erro na atualização em lote:",
+        error
+      );
 
-      if ((interactionStart || interactionEnd) && ultimaInteracaoIdx !== -1) {
-        const date = parseDate(row[ultimaInteracaoIdx] || "");
-        if (!date) return false;
-        if (interactionStart && date < interactionStart) return false;
-        if (interactionEnd && date > interactionEnd) return false;
-      }
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      return true;
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+  
+    const rowData = prepareFormRow();
+
+    if (!rowData) {
+      return;
+    }
+  
+    console.log("FORM SUBMIT:", {
+      rowData,
+      isEdit,
+      selectedSheet,
+      editingRowIndex
     });
-  }, [rows, headers, filters]);
+  
+    try {
+      if (isEdit) {
+        if (editingRowIndex === null) {
+          alert("Erro: índice da linha não definido");
+          return;
+        }
+  
+        await handleSaveRow(rowData as string[], editingRowIndex);
+  
+        alert("Alteração salva com sucesso ✅");
+  
+      } else {
+        await onAdd(e);
+        alert("Chamado criado com sucesso ✅");
+      }
+  
+      // 🔥 FECHAR MODAL
+      setShowForm(false);
+  
+      // 🔥 LIMPAR ESTADOS
+      setFormData({});
+      setEditingRowIndex(null);
+      setIsEdit(false);
+  
+      // 🔥 GARANTIR REFRESH FINAL
+      fetchData();
+  
+    } catch (err: any) {
+      alert("Erro ao salvar: " + err.message);
+    }
+  };
 
-  if (authLoading) {
-    return <div style={{ padding: "40px", color: "var(--text-primary)" }}>Carregando...</div>;
+
+  const handleAddRow = async (newRow: string[]) => {
+  setLoading(true);
+  try {
+    const res = await fetch('/api/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        data: newRow,
+        sheet: selectedSheet 
+      }),
+    });
+
+    if (res.ok) {
+      fetchData();
+    } else {
+      const err = await res.json();
+      alert('Erro ao adicionar: ' + err.error);
+    }
+  } catch (e: any) {
+    alert('Erro de rede: ' + e.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const onAdd = async (e: any) => {
+  e.preventDefault();
+
+  const rowData = prepareFormRow();
+
+  if (!rowData) {
+    return;
   }
 
-  if (!user) {
-    return <Login />;
-  }
+  try {
+    const res = await fetch('/api/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rowData,
+        sheet: selectedSheet
+      }),
+    });
 
-  if (mustChangePassword) {
-    return <ChangePassword />;
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw new Error(result.error);
+    }
+
+    alert("Chamado criado com sucesso ✅");
+
+    setShowForm(false);
+    setFormData({});
+    fetchData();
+
+  } catch (err: any) {
+    alert("Erro ao criar: " + err.message);
   }
+};
+
+
+  const handleOpenForm = () => {
+    setIsEdit(false);
+    setEditingRowIndex(null);
+    const today = new Date().toISOString().split('T')[0];
+    
+    const headers = data[0] || [];
+    const newValues: Record<string, string> = {};
+
+    headers.forEach(h => {
+    const hNorm = normalize(h);
+  
+    if (
+      hNorm.includes("data") &&
+      hNorm.includes("abertura")
+    ) {
+      newValues[h] = today;
+    }
+  
+    if (
+      hNorm.includes("metodo") &&
+      hNorm.includes("acionamento")
+    ) {
+      newValues[h] = "Email";
+    }
+  
+    if (
+      (
+        selectedSheet === "tbChamadosMV" ||
+        selectedSheet === "tbChamadosForhealth"
+      ) &&
+      (
+        hNorm === "cobranca" ||
+        hNorm === "excluido"
+      )
+    ) {
+      newValues[h] = "NAO";
+    }
+  });
+    
+    setFormData(newValues);
+    setShowForm(true);
+  };
+
+    const parseDateToNumber = (value: string): number | null => {
+    if (!value) return null;
+  
+    const cleanValue = String(value).trim();
+  
+    // Formato AAAA-MM-DD
+    const isoMatch = cleanValue.match(
+      /^(\d{4})-(\d{1,2})-(\d{1,2})/
+    );
+  
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+  
+      return Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day)
+      );
+    }
+  
+    // Formato DD/MM/AAAA
+    const brMatch = cleanValue.match(
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})/
+    );
+  
+    if (brMatch) {
+      const [, day, month, year] = brMatch;
+  
+      return Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day)
+      );
+    }
+  
+    return null;
+  };
+  
+  const handleEdit = (row: string[]) => {
+    setEditingRow([...row]);
+    // Busca o índice original armazenado na linha durante o fetchData
+    const rowIndex = (row as any)._originalIndex;
+    
+    if (rowIndex === undefined) {
+      console.warn("RowIndex não encontrado na linha selecionada. Tentando fallback...");
+      const idx = data.indexOf(row);
+      if (idx === -1) return;
+      setEditingRowIndex(idx + 1);
+    } else {
+      setEditingRowIndex(rowIndex);
+    }
+    
+    setIsEdit(true);
+    
+    const headers = data[0] || [];
+    const newValues: Record<string, string> = {};
+    
+    const today = new Date()
+      .toISOString()
+      .split("T")[0];
+    
+    headers.forEach((h, i) => {
+      const headerName = normalize(h);
+    
+      if (
+        headerName.includes("data") &&
+        headerName.includes("ultima") &&
+        headerName.includes("interacao")
+      ) {
+        newValues[h] = today;
+      } else {
+        newValues[h] = row[i] || "";
+      }
+    });
+    
+    setFormData(newValues);
+    setShowForm(true);
+  };
+
+  const handleDeleteCurrentRow = async () => {
+    if (!isEdit || editingRowIndex === null) {
+      alert(
+        "Não foi possível identificar o chamado para exclusão."
+      );
+      return;
+    }
+  
+    const confirmed = window.confirm(
+      "Confirma a exclusão deste chamado?\n\n" +
+      "O registro será marcado como excluído e poderá ser consultado em \"Ver Excluídos\"."
+    );
+  
+    if (!confirmed) {
+      return;
+    }
+  
+    const headers = data[0] || [];
+  
+    const excluidoIdx = headers.findIndex(
+      header => normalize(header) === "excluido"
+    );
+  
+    if (excluidoIdx === -1) {
+      alert(
+        "A coluna Excluído não foi encontrada."
+      );
+      return;
+    }
+  
+    /*
+     * Usa os dados originais da linha em edição.
+     * Isso evita perder valores de campos ocultos.
+     */
+    if (!editingRow) {
+      alert(
+        "Não foi possível recuperar os dados originais do chamado."
+      );
+      return;
+    }
+  
+    const updatedRow = [...editingRow];
+  
+    /*
+     * Altera somente Excluído para SIM.
+     */
+    updatedRow[excluidoIdx] = "SIM";
+  
+    try {
+      await handleSaveRow(
+        updatedRow,
+        editingRowIndex
+      );
+  
+      setShowForm(false);
+      setFormData({});
+      setEditingRow(null);
+      setEditingRowIndex(null);
+      setIsEdit(false);
+  
+      alert(
+        "Chamado marcado como excluído com sucesso."
+      );
+    } catch (error: any) {
+      alert(
+        "Erro ao excluir o chamado: " +
+        error.message
+      );
+    }
+  };
+
+  const getTodayISO = () => {
+    const now = new Date();
+  
+    const localDate = new Date(
+      now.getTime() - now.getTimezoneOffset() * 60000
+    );
+  
+    return localDate.toISOString().split("T")[0];
+  };
+  
+  const handleOpenConcluirModal = (row: string[]) => {
+
+      const rowIndex = (row as any)._originalIndex;
+  
+      setRowToConclude({
+          row: [...row],
+          rowIndex
+      });
+  
+      setConclusionDate(getTodayISO());
+  
+      setShowConcluirModal(true);
+  };
+  
+  const handleCloseConcluirModal = () => {
+    setShowConcluirModal(false);
+    setRowToConclude(null);
+    setConclusionDate("");
+  };
+  
+  const handleConfirmConclusion = async () => {
+    if (!rowToConclude) {
+      alert("Não foi possível identificar o chamado.");
+      return;
+    }
+  
+    if (!conclusionDate) {
+      alert("Informe a Data da Última Interação.");
+      return;
+    }
+  
+    const headers = data[0] || [];
+  
+    const situacaoIdx = headers.findIndex(
+      header => normalize(header) === "situacao"
+    );
+  
+    const dataUltimaInteracaoIdx = headers.findIndex(header => {
+      const headerName = normalize(header);
+  
+      return (
+        headerName.includes("data") &&
+        headerName.includes("ultima") &&
+        headerName.includes("interacao")
+      );
+    });
+  
+    if (situacaoIdx === -1) {
+      alert("A coluna Situação não foi encontrada.");
+      return;
+    }
+  
+    if (dataUltimaInteracaoIdx === -1) {
+      alert(
+        "A coluna Data da Última Interação não foi encontrada."
+      );
+      return;
+    }
+  
+    const rowIndex = rowToConclude.rowIndex;
+  
+    if (rowIndex === undefined || rowIndex === null) {
+      alert(
+        "Não foi possível identificar o índice original do chamado."
+      );
+      return;
+    }
+  
+    const updatedRow = [...rowToConclude.row];
+  
+    updatedRow[situacaoIdx] = "Concluído";
+    updatedRow[dataUltimaInteracaoIdx] = conclusionDate;
+  
+    try {
+      await handleSaveRow(updatedRow, rowIndex);
+  
+      handleCloseConcluirModal();
+  
+      alert("Chamado concluído com sucesso.");
+    } catch (error: any) {
+      alert(
+        "Erro ao concluir chamado: " +
+        error.message
+      );
+    }
+  };
+
+  const handleInputChange = (header: string, value: string) => {
+    setFormData(prev => ({ ...prev, [header]: value }));
+  };
+
+  const prepareFormRow = (): string[] | null => {
+    const headers = data[0] || [];
+  
+    const preparedData: Record<string, string> = {
+      ...formData
+    };
+  
+    /*
+     * Preenche Cobrança e Excluído com NAO
+     * nas duas abas, quando estiverem vazios.
+     */
+    headers.forEach(header => {
+      const headerName = normalize(header);
+  
+      if (
+        headerName === "cobranca" ||
+        headerName === "excluido"
+      ) {
+        const value = preparedData[header];
+  
+        if (!value || String(value).trim() === "") {
+          preparedData[header] = "NAO";
+        }
+      }
+    });
+  
+    let requiredHeaders: string[] = [];
+  
+    /*
+     * Campos obrigatórios da aba MV
+     */
+    if (selectedSheet === "tbChamadosMV") {
+      requiredHeaders = headers.filter(header => {
+        const headerName = normalize(header);
+  
+        return (
+          (
+            headerName.includes("numero") &&
+            headerName.includes("chamado")
+          ) ||
+          headerName === "titulo" ||
+          (
+            headerName.includes("descricao") &&
+            headerName.includes("problema")
+          ) ||
+          headerName === "situacao" ||
+          (
+            headerName.includes("data") &&
+            headerName.includes("abertura")
+          ) ||
+          (
+            headerName.includes("data") &&
+            headerName.includes("ultima") &&
+            headerName.includes("interacao")
+          ) ||
+          headerName === "gravidade" ||
+          headerName === "responsavel"
+        );
+      });
+    }
+  
+    /*
+     * Campos obrigatórios da aba ForHealth
+     */
+    if (selectedSheet === "tbChamadosForhealth") {
+      requiredHeaders = headers.filter(header => {
+        const headerName = normalize(header);
+  
+        return (
+          (
+            headerName.includes("os") &&
+            headerName.includes("aberta")
+          ) ||
+          (
+            headerName.includes("metodo") &&
+            headerName.includes("acionamento")
+          ) ||
+          headerName === "titulo" ||
+          (
+            headerName.includes("descricao") &&
+            headerName.includes("problema")
+          ) ||
+          headerName === "situacao" ||
+          (
+            headerName.includes("data") &&
+            headerName.includes("abertura")
+          ) ||
+          (
+            headerName.includes("data") &&
+            headerName.includes("ultima") &&
+            headerName.includes("interacao")
+          ) ||
+          headerName === "gravidade" ||
+          headerName === "responsavel"
+        );
+      });
+    }
+  
+    const missingHeaders = requiredHeaders.filter(header => {
+      const value = preparedData[header];
+  
+      return !value || String(value).trim() === "";
+    });
+  
+    if (missingHeaders.length > 0) {
+      alert(
+        "Preencha os campos obrigatórios:\n\n" +
+        missingHeaders
+          .map(header => `• ${header}`)
+          .join("\n")
+      );
+  
+      return null;
+    }
+  
+    return headers.map(
+      header => preparedData[header] || ""
+    );
+  };
+  
+  const updateFilter = (header: string, value: string) => {
+    
+    console.log("updateFilter:", header, value);
+    
+    setSheetFilters(prev => ({
+      ...prev,
+      [selectedSheet]: {
+        ...prev[selectedSheet],
+        [header]: value
+      }
+    }));
+    setCurrentPage(1);
+  };
+
+  const handleToggleDeleted = () => {
+    const headers = data[0] || [];
+  
+    const excluidoHeader = headers.find(
+      header => normalize(header) === "excluido"
+    );
+  
+    const nextShowDeleted = !showDeleted;
+    const nextFilterValue = nextShowDeleted
+      ? "SIM"
+      : "NAO";
+  
+    setShowDeleted(nextShowDeleted);
+  
+    if (!excluidoHeader) {
+      return;
+    }
+  
+    setSheetFilters(prev => ({
+      ...prev,
+      [selectedSheet]: {
+        ...(prev[selectedSheet] || {}),
+        [excluidoHeader]: nextFilterValue
+      }
+    }));
+  
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    const headers = data[0] || [];
+  
+    const excluidoHeader = headers.find(
+      header => normalize(header) === "excluido"
+    );
+  
+    setSheetFilters(prev => ({
+      ...prev,
+      [selectedSheet]: excluidoHeader
+        ? {
+            [excluidoHeader]: showDeleted
+              ? "SIM"
+              : "NAO"
+          }
+        : {}
+    }));
+  
+    setCurrentPage(1);
+  };
+
+  const handleSort = (columnIndex: number) => {
+    setSortConfig(prev => {
+      if (prev.columnIndex === columnIndex) {
+        return {
+          columnIndex,
+          direction: prev.direction === "asc" ? "desc" : "asc"
+        };
+      }
+  
+      return {
+        columnIndex,
+        direction: "asc"
+      };
+    });
+  
+    setCurrentPage(1);
+  };
+
+  const handleDashboardFilter = (
+    normalizedHeader: string,
+    selectedValue: string
+  ) => {
+    const actualHeader = headers.find(
+      header => normalize(header) === normalizedHeader
+    );
+  
+    if (!actualHeader) {
+      console.warn(
+        `Coluna não encontrada para o filtro: ${normalizedHeader}`
+      );
+      return;
+    }
+  
+    const currentValue =
+      sheetFilters[selectedSheet]?.[actualHeader] || "";
+  
+    // Se clicar novamente no mesmo valor, remove o filtro.
+    const nextValue =
+      currentValue === selectedValue
+        ? ""
+        : selectedValue;
+  
+    updateFilter(actualHeader, nextValue);
+  };
+  
+  type ColumnConfig =
+  | {
+      type: "select";
+      options: string[];
+    }
+  | {
+      type: "date" | "number" | "text";
+      options?: never;
+    };
+
+  // Heurística para identificar o tipo de dado da coluna
+  const getColumnConfig = (
+    header: string,
+    index: number
+  ): ColumnConfig => {
+    const rawValues: string[] = data
+      .slice(1)
+      .map(row => String(row[index] || "").trim())
+      .filter((value): value is string => value !== "");
+
+    const uniqueValues: string[] = Array.from(
+      new Set<string>(rawValues)
+    ).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", {
+        sensitivity: "base"
+      })
+    );
+    
+    // Se tem poucas opções, vira Select
+    if (uniqueValues.length > 0 && uniqueValues.length <= 12) {
+      return { type: 'select', options: uniqueValues };
+    }
+    
+    // Se parece data (DD/MM/AAAA ou AAAA-MM-DD)
+    const dateSample = rawValues.find(v => v.match(/^\d{1,4}[-/]\d{1,2}[-/]\d{1,4}/));
+    if (dateSample) {
+      return { type: 'date' };
+    }
+
+    // Se é numérico
+    const numSample = rawValues.find(v => v !== "" && !isNaN(Number(v.replace(',', '.'))));
+    if (numSample && rawValues.every(v => v === "" || !isNaN(Number(v.replace(',', '.'))))) {
+      return { type: 'number' };
+    }
+
+    return { type: 'text' };
+  };
+  
+  // Extração dinâmica de valores únicos para os filtros e campos
+  const headers = data[0] || [];
+
+  const cobIdx = headers.findIndex(h => normalize(h) === "cobranca");
+  const currentSheetCount = cobIdx !== -1 
+    ? data.slice(1).filter(row => (row[cobIdx] || "").trim().toUpperCase() === "SIM").length 
+    : 0;
+  
+  const exportToExcel = () => {
+    // Busca os índices das colunas de identificação e cobrança
+    const headers = data[0] || [];
+    const idIdx = headers.findIndex(h => normalize(h).includes("numero") && normalize(h).includes("chamado"));
+    const fallbackIdx = headers.findIndex(h => normalize(h).includes("os") && normalize(h).includes("aberta"));
+    const cobrancaIdx = headers.findIndex(h => normalize(h) === "cobranca");
+    const finalIdx = idIdx !== -1 ? idIdx : fallbackIdx;
+
+    const selectedRows = data.slice(1).filter(row => {
+      return cobrancaIdx !== -1 && (row[cobrancaIdx] || "").trim().toUpperCase() === "SIM";
+    });
+    
+    if (selectedRows.length === 0) {
+        alert("Nenhum chamado marcado para cobrança nesta aba.");
+        return;
+    }
+
+    const csvContent = [
+      headers.join(';'),
+      ...selectedRows.map(row => 
+        headers.map((_, i) => {
+          let val = row[i] || "";
+          val = val.toString().replace(/"/g, '""');
+          return `"${val}"`;
+        }).join(';')
+      )
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `cobranca_${selectedSheet}_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+    const exportFilteredData = () => {
+    const currentFilters = sheetFilters[selectedSheet] || {};
+    const currentHeaders = data[0] || [];
+  
+    const filteredData = data.slice(1).filter(row => {
+      return Object.entries(currentFilters).every(
+        ([header, filterValue]) => {
+          if (!filterValue) return true;
+  
+          const isDataInicio =
+            header.endsWith("__inicio");
+  
+          const isDataFim =
+            header.endsWith("__fim");
+  
+          // Tratamento dos filtros de período
+          if (isDataInicio || isDataFim) {
+            const originalHeader = header
+              .replace("__inicio", "")
+              .replace("__fim", "");
+  
+            const dataColIdx = currentHeaders.findIndex(
+              currentHeader =>
+                normalize(currentHeader) ===
+                normalize(originalHeader)
+            );
+  
+            if (dataColIdx === -1) {
+              return true;
+            }
+  
+            const dataCelula = parseDateToNumber(
+              row[dataColIdx] || ""
+            );
+  
+            const dataFiltro = parseDateToNumber(
+              String(filterValue)
+            );
+  
+            if (
+              dataCelula === null ||
+              dataFiltro === null
+            ) {
+              return false;
+            }
+  
+            if (isDataInicio) {
+              return dataCelula >= dataFiltro;
+            }
+  
+            return dataCelula <= dataFiltro;
+          }
+  
+          // Demais filtros
+          const colIdx = currentHeaders.findIndex(
+            currentHeader =>
+              normalize(currentHeader) ===
+              normalize(header)
+          );
+  
+          if (colIdx === -1) {
+            return true;
+          }
+  
+          const cellValue = (row[colIdx] || "")
+            .toString()
+            .trim()
+            .toLowerCase();
+  
+          const searchVal = String(filterValue)
+            .trim()
+            .toLowerCase();
+  
+          // Se possuir múltiplos valores
+          if (searchVal.includes("|")) {
+            const filtros = searchVal
+              .split("|")
+              .map(value => value.trim())
+              .filter(Boolean);
+  
+            return filtros.includes(cellValue);
+          }
+  
+          // Filtro normal
+          return cellValue.includes(searchVal);
+        }
+      );
+    });
+
+    if (filteredData.length === 0) return;
+
+    const csvContent = [
+      currentHeaders.join(';'),
+      ...filteredData.map(row => 
+        currentHeaders.map((_, i) => {
+          let val = row[i] || "";
+          val = val.toString().replace(/"/g, '""');
+          return `"${val}"`;
+        }).join(';')
+      )
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `filtros_${selectedSheet}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+  
+  const activeFilterCount = (() => {
+    const filters = sheetFilters[selectedSheet] || {};
+  
+    let count = 0;
+    let hasDatePeriod = false;
+  
+    Object.entries(filters).forEach(([key, value]) => {
+      if (!value) return;
+  
+      if (
+        key.endsWith("__inicio") ||
+        key.endsWith("__fim")
+      ) {
+        hasDatePeriod = true;
+        return;
+      }
+  
+      count++;
+    });
+  
+    if (hasDatePeriod) {
+      count++;
+    }
+  
+    return count;
+  })();
+
+  // Lógica de filtragem centralizada para Dashboard e Tabela
+  const currentFilters = sheetFilters[selectedSheet] || {};
+  const situacaoIdx = data[0]?.findIndex(h => normalize(h) === "situacao");
+  const excluidoIdx = data[0]?.findIndex(h => normalize(h) === "excluido");
+
+  const filteredData = data.slice(1).filter(row => {
+    const headers = data[0] || [];
+    const excluidoIdx = headers.findIndex(h => normalize(h) === "excluido");
+    
+    // Physical Exclusion Filter
+    const isExcluded = excluidoIdx !== -1 && (row[excluidoIdx] || "").trim().toUpperCase() === "SIM";
+    if (showDeleted) {
+        if (!isExcluded) return false;
+    } else {
+        if (isExcluded) return false;
+    }
+
+    return Object.entries(currentFilters).every(([header, filterValue]) => {
+      if (!filterValue) return true;
+
+      const isDataInicio = header.endsWith("__inicio");
+      const isDataFim = header.endsWith("__fim");
+      
+      if (isDataInicio || isDataFim) {
+        const originalHeader = header
+          .replace("__inicio", "")
+          .replace("__fim", "");
+      
+        const dataColIdx = headers.findIndex(
+          h => normalize(h) === normalize(originalHeader)
+        );
+      
+        if (dataColIdx === -1) return true;
+      
+        const dataCelula = parseDateToNumber(
+          row[dataColIdx] || ""
+        );
+      
+        const dataFiltro = parseDateToNumber(
+          String(filterValue)
+        );
+      
+        if (dataCelula === null || dataFiltro === null) {
+          return false;
+        }
+      
+        if (isDataInicio) {
+          return dataCelula >= dataFiltro;
+        }
+      
+        return dataCelula <= dataFiltro;
+      }
+      
+      const colIdx = headers.findIndex(
+          h => normalize(h) === normalize(header)
+      );
+      if (colIdx === -1) return true;
+      
+      const cellValue = (row[colIdx] || "")
+        .toString()
+        .trim()
+        .toLowerCase();
+      
+      const searchVal = String(filterValue)
+        .trim()
+        .toLowerCase();
+      
+      if (searchVal.includes("|")) {
+      
+          const filtros = searchVal
+              .split("|")
+              .map(v => v.trim())
+              .filter(Boolean);
+      
+          return filtros.some(f => f === cellValue);
+      }
+      
+      return cellValue.includes(searchVal);
+    });
+  });
+
+  const sortedData = [...filteredData].sort((rowA, rowB) => {
+    const columnIndex = sortConfig.columnIndex;
+  
+    if (columnIndex === null) {
+      return 0;
+    }
+  
+    const header = headers[columnIndex] || "";
+    const normalizedHeader = normalize(header);
+  
+    const valueA = (rowA[columnIndex] || "").toString().trim();
+    const valueB = (rowB[columnIndex] || "").toString().trim();
+  
+    let comparison = 0;
+  
+    // Ordenação de datas
+    if (normalizedHeader.includes("data")) {
+      const dateA = parseDateToNumber(valueA);
+      const dateB = parseDateToNumber(valueB);
+  
+      if (dateA === null && dateB === null) {
+        comparison = 0;
+      } else if (dateA === null) {
+        comparison = 1;
+      } else if (dateB === null) {
+        comparison = -1;
+      } else {
+        comparison = dateA - dateB;
+      }
+  
+    // Ordenação numérica
+    } else if (
+      valueA !== "" &&
+      valueB !== "" &&
+      !isNaN(Number(valueA.replace(",", "."))) &&
+      !isNaN(Number(valueB.replace(",", ".")))
+    ) {
+      comparison =
+        Number(valueA.replace(",", ".")) -
+        Number(valueB.replace(",", "."));
+  
+    // Ordenação textual
+    } else {
+      comparison = valueA.localeCompare(valueB, "pt-BR", {
+        sensitivity: "base",
+        numeric: true
+      });
+    }
+  
+    return sortConfig.direction === "asc"
+      ? comparison
+      : -comparison;
+  });
+  
+  const groupBy = (data: string[][], index: number) => {
+    return data.reduce((acc: Record<string, number>, row) => {
+      const key = (row[index] || "Não informado").trim() || "Não informado";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+  };
+
+  const getDashboardStats = () => {
+    const sIdx = headers.findIndex(h => normalize(h) === "situacao");
+    const gIdx = headers.findIndex(h => normalize(h) === "gravidade");
+    const rIdx = headers.findIndex(h => normalize(h) === "responsavel");
+
+    const statusMap = sIdx !== -1 ? groupBy(filteredData, sIdx) : {};
+    const gravityMap = gIdx !== -1 ? groupBy(filteredData, gIdx) : {};
+    const responsibleMap = rIdx !== -1 ? groupBy(filteredData, rIdx) : {};
+
+    const criticalCount = Object.entries(gravityMap)
+      .filter(([k]) => k.toLowerCase() === 'crítico' || k.toLowerCase() === 'urgente')
+      .reduce((sum, [, v]) => sum + v, 0);
+
+    const completedCount = Object.entries(statusMap)
+      .filter(([k]) => k.toLowerCase() === 'concluído' || k.toLowerCase() === 'finalizado')
+      .reduce((sum, [, v]) => sum + v, 0);
+
+    return { statusMap, gravityMap, responsibleMap, criticalCount, completedCount };
+  };
+
+  const stats = getDashboardStats();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (logoutError) {
+      console.error("Erro ao encerrar sessão:", logoutError);
+      alert("Não foi possível encerrar a sessão.");
+    }
+  };
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
-      <header style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-primary)", backgroundColor: "var(--bg-secondary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: "20px" }}>Gestor de Chamados</h1>
-          <div style={{ marginTop: "4px", fontSize: "12px", color: "var(--text-muted)" }}>{currentUserName}</div>
-        </div>
+    <div style={{ 
+      minHeight: '100vh',
+      backgroundColor: 'var(--bg-primary)', 
+      color: 'var(--text-primary)',
+      padding: '40px 20px', 
+      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      transition: 'background-color 0.25s ease, color 0.25s ease'
+    }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "none",
+          margin: "0 auto"
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '20px',
+            flexWrap: 'wrap',
+            marginBottom: '32px'
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+            }}
+          >
+            <img
+              src="https://cssjd-ti.s3.us-east-2.amazonaws.com/LOGO.png"
+              alt="São João de Deus"
+              style={{
+                width: "200px",
+                height: "auto",
+                objectFit: "contain",
+                flexShrink: 0,
+              }}
+            />
 
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          {canViewUserManagement(role) && (
-            <button type="button" onClick={() => setUserManagementOpen(true)} style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", cursor: "pointer" }}>Usuários</button>
-          )}
-          {canManageMobileVersions && selectedSheet === "tbControleMobiles" && (
-            <button type="button" onClick={() => setMobileVersionsOpen(true)} style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", cursor: "pointer" }}>⚙ Versões Alvo</button>
-          )}
-          <button type="button" onClick={logout} style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", cursor: "pointer" }}>Sair</button>
-        </div>
-      </header>
+            <div>
+              <h1>Gestor de Chamados</h1>
 
-      <main style={{ padding: "20px" }}>
-        <div style={{ marginBottom: "20px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          {['MV', 'ForHealth', 'tbControleMobiles'].map((sheet) => (
-            <button key={sheet} type="button" onClick={() => setSelectedSheet(sheet)} style={{ padding: "10px 14px", borderRadius: "8px", border: selectedSheet === sheet ? "1px solid #3B82F6" : "1px solid var(--border-primary)", backgroundColor: selectedSheet === sheet ? "rgba(59, 130, 246, 0.12)" : "var(--bg-secondary)", color: selectedSheet === sheet ? "#3B82F6" : "var(--text-primary)", cursor: "pointer", fontWeight: 600 }}>{sheet === 'tbControleMobiles' ? 'Controle de Mobiles' : sheet}</button>
-          ))}
+              <p>
+                Base de dados via Google Sheets
+              </p>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '10px 12px',
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border-primary)',
+              borderRadius: '10px'
+            }}
+          >
+            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+              {user?.displayName || user?.email || 'Usuário autenticado'}
+            </span>
+
+            {permissions?.canManageUsers && (
+              <button
+                type="button"
+                onClick={() => setShowUserManagement(true)}
+                style={{
+                  padding: '8px 14px',
+                  backgroundColor: 'var(--bg-primary)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}
+              >
+                Usuários
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowChangePassword(true)
+              }
+              style={{
+                padding: "8px 14px",
+                backgroundColor: "var(--bg-primary)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border-primary)",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "600",
+              }}
+            >
+              Alterar senha
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={
+                theme === "dark"
+                  ? "Ativar tema claro"
+                  : "Ativar tema escuro"
+              }
+              style={{
+                padding: "8px 14px",
+                backgroundColor: "var(--bg-primary)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border-primary)",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "600",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              {theme === "dark"
+                ? "☀ Claro"
+                : "🌙 Escuro"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                padding: '8px 14px',
+                backgroundColor: '#DC2626',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '600'
+              }}
+            >
+              Sair
+            </button>
+          </div>
+        </div>
+        
+        <div style={{ 
+          marginBottom: '32px', 
+          padding: '20px', 
+          backgroundColor: 'var(--bg-secondary)',
+          borderRadius: '12px',
+          border: '1px solid var(--border-primary)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '15px'
+        }}>
+          <label
+            style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: 'var(--text-muted)'
+            }}
+          >Selecionar Aba:</label>
+          <select 
+            value={selectedSheet} 
+            onChange={(e) => setSelectedSheet(e.target.value)}
+            style={{ 
+              padding: '8px 12px', 
+              fontSize: '14px', 
+              backgroundColor: 'var(--bg-secondary)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-primary)',
+              borderRadius: '6px',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="tbChamadosMV">MV</option>
+            <option value="tbChamadosForhealth">ForHealth</option>
+            <option value="tbControleMobiles">Controle de Mobiles</option>
+          </select>
+          <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-primary)', margin: '0 10px' }}></div>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            A estrutura de campos é atualizada dinamicamente conforme a aba.
+          </span>
         </div>
 
         {selectedSheet === "tbControleMobiles" ? (
@@ -360,53 +1675,647 @@ const App: React.FC = () => {
             mobileApps={mobileApps}
             loading={loading}
             error={error}
-            currentUserName={currentUserName}
-            canEdit={canEditMobiles}
-            onRefresh={handleRefresh}
-            onSaveRow={handleUpdateRow}
-            onSaveMobileApp={handleSaveMobileApp}
-            onCreateRow={handleCreateRow}
-            onBulkUpdate={handleBulkUpdate}
+            currentUserName={
+              user?.displayName ||
+              user?.email ||
+              "Usuário não identificado"
+            }
+            canEdit={
+              role === "admin" ||
+              role === "analyst"
+            }
+            onRefresh={fetchData}
+            onSaveRow={handleSaveRow}
+            onSaveMobileApp={
+              handleSaveMobileApp
+            }
+            onCreateRow={handleCreateMobile}
+            onBulkUpdate={
+              handleBulkUpdateMobiles
+            }
           />
         ) : (
           <>
-            <Dashboard data={data} />
-            <div style={{ marginTop: "20px" }}>
-              <ChamadosTable
-                data={[headers, ...filteredRows]}
-                loading={loading}
-                error={error}
-                sheet={selectedSheet}
-                onRefresh={fetchData}
-                onOpenFilters={() => setFiltersOpen(true)}
-                onCobranca={(row) => setCobrancaRow(row)}
-                onConcluir={(row) => setConcluirRow(row)}
+            {!loading && data.length > 1 && (
+              <Dashboard
+                totalFiltered={filteredData.length}
+                stats={stats}
+                onFilter={handleDashboardFilter}
               />
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Cabeçalho de Ações e Filtros */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'flex-end',
+            flexWrap: 'wrap',
+            gap: '20px'
+          }}>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => setShowFilterModal(true)}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: activeFilterCount > 0 ? '#3B82F6' : 'var(--text-muted)',
+                  border: activeFilterCount > 0
+                    ? '1px solid #3B82F6'
+                    : '1px solid var(--border-primary)',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--border-primary)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+                  e.currentTarget.style.color =
+                    activeFilterCount > 0
+                      ? '#3B82F6'
+                      : 'var(--text-muted)';
+                }}
+              >
+                <span>🔍</span> 
+                {activeFilterCount > 0 ? `Filtros Ativos (${activeFilterCount})` : 'Filtrar Dados'}
+              </button>
+
+              <button 
+                onClick={handleToggleDeleted}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: showDeleted
+                    ? 'var(--bg-hover)'
+                    : 'var(--bg-secondary)',
+                  color: showDeleted
+                    ? '#3B82F6'
+                    : 'var(--text-muted)',
+                  border: showDeleted
+                    ? '1px solid #3B82F6'
+                    : '1px solid var(--border-primary)',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>{showDeleted ? '👁️' : '🕶️'}</span>
+                {showDeleted ? 'Ocultar Excluídos' : 'Ver Excluídos'}
+              </button>
+
+              {activeFilterCount > 0 && (
+                <button 
+                  onClick={exportFilteredData}
+                  style={{
+                    padding: '12px 20px',
+                    backgroundColor: '#059669',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#047857'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#059669'}
+                >
+                  <span>📥</span> Exportar Filtros
+                </button>
+              )}
+
+              <button 
+                onClick={fetchData} 
+                style={{ 
+                  padding: '0 20px', 
+                  backgroundColor: 'var(--bg-secondary)', 
+                  color: 'var(--text-muted)', 
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: '10px', 
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--border-primary)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+                  e.currentTarget.style.color = 'var(--text-muted)';
+                }}
+              >
+                ↻ Atualizar
+              </button>
             </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => setShowCobrarModal(true)}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: currentSheetCount > 0 ? '#EF4444' : '#334155',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                  fontSize: '14px',
+                  boxShadow: currentSheetCount > 0 ? '0 4px 6px -1px rgba(239, 68, 68, 0.5)' : 'none'
+                }}
+              >
+                Cobrança
+                {currentSheetCount > 0 && (
+                  <span style={{
+                    backgroundColor: 'white',
+                    color: '#EF4444',
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}>
+                    {currentSheetCount}
+                  </span>
+                )}
+              </button>
+
+              <button 
+                onClick={handleOpenForm}
+                style={{ 
+                  padding: '12px 24px', 
+                  backgroundColor: '#3B82F6', 
+                  color: '#fff', 
+                  border: 'none', 
+                  borderRadius: '10px', 
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.2)',
+                  transition: 'transform 0.1s, background 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2563EB'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3B82F6'}
+              >
+                + Adicionar Chamado
+              </button>
+            </div>
+          </div>
+
+          <ChamadosTable
+            loading={loading}
+            error={error}
+            headers={data}
+            sortedData={sortedData}
+            currentPage={currentPage}
+            itemsPerPage={itemsPerPage}
+            sortConfig={sortConfig}
+            normalize={normalize}
+            onSort={handleSort}
+            onEdit={handleEdit}
+            onToggleCobranca={handleSaveRow}
+            onConcluir={handleOpenConcluirModal}
+          />
+
+          {/* Controles de Paginação */}
+          {!loading && data.length > 0 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: '20px', 
+              marginTop: '16px',
+              padding: '16px',
+              backgroundColor: 'var(--bg-secondary)',
+              borderRadius: '12px',
+              border: '1px solid var(--border-primary)'
+            }}>
+                      {(() => {
+                        const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
+
+                return (
+                  <>
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      style={{ 
+                        padding: '8px 16px', 
+                        backgroundColor: currentPage === 1
+                          ? 'var(--bg-primary)'
+                          : 'var(--border-primary)', 
+                        color: currentPage === 1
+                          ? 'var(--text-muted)'
+                          : 'var(--text-primary)',
+                        border: '1px solid var(--border-primary)',
+                        borderRadius: '8px',
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      ← Anterior
+                    </button>
+                    <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: '500' }}>
+                      Página <strong style={{ color: 'var(--text-primary)' }}>{currentPage}</strong> de <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
+                      <span style={{ marginLeft: '10px', opacity: 0.6, fontSize: '12px' }}>
+                        ({filteredData.length} registros)
+                      </span>
+                    </span>
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      style={{ 
+                        padding: '8px 16px', 
+                        backgroundColor: currentPage === totalPages
+                          ? 'var(--bg-primary)'
+                          : 'var(--border-primary)', 
+                        color: currentPage === totalPages
+                          ? 'var(--text-muted)'
+                          : 'var(--text-primary)',
+                        border: '1px solid var(--border-primary)',
+                        borderRadius: '8px',
+                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      Próxima →
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+                    )}
+                </div>
           </>
         )}
-      </main>
 
-      <FiltroModal isOpen={filtersOpen} filters={filters} data={data} onClose={() => setFiltersOpen(false)} onApply={setFilters} />
-      <CobrancaModal isOpen={cobrancaRow !== null} row={cobrancaRow} headers={headers} onClose={() => setCobrancaRow(null)} onSaved={fetchData} />
-      <ConcluirModal isOpen={concluirRow !== null} row={concluirRow} headers={headers} sheet={selectedSheet} onClose={() => setConcluirRow(null)} onSaved={fetchData} />
+                <CobrancaModal
+          isOpen={showCobrarModal}
+          data={data}
+          selectedSheet={selectedSheet}
+          currentSheetCount={currentSheetCount}
+          normalize={normalize}
+          onClose={() => setShowCobrarModal(false)}
+          onSaveRow={handleSaveRow}
+          onExport={exportToExcel}
+        />  
 
-      {userManagementOpen && canViewUserManagement(role) && (
-        <UserManagement onClose={() => setUserManagementOpen(false)} canManage={canManageUsers(role)} />
-      )}
-
-      {mobileVersionsOpen && canManageMobileVersions && (
-        <MobileTargetVersionsManager
-          isOpen={mobileVersionsOpen}
-          mobileConfig={mobileConfig}
-          onClose={() => setMobileVersionsOpen(false)}
-          onSaved={async () => {
-            await fetchMobileConfig();
-          }}
+        <ConcluirModal
+          isOpen={showConcluirModal}
+          conclusionDate={conclusionDate}
+          onDateChange={setConclusionDate}
+          onClose={handleCloseConcluirModal}
+          onConfirm={handleConfirmConclusion}
         />
-      )}
+
+        <FiltroModal
+          isOpen={showFilterModal}
+          headers={headers}
+          selectedSheet={selectedSheet}
+          sheetFilters={sheetFilters}
+          normalize={normalize}
+          getColumnConfig={getColumnConfig}
+          updateFilter={updateFilter}
+          clearFilters={clearFilters}
+          onClose={() => setShowFilterModal(false)}
+        />
+
+        <UserManagement
+          isOpen={showUserManagement}
+          onClose={() => setShowUserManagement(false)}
+        />
+
+        <ChangePassword
+          isOpen={showChangePassword}
+          onClose={() =>
+            setShowChangePassword(false)
+          }
+        />
+
+        {/* Modal do Formulário Dinâmico */}
+        {showForm && (
+          <div style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            width: '100%', 
+            height: '100%', 
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            zIndex: 1000,
+            padding: '20px',
+            backdropFilter: 'blur(8px)'
+          }}>
+            <div style={{ 
+              backgroundColor: 'var(--bg-secondary)', 
+              padding: '32px', 
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid var(--border-primary)',
+              width: '100%',
+              maxWidth: '600px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative',
+              animation: 'modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}>
+              <style>{`
+                @keyframes modalSlideUp {
+                  from { transform: translateY(30px); opacity: 0; }
+                  to { transform: translateY(0); opacity: 1; }
+                }
+                *::-webkit-scrollbar {
+                  width: 8px;
+                }
+                *::-webkit-scrollbar-track {
+                  background: var(--bg-secondary);
+                }
+
+                *::-webkit-scrollbar-thumb {
+                  background: var(--border-primary);
+                  border-radius: 10px;
+                }
+
+                *::-webkit-scrollbar-thumb:hover {
+                  background: var(--text-muted);
+                }
+              `}</style>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                  {isEdit ? 'Editar Chamado' : 'Novo Registro'}
+                </h3>
+                <button 
+                  onClick={() => setShowForm(false)}
+                  style={{ background: 'var(--bg-primary)', color: 'var(--text-muted)', border: '1px solid var(--border-primary)', cursor: 'pointer', fontSize: '14px', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Fechar"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '32px' }}>
+                Insira os detalhes na aba <strong>{selectedSheet}</strong>.
+              </p>
+              
+              <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{ 
+                  overflowY: 'auto', 
+                  marginBottom: '24px', 
+                  paddingRight: '12px', 
+                  flex: 1,
+                  minHeight: 0
+                }}>
+                  {data[0]?.map((header, index) => {
+                    const hClean = header.toLowerCase().trim();
+                    const inputStyle: React.CSSProperties = { 
+                      width: '100%', 
+                      padding: '12px', 
+                      borderRadius: '8px', 
+                      border: '1px solid var(--border-primary)',
+                      backgroundColor: 'var(--bg-input)',
+                      color: 'var(--text-primary)', 
+                      fontSize: '14px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s'
+                    };
+                    
+                    return (
+                      <div key={index} style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          {header}
+                        </label>
+                        
+                        {hClean.includes("situação") || hClean.includes("situacao") ? (
+                          <select 
+                            style={inputStyle}
+                            value={formData[header] || ''}
+                            onChange={(e) => handleInputChange(header, e.target.value)}
+                            required
+                          >
+                            <option value="" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Selecione...</option>
+                            <option value="Aberto" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Aberto</option>
+                            <option value="Agendado" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Agendado</option>
+                            <option value="Em andamento" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Em andamento</option>
+                            <option value="Concluído" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Concluído</option>
+                            <option value="Aguardando Atendimento" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Aguardando Atendimento</option>
+                            <option value="Pendente Aplicação Pacote" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Pendente Aplicação Pacote</option>
+                            <option value="Ticket Rejeitado" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Ticket Rejeitado</option>
+                            <option value="Cancelado" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Cancelado</option>
+                            <option value="Retorno Cliente" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Retorno Cliente</option>
+                            <option value="Em Correção" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Em Correção</option>
+                            <option value="Outros" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Outros</option>
+                          </select>
+                        ) : hClean.includes("gravidade") ? (
+                            <select 
+                              style={inputStyle}
+                              value={formData[header] || ''}
+                              onChange={(e) => handleInputChange(header, e.target.value)}
+                              required
+                            >
+                              <option value="" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Selecione...</option>
+                              <option value="Crítico" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Crítico</option>
+                              <option value="Urgente" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Urgente</option>
+                              <option value="Intermediário" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Intermediário</option>
+                              <option value="Baixa" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Baixa</option>
+                            </select>
+                        ) : hClean.includes("responsável") || hClean.includes("responsavel") ? (
+                          <select 
+                            style={inputStyle}
+                            value={formData[header] || ''}
+                            onChange={(e) => handleInputChange(header, e.target.value)}
+                          >
+                            <option value="" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Selecione...</option>
+                            {Array.from(new Set(data.slice(1).map(row => (row[index] || "").trim()).filter(v => v !== ""))).sort().map(name => (
+                              <option key={name} value={name} style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>{name}</option>
+                            ))}
+                          </select>
+                        ) : hClean.includes("método") || hClean.includes("metodo") ? (
+                          <select 
+                            style={inputStyle}
+                            value={formData[header] || 'Email'}
+                            onChange={(e) => handleInputChange(header, e.target.value)}
+                          >
+                            <option value="Email" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Email</option>
+                            <option value="Telefone" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Telefone</option>
+                            <option value="WhatsApp" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>WhatsApp</option>
+                            <option value="Portal" style={{  backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>Portal</option>
+                          </select>
+                        ) : hClean.includes("data") ? (
+                          <input 
+                            type="date"
+                            style={inputStyle}
+                            onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
+                            value={formData[header] || ''}
+                            onChange={(e) => handleInputChange(header, e.target.value)}
+                          />
+
+                        ) : (
+                          <input 
+                            style={inputStyle}
+                            onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
+                            value={formData[header] || ''}
+                            onChange={(e) => handleInputChange(header, e.target.value)}
+                            placeholder={`Digite ${header}...`}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '12px',
+                    paddingTop: '24px',
+                    borderTop: '1px solid var(--border-primary)',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div>
+                    {isEdit && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteCurrentRow}
+                        style={{
+                          padding: '14px',
+                          backgroundColor: '#DC2626',
+                          color: '#FFFFFF',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          border: 'none',
+                          borderRadius: '10px',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseOver={(e) =>
+                          e.currentTarget.style.backgroundColor = '#B91C1C'
+                        }
+                        onMouseOut={(e) =>
+                          e.currentTarget.style.backgroundColor = '#DC2626'
+                        }
+                      >
+                        Excluir Chamado
+                      </button>
+                    )}
+                  </div>
+                
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '12px'
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setShowForm(false)}
+                      style={{
+                        padding: '14px',
+                        backgroundColor: 'transparent',
+                        color: 'var(--text-muted)',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        border: '1px solid var(--border-primary)',
+                        borderRadius: '10px',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) =>
+                        e.currentTarget.style.backgroundColor = 'var(--border-primary)'
+                      }
+                      onMouseOut={(e) =>
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }
+                    >
+                      Descartar
+                    </button>
+                
+                    <button
+                      type="submit"
+                      style={{
+                        minWidth: isEdit ? '160px' : 'auto',
+                        padding: '14px',
+                        backgroundColor: '#3B82F6',
+                        color: '#fff',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        border: 'none',
+                        borderRadius: '10px',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.4)'
+                      }}
+                      onMouseOver={(e) =>
+                        e.currentTarget.style.backgroundColor = '#2563EB'
+                      }
+                      onMouseOut={(e) =>
+                        e.currentTarget.style.backgroundColor = '#3B82F6'
+                      }
+                    >
+                      {isEdit ? 'Salvar Alterações' : 'Criar Chamado'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
-};
+}
 
-export default App;
+
+export default function App() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#0F172A',
+          color: '#E2E8F0',
+          fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+        }}
+      >
+        Validando sessão...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
+  return <AppContent />;
+}
