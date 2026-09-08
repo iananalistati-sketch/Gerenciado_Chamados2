@@ -10,6 +10,7 @@ interface EditarMobileModalProps {
   normalize: (value: string) => string;
   onClose: () => void;
   onSave: (rowData: string[], rowIndex: number) => Promise<void>;
+  onRefresh: () => void | Promise<void>;
 }
 
 export default function EditarMobileModal({
@@ -21,6 +22,7 @@ export default function EditarMobileModal({
   normalize,
   onClose,
   onSave,
+  onRefresh,
 }: EditarMobileModalProps) {
   const [formData, setFormData] =
     useState<Record<string, string>>({});
@@ -230,6 +232,8 @@ export default function EditarMobileModal({
             "Erro ao finalizar empréstimo temporário."
         );
       }
+
+      await Promise.resolve(onRefresh());
 
       alert(
         `Empréstimo ${result.loanId || ""} finalizado com sucesso. O equipamento reserva voltou a ficar disponível.`.trim()
@@ -877,7 +881,8 @@ export default function EditarMobileModal({
         currentUserName={currentUserName}
         normalize={normalize}
         onClose={() => setShowSubstitute(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
+          await Promise.resolve(onRefresh());
           setShowSubstitute(false);
           onClose();
         }}
