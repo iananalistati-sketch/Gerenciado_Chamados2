@@ -3,6 +3,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { apiFetch } from "../auth/api";
 
 interface DetalhesAppsMobileModalProps {
   isOpen: boolean;
@@ -80,7 +81,7 @@ export default function DetalhesAppsMobileModal({
     setLoadError("");
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/data?sheet=tbMobileApps&_=${Date.now()}`,
         {
           cache: "no-store",

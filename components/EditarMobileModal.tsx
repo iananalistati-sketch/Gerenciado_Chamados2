@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SubstituirMobileModal from "./SubstituirMobileModal";
+import { apiFetch } from "../auth/api";
 
 interface EditarMobileModalProps {
   isOpen: boolean;
@@ -182,7 +183,7 @@ export default function EditarMobileModal({
     setReturning(true);
 
     try {
-      const response = await fetch("/api/mobiles/loan-return", {
+      const response = await apiFetch("/api/mobiles/loan-return", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reserveCollector: currentCollector, responsible: currentUserName, observation: observation.trim(), updateLocation, returnSector }),
@@ -427,7 +428,21 @@ export default function EditarMobileModal({
 
             {statusHeader && (isOperationalStatus ? (
               <label style={labelStyle}>Status *<input type="text" value={getStatusLabel(currentStatus)} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.75 }} /><span style={{ color: "var(--text-muted)", fontSize: "10px", fontWeight: 500 }}>Status controlado automaticamente pela rotina de empréstimo.</span></label>
-            ) : selectField(statusHeader, "Status", ["A", "I"], true))}
+            ) : (
+              <label style={labelStyle}>
+                {requiredLabel("Status", true)}
+                <select
+                  required
+                  value={formData[statusHeader] || ""}
+                  onChange={(event) => handleChange(statusHeader, event.target.value)}
+                  style={inputStyle}
+                >
+                  <option value="">Selecione</option>
+                  <option value="A">Ativo</option>
+                  <option value="I">Inativo</option>
+                </select>
+              </label>
+            ))}
 
             {statusAtualizacaoHeader && <label style={labelStyle}>Status atualização<input type="text" value={automaticStatus} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }} /></label>}
             {dataAtualizacaoHeader && <label style={labelStyle}>Data atualização<input type="text" value={formData[dataAtualizacaoHeader] || ""} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }} /></label>}

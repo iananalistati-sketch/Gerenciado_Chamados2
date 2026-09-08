@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { google } from "googleapis";
+import { authErrorResponse, requireRole } from "../_requireAuth.js";
 
 const CONTROLE_SHEET = "tbControleMobiles";
 const APPS_SHEET = "tbMobileApps";
@@ -33,6 +34,7 @@ export default async function handler(
   }
 
   try {
+    await requireRole(req.headers.authorization, ["admin", "analyst"]);
     const { updates } = req.body;
 
     if (!Array.isArray(updates)) {
@@ -437,6 +439,7 @@ export default async function handler(
       skippedItems: skipped,
     });
   } catch (error: any) {
+    if (authErrorResponse(error, res)) return;
     console.error(
       "Erro na atualização em lote de apps:",
       error

@@ -228,7 +228,10 @@ export default function ControleMobiles({
   const totalPendentes = rows.filter((row) => normalizeValue(getMobileUpdateSummary(row).status) === "pendente").length;
   const totalNaoLocalizados = statusAtualizacaoIdx !== -1 ? rows.filter((row) => normalizeValue(row[statusAtualizacaoIdx] || "") === "nao localizado").length : 0;
   const totalLocationDivergences = rows.filter(isLocationDivergent).length;
-  const progressoAtualizacao = totalEquipamentos > 0 ? Math.round((totalAtualizados / totalEquipamentos) * 100) : 0;
+  const percentualAtualizacao = totalEquipamentos > 0 ? (totalAtualizados / totalEquipamentos) * 100 : 0;
+  const progressoAtualizacao = percentualAtualizacao > 0 && percentualAtualizacao < 1
+    ? percentualAtualizacao.toFixed(1).replace(".", ",")
+    : String(Math.round(percentualAtualizacao));
 
   const filteredRows = useMemo(() => rows.filter((row) => {
     const appRows = getAppRowsForEquipment(row);

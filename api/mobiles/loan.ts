@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { authErrorResponse, requireRole } from "../_requireAuth.js";
 
 const CONTROL_SHEET = "tbControleMobiles";
 const LOAN_SHEET = "tbEmprestimosMobiles";
@@ -49,6 +50,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    await requireRole(req.headers.authorization, ["admin", "analyst"]);
     const {
       originalCollector,
       reserveCollector,
@@ -459,6 +461,7 @@ export default async function handler(req: any, res: any) {
       locationUpdated: Boolean(updateLocation),
     });
   } catch (error: any) {
+    if (authErrorResponse(error, res)) return;
     console.error("ERRO MOBILE LOAN:", error);
 
     return res.status(500).json({

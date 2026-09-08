@@ -388,9 +388,6 @@ export default function FiltroModal({
                   
                       }
     
-                      console.log("currentVal:", currentVal);
-                      console.log("valores:", valores);
-                      console.log("gravando:", valores.join("|"));
                     
                       updateFilter(
                           h,

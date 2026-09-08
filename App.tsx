@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ConcluirModal from "./components/ConcluirModal";
 import Dashboard from "./components/Dashboard";
 import ChamadosTable from "./components/ChamadosTable";
@@ -15,6 +15,7 @@ import UserManagement from "./components/UserManagement";
 import ChangePassword from "./components/ChangePassword";
 import { useTheme } from "./contexts/ThemeContext";
 import ControleMobiles from "./components/ControleMobiles";
+import { apiFetch } from "./auth/api";
 
 /**
  * App.tsx - Mínimo Funcional
@@ -25,12 +26,6 @@ function AppContent() {
   const { user, role, permissions, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
-  console.log("DEBUG PERMISSOES", {
-    email: user?.email,
-    role,
-    permissions,
-    canManageUsers: permissions?.canManageUsers
-  });
   const [data, setData] = useState<string[][]>([]);
   // allData: Armazena os dados de todas as abas carregadas
   const [allData, setAllData] = useState<Record<string, string[][]>>({
@@ -41,6 +36,8 @@ function AppContent() {
   const [mobileConfig, setMobileConfig] = useState<string[][]>([]);
   const [mobileApps, setMobileApps] = useState<string[][]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadedSheet, setLoadedSheet] = useState<string | null>(null);
+  const dataRequestRef = useRef(0);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [selectedSheet, setSelectedSheet] = useState('tbChamadosMV');
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,46 +88,69 @@ function AppContent() {
       .toLowerCase();
 
   const fetchData = async () => {
-  setLoading(true);
-  setError(null);
+    const sheetToLoad = selectedSheet;
+    const requestId = ++dataRequestRef.current;
+    setLoading(true);
+    setError(null);
 
-  try {
-    const res = await fetch(`/api/data?sheet=${selectedSheet}`);
-    const json = await res.json();
-    
-    const values = Array.isArray(json)
-      ? json.filter((row) => Array.isArray(row))
-      : [];
-    
-    // 🔥 ADICIONE ISSO AQUI
-    values.forEach((row, i) => {
-      (row as any)._originalIndex = i + 1;
-    });
+    try {
+      const res = await apiFetch(`/api/data?sheet=${sheetToLoad}`);
+      const json = await res.json();
 
+      if (!res.ok) {
+        throw new Error(json?.error || "Erro ao carregar os dados.");
+      }
 
+      const values = Array.isArray(json)
+        ? json.filter((row) => Array.isArray(row))
+        : [];
 
-    setData(values);
-    setAllData(prev => ({ ...prev, [selectedSheet]: values }));
+      values.forEach((row, i) => {
+        (row as any)._originalIndex = i + 1;
+      });
+
+      if (requestId !== dataRequestRef.current) return;
+
+      setData(values);
+      setLoadedSheet(sheetToLoad);
+      setAllData(prev => ({ ...prev, [sheetToLoad]: values }));
+      setFormData({});
+    } catch (e: any) {
+      if (requestId !== dataRequestRef.current) return;
+      setData([]);
+      setLoadedSheet(null);
+      setError(e.message);
+    } finally {
+      if (requestId === dataRequestRef.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleSheetChange = (nextSheet: string) => {
+    dataRequestRef.current += 1;
+    setLoading(true);
+    setLoadedSheet(null);
+    setData([]);
+    setError(null);
     setFormData({});
-  } catch (e: any) {
-    setError(e.message);
-  } finally {
-    setLoading(false);
-  }
-};
+    setShowForm(false);
+    setShowFilterModal(false);
+    setShowCobrarModal(false);
+    setShowConcluirModal(false);
+    setEditingRow(null);
+    setEditingRowIndex(null);
+    setIsEdit(false);
+    setSelectedSheet(nextSheet);
+  };
 
   const fetchMobileConfig = async () => {
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         "/api/data?sheet=tbConfigMobiles"
       );
 
       const values = await res.json();
-
-      console.log(
-        "DEBUG tbConfigMobiles - retorno API:",
-        values
-      );
 
       if (!res.ok) {
         throw new Error(
@@ -143,11 +163,6 @@ function AppContent() {
         Array.isArray(values)
           ? values
           : [];
-
-      console.log(
-        "DEBUG tbConfigMobiles - dados carregados:",
-        configValues
-      );
 
       setMobileConfig(configValues);
     } catch (error) {
@@ -162,7 +177,7 @@ function AppContent() {
 
   const fetchMobileApps = async () => {
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         "/api/data?sheet=tbMobileApps"
       );
 
@@ -251,16 +266,8 @@ function AppContent() {
     const handleSaveRow = async (rowData: string[], rowIndex: number) => {
       setLoading(true);
 
-      console.log("SALVANDO LINHA", { rowData, rowIndex, selectedSheet });
-      
-      console.log("DEBUG ENVIO:", {
-        data: rowData,
-        rowIndex,
-        sheet: selectedSheet
-      });
-    
       try {
-      const res = await fetch('/api/update', {
+      const res = await apiFetch('/api/update', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -290,7 +297,7 @@ function AppContent() {
     setLoading(true);
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         "/api/update",
         {
           method: "PUT",
@@ -334,7 +341,7 @@ function AppContent() {
     setLoading(true);
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         "/api/create",
         {
           method: "POST",
@@ -384,7 +391,7 @@ function AppContent() {
     setLoading(true);
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         "/api/mobiles/batch-update",
         {
           method: "PUT",
@@ -441,13 +448,6 @@ function AppContent() {
       return;
     }
   
-    console.log("FORM SUBMIT:", {
-      rowData,
-      isEdit,
-      selectedSheet,
-      editingRowIndex
-    });
-  
     try {
       if (isEdit) {
         if (editingRowIndex === null) {
@@ -484,7 +484,7 @@ function AppContent() {
   const handleAddRow = async (newRow: string[]) => {
   setLoading(true);
   try {
-    const res = await fetch('/api/update', {
+    const res = await apiFetch('/api/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -516,7 +516,7 @@ function AppContent() {
   }
 
   try {
-    const res = await fetch('/api/create', {
+    const res = await apiFetch('/api/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -544,6 +544,10 @@ function AppContent() {
 
 
   const handleOpenForm = () => {
+    if (loading || loadedSheet !== selectedSheet || data.length === 0) {
+      return;
+    }
+
     setIsEdit(false);
     setEditingRowIndex(null);
     const today = new Date().toISOString().split('T')[0];
@@ -959,8 +963,6 @@ function AppContent() {
   
   const updateFilter = (header: string, value: string) => {
     
-    console.log("updateFilter:", header, value);
-    
     setSheetFilters(prev => ({
       ...prev,
       [selectedSheet]: {
@@ -1303,6 +1305,7 @@ function AppContent() {
 
   // Lógica de filtragem centralizada para Dashboard e Tabela
   const currentFilters = sheetFilters[selectedSheet] || {};
+  const isSheetReady = !loading && loadedSheet === selectedSheet && data.length > 0;
   const situacaoIdx = data[0]?.findIndex(h => normalize(h) === "situacao");
   const excluidoIdx = data[0]?.findIndex(h => normalize(h) === "excluido");
 
@@ -1646,7 +1649,7 @@ function AppContent() {
           >Selecionar Aba:</label>
           <select 
             value={selectedSheet} 
-            onChange={(e) => setSelectedSheet(e.target.value)}
+            onChange={(e) => handleSheetChange(e.target.value)}
             style={{ 
               padding: '8px 12px', 
               fontSize: '14px', 
@@ -1681,8 +1684,9 @@ function AppContent() {
               "Usuário não identificado"
             }
             canEdit={
-              role === "admin" ||
-              role === "analyst"
+              isSheetReady &&
+              (role === "admin" ||
+              role === "analyst")
             }
             onRefresh={fetchData}
             onSaveRow={handleSaveRow}
@@ -1716,7 +1720,8 @@ function AppContent() {
           }}>
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
               <button 
-                onClick={() => setShowFilterModal(true)}
+                onClick={() => isSheetReady && setShowFilterModal(true)}
+                disabled={!isSheetReady}
                 style={{
                   padding: '12px 20px',
                   backgroundColor: 'var(--bg-secondary)',
@@ -1751,6 +1756,7 @@ function AppContent() {
 
               <button 
                 onClick={handleToggleDeleted}
+                disabled={!isSheetReady}
                 style={{
                   padding: '12px 20px',
                   backgroundColor: showDeleted
@@ -1832,6 +1838,7 @@ function AppContent() {
             <div style={{ display: 'flex', gap: '12px' }}>
               <button 
                 onClick={() => setShowCobrarModal(true)}
+                disabled={!isSheetReady}
                 style={{
                   padding: '12px 24px',
                   backgroundColor: currentSheetCount > 0 ? '#EF4444' : '#334155',
@@ -1865,13 +1872,15 @@ function AppContent() {
 
               <button 
                 onClick={handleOpenForm}
+                disabled={!isSheetReady}
                 style={{ 
                   padding: '12px 24px', 
                   backgroundColor: '#3B82F6', 
                   color: '#fff', 
                   border: 'none', 
                   borderRadius: '10px', 
-                  cursor: 'pointer',
+                  cursor: isSheetReady ? 'pointer' : 'not-allowed',
+                  opacity: isSheetReady ? 1 : 0.55,
                   fontWeight: '600',
                   fontSize: '14px',
                   boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.2)',

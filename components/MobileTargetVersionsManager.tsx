@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { apiFetch } from "../auth/api";
 
 const normalize = (value: string) =>
   String(value || "")
@@ -103,7 +104,7 @@ export default function MobileTargetVersionsManager() {
     setError("");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/data?sheet=tbConfigMobiles&_=${Date.now()}`,
         { cache: "no-store" }
       );
@@ -240,7 +241,7 @@ export default function MobileTargetVersionsManager() {
     try {
       const rowData = [app, version];
 
-      const response = await fetch(
+      const response = await apiFetch(
         editingRowIndex === null
           ? "/api/create"
           : "/api/update",

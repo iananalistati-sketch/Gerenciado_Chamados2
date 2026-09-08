@@ -1,11 +1,18 @@
 import { google } from "googleapis";
+import { authErrorResponse, READABLE_SHEETS, requireRole } from "./_requireAuth.js";
 
 export default async function handler(req, res) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Método não permitido." });
+  }
+
   try {
     const { sheet } = req.query;
 
-    if (!sheet) {
-      return res.status(400).json({ error: "Sheet não informada" });
+    await requireRole(req.headers.authorization, ["admin", "analyst", "viewer"]);
+
+    if (typeof sheet !== "string" || !READABLE_SHEETS.has(sheet)) {
+      return res.status(400).json({ error: "Aba inválida ou não permitida." });
     }
 
     res.setHeader(
@@ -40,7 +47,8 @@ export default async function handler(req, res) {
 
     res.status(200).json(values);
   } catch (error) {
+    if (authErrorResponse(error, res)) return;
     console.error(error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error instanceof Error ? error.message : "Erro interno." });
   }
 }

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "../auth/api";
 
 interface ReservasMobilesPanelProps {
   data: string[][];
@@ -67,7 +68,7 @@ export default function ReservasMobilesPanel({
     setError(null);
 
     try {
-      const response = await fetch("/api/data?sheet=tbEmprestimosMobiles");
+      const response = await apiFetch("/api/data?sheet=tbEmprestimosMobiles");
       const result = await response.json();
 
       if (!response.ok) {
@@ -223,7 +224,7 @@ export default function ReservasMobilesPanel({
     setFinishingCollector(reserveCollector);
 
     try {
-      const response = await fetch("/api/mobiles/loan-return", {
+      const response = await apiFetch("/api/mobiles/loan-return", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

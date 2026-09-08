@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "../auth/api";
 
 interface SubstituirMobileModalProps {
   isOpen: boolean;
@@ -136,7 +137,7 @@ export default function SubstituirMobileModal({
     setSaving(true);
 
     try {
-      const response = await fetch("/api/mobiles/loan", {
+      const response = await apiFetch("/api/mobiles/loan", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
