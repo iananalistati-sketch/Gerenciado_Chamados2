@@ -99,6 +99,9 @@ export default function EditarMobileModal({
   const currentCollector = coletorHeader
     ? String(formData[coletorHeader] || "").trim()
     : "";
+  const currentLocation = setorLocalizadoHeader
+    ? String(formData[setorLocalizadoHeader] || "").trim()
+    : "";
 
   const canTemporarilyReplace =
     currentStatus === "A" &&
@@ -107,6 +110,24 @@ export default function EditarMobileModal({
   const canFinalizeLoan =
     currentStatus === "E" &&
     normalize(currentSector) === normalize("TI-SUPORTE");
+
+  const isOperationalStatus =
+    currentStatus === "M" || currentStatus === "E";
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "A":
+        return "Ativo";
+      case "I":
+        return "Inativo";
+      case "M":
+        return "Manutenção";
+      case "E":
+        return "Emprestado";
+      default:
+        return status || "Não informado";
+    }
+  };
 
   const handleChange = (
     header: string | undefined,
@@ -141,11 +162,35 @@ export default function EditarMobileModal({
     }
 
     const confirmed = window.confirm(
-      `Finalizar o empréstimo do equipamento reserva "${currentCollector}"?\n\nO equipamento original voltará para Ativo e a reserva retornará para TI-SUPORTE como disponível.`
+      `Finalizar o empréstimo do equipamento reserva "${currentCollector}"?\n\nO equipamento original voltará para Ativo e a reserva ficará disponível novamente.`
     );
 
     if (!confirmed) {
       return;
+    }
+
+    const updateLocation = window.confirm(
+      "Deseja atualizar o setor de localização na devolução?\n\nSe confirmar, a reserva retornará para TI-SUPORTE e você poderá informar o setor onde o equipamento original será devolvido."
+    );
+
+    let returnSector = "";
+
+    if (updateLocation) {
+      const informedSector = window.prompt(
+        "Informe o setor de localização para devolução do equipamento original:",
+        currentLocation || currentSector || ""
+      );
+
+      if (informedSector === null) {
+        return;
+      }
+
+      returnSector = informedSector.trim();
+
+      if (!returnSector) {
+        alert("Informe o setor de localização da devolução.");
+        return;
+      }
     }
 
     const observation = window.prompt(
@@ -171,6 +216,8 @@ export default function EditarMobileModal({
             reserveCollector: currentCollector,
             responsible: currentUserName,
             observation: observation.trim(),
+            updateLocation,
+            returnSector,
           }),
         }
       );
@@ -225,6 +272,24 @@ export default function EditarMobileModal({
     )
       .trim()
       .toUpperCase();
+
+    const originalStatusIdx = headers.findIndex(
+      (header) => normalize(header) === normalize("Status")
+    );
+    const originalStatus =
+      originalStatusIdx !== -1
+        ? String(row[originalStatusIdx] || "").trim().toUpperCase()
+        : "";
+
+    if (
+      (status === "M" || status === "E") &&
+      status !== originalStatus
+    ) {
+      alert(
+        "Os status Manutenção e Emprestado são controlados automaticamente pela rotina de empréstimo e não podem ser definidos manualmente."
+      );
+      return;
+    }
 
     if (!coletor) {
       alert("Informe o Coletor.");
@@ -612,16 +677,41 @@ export default function EditarMobileModal({
             {field(entregueHeader, "Entregue")}
             {field(versaoHeader, "Versão")}
 
-            {field(
-              statusHeader,
-              "Status",
-              "select",
-              [
-                { value: "A", label: "Ativo" },
-                { value: "E", label: "Emprestado" },
-                { value: "I", label: "Inativo" },
-                { value: "M", label: "Manutenção" },
-              ]
+            {statusHeader && (
+              isOperationalStatus ? (
+                <label style={labelStyle}>
+                  Status
+                  <input
+                    type="text"
+                    value={getStatusLabel(currentStatus)}
+                    readOnly
+                    style={{
+                      ...inputStyle,
+                      cursor: "not-allowed",
+                      opacity: 0.75,
+                    }}
+                  />
+                  <span
+                    style={{
+                      color: "var(--text-muted)",
+                      fontSize: "10px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Status controlado automaticamente pela rotina de empréstimo.
+                  </span>
+                </label>
+              ) : (
+                field(
+                  statusHeader,
+                  "Status",
+                  "select",
+                  [
+                    { value: "A", label: "Ativo" },
+                    { value: "I", label: "Inativo" },
+                  ]
+                )
+              )
             )}
 
             {statusAtualizacaoHeader && (
