@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 interface SubstituirMobileModalProps {
   isOpen: boolean;
@@ -24,6 +24,8 @@ export default function SubstituirMobileModal({
   const [reserveCollector, setReserveCollector] = useState("");
   const [reason, setReason] = useState("");
   const [observation, setObservation] = useState("");
+  const [updateLocation, setUpdateLocation] = useState(true);
+  const [destinationSector, setDestinationSector] = useState("");
   const [saving, setSaving] = useState(false);
 
   const getIndex = (...names: string[]) =>
@@ -36,6 +38,28 @@ export default function SubstituirMobileModal({
   const snIdx = getIndex("SN");
   const statusIdx = getIndex("Status");
   const setorLocalizadoIdx = getIndex("Setor localizado");
+
+  const originalSector =
+    equipment && setorIdx !== -1
+      ? String(equipment[setorIdx] || "").trim()
+      : "";
+
+  const originalLocation =
+    equipment && setorLocalizadoIdx !== -1
+      ? String(equipment[setorLocalizadoIdx] || "").trim()
+      : "";
+
+  useEffect(() => {
+    if (!isOpen || !equipment) {
+      return;
+    }
+
+    setReserveCollector("");
+    setReason("");
+    setObservation("");
+    setUpdateLocation(true);
+    setDestinationSector(originalLocation || originalSector);
+  }, [isOpen, equipment, originalLocation, originalSector]);
 
   const reserves = useMemo(() => {
     if (
@@ -90,10 +114,6 @@ export default function SubstituirMobileModal({
     snIdx !== -1
       ? String(equipment[snIdx] || "").trim()
       : "";
-  const originalSector =
-    setorIdx !== -1
-      ? String(equipment[setorIdx] || "").trim()
-      : "";
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -105,6 +125,11 @@ export default function SubstituirMobileModal({
 
     if (!reason.trim()) {
       alert("Informe o motivo da substituição temporária.");
+      return;
+    }
+
+    if (updateLocation && !destinationSector.trim()) {
+      alert("Informe o setor de localização para onde o equipamento reserva será enviado.");
       return;
     }
 
@@ -122,6 +147,8 @@ export default function SubstituirMobileModal({
           responsible: currentUserName,
           reason: reason.trim(),
           observation: observation.trim(),
+          updateLocation,
+          destinationSector: destinationSector.trim(),
         }),
       });
 
@@ -137,9 +164,6 @@ export default function SubstituirMobileModal({
         `Substituição temporária registrada com sucesso. Empréstimo ${result.loanId}.`
       );
 
-      setReserveCollector("");
-      setReason("");
-      setObservation("");
       onClose();
       await onSuccess();
     } catch (error: any) {
@@ -257,7 +281,9 @@ export default function SubstituirMobileModal({
               <br />
               Coletor: {originalCollector || "-"} · SN: {originalSn || "-"}
               <br />
-              Setor: {originalSector || "-"}
+              Setor de origem: {originalSector || "-"}
+              <br />
+              Localização atual: {originalLocation || "-"}
             </div>
 
             <label style={{ display: "grid", gap: "6px", color: "var(--text-secondary)", fontSize: "12px", fontWeight: 600 }}>
@@ -299,6 +325,61 @@ export default function SubstituirMobileModal({
                 Nenhum equipamento ativo do setor TI-SUPORTE está disponível para seleção.
               </div>
             )}
+
+            <div
+              style={{
+                padding: "14px",
+                border: "1px solid var(--border-primary)",
+                borderRadius: "10px",
+                backgroundColor: "var(--bg-primary)",
+              }}
+            >
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "9px",
+                  color: "var(--text-primary)",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={updateLocation}
+                  onChange={(event) => setUpdateLocation(event.target.checked)}
+                />
+                Atualizar setor de localização durante o empréstimo
+              </label>
+
+              <p
+                style={{
+                  margin: "7px 0 12px",
+                  color: "var(--text-muted)",
+                  fontSize: "11px",
+                  lineHeight: 1.5,
+                }}
+              >
+                Quando marcado, o equipamento original será localizado no TI-SUPORTE e a reserva será localizada no setor informado abaixo.
+              </p>
+
+              <label style={{ display: "grid", gap: "6px", color: "var(--text-secondary)", fontSize: "12px", fontWeight: 600 }}>
+                Setor que receberá o equipamento reserva
+                <input
+                  type="text"
+                  value={destinationSector}
+                  onChange={(event) => setDestinationSector(event.target.value)}
+                  disabled={!updateLocation}
+                  placeholder="Ex.: UTI2"
+                  style={{
+                    ...inputStyle,
+                    opacity: updateLocation ? 1 : 0.6,
+                    cursor: updateLocation ? "text" : "not-allowed",
+                  }}
+                />
+              </label>
+            </div>
 
             <label style={{ display: "grid", gap: "6px", color: "var(--text-secondary)", fontSize: "12px", fontWeight: 600 }}>
               Motivo
