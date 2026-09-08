@@ -6,8 +6,8 @@ interface EditarMobileModalProps {
   row: string[] | null;
   headers: string[];
   allRows: string[][];
-  mobileConfig: string[][];
   mobileApps: string[][];
+  mobileConfig: string[][];
   currentUserName: string;
   normalize: (value: string) => string;
   onClose: () => void;
@@ -21,8 +21,8 @@ export default function EditarMobileModal({
   row,
   headers,
   allRows,
-  mobileConfig,
   mobileApps,
+  mobileConfig,
   currentUserName,
   normalize,
   onClose,
@@ -48,152 +48,90 @@ export default function EditarMobileModal({
   const ipHeader = getHeader("IP");
   const entregueHeader = getHeader("Entregue");
   const obsHeader = getHeader("Obs");
-  const dataAtualizacaoHeader = getHeader(
-    "Data atualização",
-    "Data atualizacao"
-  );
+  const dataAtualizacaoHeader = getHeader("Data atualização", "Data atualizacao");
   const appHeader = getHeader("App de uso");
   const setorLocalizadoHeader = getHeader("Setor localizado");
   const versaoHeader = getHeader("Versão", "Versao");
-  const contadorHeader = getHeader(
-    "Contador atualização",
-    "Contador atualizacao"
-  );
+  const contadorHeader = getHeader("Contador atualização", "Contador atualizacao");
   const statusHeader = getHeader("Status");
-  const statusAtualizacaoHeader = getHeader(
-    "Status atualização",
-    "Status atualizacao"
-  );
-  const responsavelAtualizacaoHeader = getHeader(
-    "Responsável atualização",
-    "Responsavel atualizacao"
-  );
+  const statusAtualizacaoHeader = getHeader("Status atualização", "Status atualizacao");
+  const responsavelAtualizacaoHeader = getHeader("Responsável atualização", "Responsavel atualizacao");
 
-  const getToday = () => {
-    const now = new Date();
-    const localDate = new Date(
-      now.getTime() - now.getTimezoneOffset() * 60000
-    );
-    return localDate.toISOString().split("T")[0];
-  };
-
-  const setores = useMemo(() => {
-    if (!setorHeader) return [];
-    const index = headers.indexOf(setorHeader);
+  const uniqueValues = (header: string | undefined) => {
+    if (!header) return [];
+    const index = headers.indexOf(header);
     if (index === -1) return [];
-
     return Array.from(
       new Set(
         allRows
           .map((item) => String(item[index] || "").trim())
           .filter(Boolean)
       )
-    ).sort((a, b) =>
-      a.localeCompare(b, "pt-BR", {
-        sensitivity: "base",
-        numeric: true,
-      })
-    );
-  }, [allRows, headers, setorHeader]);
+    ).sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
+  };
 
-  const { appOptions, targetVersions } = useMemo(() => {
-    const apps: string[] = [];
-    const targets: Record<string, string> = {};
+  const sectors = useMemo(() => uniqueValues(setorHeader), [allRows, headers, setorHeader]);
+
+  const configuredApps = useMemo(() => {
     const configHeaders = mobileConfig[0] || [];
-    const appIdx = configHeaders.findIndex(
-      (header) => normalize(header) === normalize("APP_USO")
-    );
-    const targetIdx = configHeaders.findIndex(
-      (header) => normalize(header) === normalize("VERSAO_ALVO")
-    );
-
-    if (appIdx !== -1) {
-      mobileConfig.slice(1).forEach((item) => {
-        const app = String(item[appIdx] || "").trim();
-        if (!app || normalize(app) === "todos") return;
-        if (!apps.some((known) => normalize(known) === normalize(app))) {
-          apps.push(app);
-        }
-        if (targetIdx !== -1) {
-          const target = String(item[targetIdx] || "").trim();
-          if (target) targets[normalize(app)] = target;
-        }
-      });
-    }
-
-    apps.sort((a, b) =>
-      a.localeCompare(b, "pt-BR", {
-        sensitivity: "base",
-        numeric: true,
-      })
-    );
-
-    return {
-      appOptions: ["TODOS", ...apps],
-      targetVersions: targets,
-    };
+    const appIdx = configHeaders.findIndex((header) => normalize(header) === normalize("APP_USO"));
+    if (appIdx === -1) return [];
+    return Array.from(
+      new Set(
+        mobileConfig
+          .slice(1)
+          .map((item) => String(item[appIdx] || "").trim())
+          .filter((value) => value && normalize(value) !== "todos")
+      )
+    ).sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }));
   }, [mobileConfig, normalize]);
 
-  const calculateUpdateStatus = (app: string, version: string) => {
-    const normalizedApp = normalize(app);
-    const currentVersion = String(version || "").trim();
-
-    if (
-      !app ||
-      normalizedApp === "todos" ||
-      !currentVersion ||
-      !targetVersions[normalizedApp]
-    ) {
-      return "SEM INFORMAÇÃO";
-    }
-
-    return currentVersion === targetVersions[normalizedApp]
-      ? "ATUALIZADO"
-      : "PENDENTE";
-  };
+  const targetVersions = useMemo(() => {
+    const result: Record<string, string> = {};
+    const configHeaders = mobileConfig[0] || [];
+    const appIdx = configHeaders.findIndex((header) => normalize(header) === normalize("APP_USO"));
+    const versionIdx = configHeaders.findIndex((header) => normalize(header) === normalize("VERSAO_ALVO"));
+    if (appIdx === -1 || versionIdx === -1) return result;
+    mobileConfig.slice(1).forEach((item) => {
+      const app = String(item[appIdx] || "").trim();
+      const version = String(item[versionIdx] || "").trim();
+      if (app) result[normalize(app)] = version;
+    });
+    return result;
+  }, [mobileConfig, normalize]);
 
   useEffect(() => {
     if (!isOpen || !row) return;
-
     const values: Record<string, string> = {};
     headers.forEach((header, index) => {
       values[header] = row[index] || "";
     });
-
-    if (statusAtualizacaoHeader && appHeader && versaoHeader) {
-      values[statusAtualizacaoHeader] = calculateUpdateStatus(
-        values[appHeader] || "",
-        values[versaoHeader] || ""
-      );
-    }
-
     setFormData(values);
     setShowSubstitute(false);
   }, [isOpen, row, headers]);
 
   if (!isOpen || !row) return null;
 
-  const currentStatus = statusHeader
-    ? String(formData[statusHeader] || "").trim().toUpperCase()
-    : "";
-  const currentSector = setorHeader
-    ? String(formData[setorHeader] || "").trim()
-    : "";
-  const currentCollector = coletorHeader
-    ? String(formData[coletorHeader] || "").trim()
-    : "";
-  const currentLocation = setorLocalizadoHeader
-    ? String(formData[setorLocalizadoHeader] || "").trim()
-    : "";
+  const currentStatus = statusHeader ? String(formData[statusHeader] || "").trim().toUpperCase() : "";
+  const currentSector = setorHeader ? String(formData[setorHeader] || "").trim() : "";
+  const currentCollector = coletorHeader ? String(formData[coletorHeader] || "").trim() : "";
+  const currentLocation = setorLocalizadoHeader ? String(formData[setorLocalizadoHeader] || "").trim() : "";
+  const currentApp = appHeader ? String(formData[appHeader] || "").trim() : "";
+  const currentVersion = versaoHeader ? String(formData[versaoHeader] || "").trim() : "";
 
-  const canTemporarilyReplace =
-    currentStatus === "A" &&
-    normalize(currentSector) !== normalize("TI-SUPORTE");
+  const originalAppIdx = appHeader ? headers.indexOf(appHeader) : -1;
+  const originalApp = originalAppIdx !== -1 ? String(row[originalAppIdx] || "").trim() : "";
+  const isTodos = normalize(currentApp) === "todos";
 
-  const canFinalizeLoan =
-    currentStatus === "E" &&
-    normalize(currentSector) === normalize("TI-SUPORTE");
+  const automaticStatus = (() => {
+    if (isTodos) return "Gerenciado individualmente por App";
+    const target = targetVersions[normalize(currentApp)];
+    if (!currentVersion || !target) return "SEM INFORMAÇÃO";
+    return currentVersion === target ? "ATUALIZADO" : "PENDENTE";
+  })();
 
+  const canTemporarilyReplace = currentStatus === "A" && normalize(currentSector) !== normalize("TI-SUPORTE");
+  const canFinalizeLoan = currentStatus === "E" && normalize(currentSector) === normalize("TI-SUPORTE");
   const isOperationalStatus = currentStatus === "M" || currentStatus === "E";
 
   const getStatusLabel = (status: string) => {
@@ -208,52 +146,29 @@ export default function EditarMobileModal({
 
   const handleChange = (header: string | undefined, value: string) => {
     if (!header) return;
+    setFormData((previous) => ({ ...previous, [header]: value }));
+  };
 
-    setFormData((previous) => {
-      const next = { ...previous, [header]: value };
+  const handleSectorChange = (value: string) => {
+    if (!setorHeader) return;
+    setFormData((previous) => ({ ...previous, [setorHeader]: value }));
+  };
 
-      if (header === appHeader && versaoHeader) {
-        if (normalize(value) === "todos") {
-          next[versaoHeader] = "";
-        } else if (
-          normalize(previous[appHeader || ""] || "") !== normalize(value)
-        ) {
-          next[versaoHeader] = "";
-        }
-      }
-
-      if (
-        statusAtualizacaoHeader &&
-        (header === appHeader || header === versaoHeader)
-      ) {
-        next[statusAtualizacaoHeader] = calculateUpdateStatus(
-          appHeader ? next[appHeader] || "" : "",
-          versaoHeader ? next[versaoHeader] || "" : ""
-        );
-      }
-
-      return next;
-    });
+  const getToday = () => {
+    const now = new Date();
+    const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return localDate.toISOString().split("T")[0];
   };
 
   const handleFinalizeLoan = async () => {
     if (!canFinalizeLoan || !currentCollector) return;
-
-    const confirmed = window.confirm(
-      `Finalizar o empréstimo do equipamento reserva "${currentCollector}"?\n\nO equipamento original voltará para Ativo e a reserva ficará disponível novamente.`
-    );
+    const confirmed = window.confirm(`Finalizar o empréstimo do equipamento reserva "${currentCollector}"?\n\nO equipamento original voltará para Ativo e a reserva ficará disponível novamente.`);
     if (!confirmed) return;
 
-    const updateLocation = window.confirm(
-      "Deseja atualizar o setor de localização na devolução?\n\nSe confirmar, a reserva retornará para TI-SUPORTE e você poderá informar o setor onde o equipamento original será devolvido."
-    );
-
+    const updateLocation = window.confirm("Deseja atualizar o setor de localização na devolução?\n\nSe confirmar, a reserva retornará para TI-SUPORTE e você poderá informar o setor onde o equipamento original será devolvido.");
     let returnSector = "";
     if (updateLocation) {
-      const informedSector = window.prompt(
-        "Informe o setor de localização para devolução do equipamento original:",
-        currentLocation || currentSector || ""
-      );
+      const informedSector = window.prompt("Informe o setor de localização para devolução do equipamento original:", currentLocation || currentSector || "");
       if (informedSector === null) return;
       returnSector = informedSector.trim();
       if (!returnSector) {
@@ -262,224 +177,89 @@ export default function EditarMobileModal({
       }
     }
 
-    const observation = window.prompt(
-      "Observação da devolução (opcional):",
-      ""
-    );
+    const observation = window.prompt("Observação da devolução (opcional):", "");
     if (observation === null) return;
-
     setReturning(true);
+
     try {
       const response = await fetch("/api/mobiles/loan-return", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reserveCollector: currentCollector,
-          responsible: currentUserName,
-          observation: observation.trim(),
-          updateLocation,
-          returnSector,
-        }),
+        body: JSON.stringify({ reserveCollector: currentCollector, responsible: currentUserName, observation: observation.trim(), updateLocation, returnSector }),
       });
-
       const result = await response.json();
-      if (!response.ok) {
-        throw new Error(
-          result.error || "Erro ao finalizar empréstimo temporário."
-        );
-      }
-
+      if (!response.ok) throw new Error(result.error || "Erro ao finalizar empréstimo temporário.");
       await Promise.resolve(onRefresh());
-      alert(
-        `Empréstimo ${result.loanId || ""} finalizado com sucesso. O equipamento reserva voltou a ficar disponível.`.trim()
-      );
+      alert(`Empréstimo ${result.loanId || ""} finalizado com sucesso. O equipamento reserva voltou a ficar disponível.`.trim());
       onClose();
     } catch (error: any) {
-      alert(
-        "Erro ao finalizar empréstimo: " +
-          (error.message || "Erro desconhecido")
-      );
+      alert("Erro ao finalizar empréstimo: " + (error.message || "Erro desconhecido"));
     } finally {
       setReturning(false);
     }
   };
 
-  const requireValue = (header: string | undefined, label: string) => {
-    if (!header || !String(formData[header] || "").trim()) {
-      alert(`Informe ${label}.`);
-      return false;
-    }
-    return true;
-  };
-
-  const syncSingleApp = async (
-    originalApp: string,
-    newApp: string,
-    newVersion: string,
-    versionChanged: boolean
-  ) => {
-    if (!coletorHeader) return;
-    if (normalize(originalApp) === "todos" || normalize(newApp) === "todos") {
-      return;
-    }
-
-    const childHeaders = mobileApps[0] || [];
-    const findChildIndex = (name: string) =>
-      childHeaders.findIndex(
-        (header) => normalize(header) === normalize(name)
-      );
-
-    const childCollectorIdx = findChildIndex("COLETOR");
-    const childAppIdx = findChildIndex("APP_USO");
-    const childVersionIdx = findChildIndex("VERSAO");
-    const childDateIdx = findChildIndex("DATA_ATUALIZACAO");
-    const childStatusIdx = findChildIndex("STATUS_ATUALIZACAO");
-    const childResponsibleIdx = findChildIndex("RESPONSAVEL_ATUALIZACAO");
-    const childCounterIdx = findChildIndex("CONTADOR_ATUALIZACAO");
-
-    if (childCollectorIdx === -1 || childAppIdx === -1) return;
-
-    const originalCollectorIdx = headers.indexOf(coletorHeader);
-    const originalCollector = String(row[originalCollectorIdx] || "").trim();
-
-    const childRow = mobileApps.slice(1).find((item) =>
-      normalize(item[childCollectorIdx] || "") === normalize(originalCollector) &&
-      normalize(item[childAppIdx] || "") === normalize(originalApp)
-    );
-
-    if (!childRow) return;
-
-    const rowIndex = (childRow as any)._originalIndex;
-    if (typeof rowIndex !== "number") return;
-
-    const updatedChild = [...childRow];
-    updatedChild[childAppIdx] = newApp;
-
-    if (childVersionIdx !== -1) {
-      updatedChild[childVersionIdx] = newVersion;
-    }
-    if (childStatusIdx !== -1) {
-      updatedChild[childStatusIdx] = calculateUpdateStatus(newApp, newVersion);
-    }
-
-    if (versionChanged) {
-      if (childDateIdx !== -1) updatedChild[childDateIdx] = getToday();
-      if (childResponsibleIdx !== -1) {
-        updatedChild[childResponsibleIdx] = currentUserName;
-      }
-      if (childCounterIdx !== -1) {
-        const originalCounter =
-          Number(String(childRow[childCounterIdx] || "0").replace(",", ".")) || 0;
-        updatedChild[childCounterIdx] = String(originalCounter + 1);
-      }
-    }
-
-    await onSaveMobileApp(updatedChild, rowIndex);
-  };
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-
-    if (
-      !setorHeader ||
-      !setorLocalizadoHeader ||
-      !coletorHeader ||
-      !snHeader ||
-      !finalHeader ||
-      !macHeader ||
-      !appHeader ||
-      !statusHeader
-    ) {
-      alert("A estrutura de colunas do controle de mobiles está incompleta.");
+    if (!setorHeader || !setorLocalizadoHeader || !coletorHeader || !snHeader || !finalHeader || !macHeader || !appHeader || !statusHeader) {
+      alert("Não foi possível identificar todos os campos obrigatórios do equipamento.");
       return;
     }
 
-    if (!requireValue(setorHeader, "o Setor")) return;
-    if (!requireValue(setorLocalizadoHeader, "o Setor localizado")) return;
-    if (!requireValue(coletorHeader, "o Coletor")) return;
-    if (!requireValue(snHeader, "o SN")) return;
-    if (!requireValue(finalHeader, "o FINAL")) return;
-    if (!requireValue(macHeader, "o MAC")) return;
-    if (!requireValue(appHeader, "o App de uso")) return;
-    if (!requireValue(statusHeader, "o Status")) return;
+    const setor = String(formData[setorHeader] || "").trim();
+    const localizado = String(formData[setorLocalizadoHeader] || "").trim();
+    const coletor = String(formData[coletorHeader] || "").trim();
+    const sn = String(formData[snHeader] || "").trim();
+    const finalValue = String(formData[finalHeader] || "").trim();
+    const mac = String(formData[macHeader] || "").trim();
+    const app = String(formData[appHeader] || "").trim();
+    const status = String(formData[statusHeader] || "").trim().toUpperCase();
+    const version = versaoHeader ? String(formData[versaoHeader] || "").trim() : "";
+
+    if (!setor || !localizado || !coletor || !sn || !finalValue || !mac || !app || !status) {
+      alert("Preencha todos os campos obrigatórios: Setor, Setor localizado, Coletor, SN, FINAL, MAC, App de uso e Status.");
+      return;
+    }
+    if (!/^\d+$/.test(sn)) {
+      alert("SN deve conter apenas números.");
+      return;
+    }
+    if (!/^\d+$/.test(finalValue)) {
+      alert("FINAL deve conter apenas números.");
+      return;
+    }
+    if (!isTodos && !version) {
+      alert("Informe a Versão para equipamentos vinculados a um App específico.");
+      return;
+    }
+    if (normalize(originalApp) !== normalize(app)) {
+      alert("A alteração entre TODOS e um App específico ainda não é permitida pela edição simples. Essa mudança exige reorganizar os registros de tbMobileApps.");
+      return;
+    }
+
+    const originalStatusIdx = headers.findIndex((header) => normalize(header) === normalize("Status"));
+    const originalStatus = originalStatusIdx !== -1 ? String(row[originalStatusIdx] || "").trim().toUpperCase() : "";
+    if ((status === "M" || status === "E") && status !== originalStatus) {
+      alert("Os status Manutenção e Emprestado são controlados automaticamente pela rotina de empréstimo e não podem ser definidos manualmente.");
+      return;
+    }
 
     const currentRowIndex = (row as any)._originalIndex;
-    if (typeof currentRowIndex !== "number") {
+    if (currentRowIndex === undefined || currentRowIndex === null) {
       alert("Não foi possível identificar a linha original do equipamento.");
       return;
     }
 
-    const sn = String(formData[snHeader] || "").trim();
-    const final = String(formData[finalHeader] || "").trim();
-    const app = String(formData[appHeader] || "").trim();
-    const version = versaoHeader
-      ? String(formData[versaoHeader] || "").trim()
-      : "";
-
-    if (!/^\d+$/.test(sn)) {
-      alert("O SN deve conter apenas números.");
-      return;
-    }
-    if (!/^\d+$/.test(final)) {
-      alert("O FINAL deve conter apenas números.");
-      return;
-    }
-    if (normalize(app) !== "todos" && !version) {
-      alert("Informe a Versão para equipamentos que utilizam um App específico.");
-      return;
-    }
-
-    const originalApp = String(
-      row[headers.indexOf(appHeader)] || ""
-    ).trim();
-    const originalVersion = versaoHeader
-      ? String(row[headers.indexOf(versaoHeader)] || "").trim()
-      : "";
-
-    if (
-      normalize(originalApp) !== normalize(app) &&
-      (normalize(originalApp) === "todos" || normalize(app) === "todos")
-    ) {
-      alert(
-        "A alteração entre TODOS e um App específico exige reorganizar os registros individuais de aplicativos. Por segurança, faça esse ajuste em uma etapa específica da gestão de Apps."
-      );
-      return;
-    }
-
-    const status = String(formData[statusHeader] || "")
-      .trim()
-      .toUpperCase();
-    const originalStatus = String(
-      row[headers.indexOf(statusHeader)] || ""
-    ).trim().toUpperCase();
-
-    if (
-      (status === "M" || status === "E") &&
-      status !== originalStatus
-    ) {
-      alert(
-        "Os status Manutenção e Emprestado são controlados automaticamente pela rotina de empréstimo e não podem ser definidos manualmente."
-      );
-      return;
-    }
-
-    if (!isOperationalStatus && !["A", "I"].includes(status)) {
-      alert("Informe um Status válido: Ativo ou Inativo.");
-      return;
-    }
-
-    const snIdx = headers.indexOf(snHeader);
-    const coletorIdx = headers.indexOf(coletorHeader);
-    const statusIdx = headers.indexOf(statusHeader);
-    const coletor = String(formData[coletorHeader] || "").trim();
+    const snIdx = headers.findIndex((header) => normalize(header) === normalize("SN"));
+    const coletorIdx = headers.findIndex((header) => normalize(header) === normalize("Coletor"));
+    const statusIdx = headers.findIndex((header) => normalize(header) === normalize("Status"));
 
     const duplicateSn = allRows.some((otherRow) => {
       const otherRowIndex = (otherRow as any)._originalIndex;
       if (otherRowIndex === currentRowIndex) return false;
       const otherSn = String(otherRow[snIdx] || "").trim();
-      return otherSn && normalize(otherSn) === normalize(sn);
+      return otherSn !== "" && normalize(otherSn) === normalize(sn);
     });
-
     if (duplicateSn) {
       alert(`Já existe outro equipamento cadastrado com o SN "${sn}".`);
       return;
@@ -489,66 +269,83 @@ export default function EditarMobileModal({
       const activeCollectorExists = allRows.some((otherRow) => {
         const otherRowIndex = (otherRow as any)._originalIndex;
         if (otherRowIndex === currentRowIndex) return false;
-        return (
-          normalize(otherRow[coletorIdx] || "") === normalize(coletor) &&
-          String(otherRow[statusIdx] || "").trim().toUpperCase() === "A"
-        );
+        const otherCollector = String(otherRow[coletorIdx] || "").trim();
+        const otherStatus = String(otherRow[statusIdx] || "").trim().toUpperCase();
+        return normalize(otherCollector) === normalize(coletor) && otherStatus === "A";
       });
       if (activeCollectorExists) {
-        alert(
-          `Já existe outro equipamento ATIVO utilizando o Coletor "${coletor}".`
-        );
+        alert(`Já existe outro equipamento ATIVO utilizando o Coletor "${coletor}".`);
         return;
       }
     }
 
     const updatedData = { ...formData };
-    const versionChanged = originalVersion !== version;
-    const appChanged = normalize(originalApp) !== normalize(app);
+    const originalVersion = versaoHeader ? String(row[headers.indexOf(versaoHeader)] || "").trim() : "";
+    const versionChanged = !isTodos && originalVersion !== version;
 
-    if (statusAtualizacaoHeader) {
-      updatedData[statusAtualizacaoHeader] = calculateUpdateStatus(app, version);
-    }
-
-    if (versionChanged || appChanged) {
-      if (dataAtualizacaoHeader) {
-        updatedData[dataAtualizacaoHeader] = getToday();
-      }
-      if (responsavelAtualizacaoHeader) {
-        updatedData[responsavelAtualizacaoHeader] = currentUserName;
-      }
+    if (statusAtualizacaoHeader) updatedData[statusAtualizacaoHeader] = isTodos ? "" : automaticStatus;
+    if (versionChanged) {
+      if (dataAtualizacaoHeader) updatedData[dataAtualizacaoHeader] = getToday();
+      if (responsavelAtualizacaoHeader) updatedData[responsavelAtualizacaoHeader] = currentUserName;
       if (contadorHeader) {
-        const originalCounter =
-          Number(
-            String(row[headers.indexOf(contadorHeader)] || "0")
-              .replace(",", ".")
-          ) || 0;
+        const originalCounter = Number(String(row[headers.indexOf(contadorHeader)] || "0").trim().replace(",", ".")) || 0;
         updatedData[contadorHeader] = String(originalCounter + 1);
       }
     }
 
-    const updatedRow = headers.map(
-      (header) => updatedData[header] || ""
-    );
-
+    const updatedRow = headers.map((header) => updatedData[header] || "");
     setSaving(true);
+
     try {
-      await onSave(updatedRow, currentRowIndex);
-      if (normalize(app) !== "todos" && (versionChanged || appChanged)) {
-        await syncSingleApp(
-          originalApp,
-          app,
-          version,
-          versionChanged || appChanged
+      if (versionChanged) {
+        const appHeaders = mobileApps[0] || [];
+        const appCollectorIdx = appHeaders.findIndex((header) => normalize(header) === normalize("COLETOR"));
+        const appUsoIdx = appHeaders.findIndex((header) => normalize(header) === normalize("APP_USO"));
+        const appVersionIdx = appHeaders.findIndex((header) => normalize(header) === normalize("VERSAO"));
+        const appDateIdx = appHeaders.findIndex((header) => normalize(header) === normalize("DATA_ATUALIZACAO"));
+        const appStatusIdx = appHeaders.findIndex((header) => normalize(header) === normalize("STATUS_ATUALIZACAO"));
+        const appResponsibleIdx = appHeaders.findIndex((header) => normalize(header) === normalize("RESPONSAVEL_ATUALIZACAO"));
+        const appCounterIdx = appHeaders.findIndex((header) => normalize(header) === normalize("CONTADOR_ATUALIZACAO"));
+
+        const matchingRows = mobileApps.slice(1).filter((item) =>
+          appCollectorIdx !== -1 &&
+          appUsoIdx !== -1 &&
+          normalize(String(item[appCollectorIdx] || "")) === normalize(coletor) &&
+          normalize(String(item[appUsoIdx] || "")) === normalize(app)
         );
+
+        if (matchingRows.length !== 1) {
+          throw new Error(
+            matchingRows.length === 0
+              ? `Não foi encontrado o registro do App ${app} para o coletor ${coletor} em tbMobileApps.`
+              : `Foram encontrados múltiplos registros do App ${app} para o coletor ${coletor} em tbMobileApps.`
+          );
+        }
+
+        const appRow = matchingRows[0];
+        const originalIndex = (appRow as any)._originalIndex;
+        if (originalIndex === undefined || originalIndex === null) {
+          throw new Error("Não foi possível identificar a linha original do App em tbMobileApps.");
+        }
+
+        const updatedAppRow = [...appRow];
+        if (appVersionIdx !== -1) updatedAppRow[appVersionIdx] = version;
+        if (appDateIdx !== -1) updatedAppRow[appDateIdx] = getToday();
+        if (appStatusIdx !== -1) updatedAppRow[appStatusIdx] = automaticStatus;
+        if (appResponsibleIdx !== -1) updatedAppRow[appResponsibleIdx] = currentUserName;
+        if (appCounterIdx !== -1) {
+          const currentCounter = Number(String(appRow[appCounterIdx] || "0").trim().replace(",", ".")) || 0;
+          updatedAppRow[appCounterIdx] = String(currentCounter + 1);
+        }
+
+        await onSaveMobileApp(updatedAppRow, originalIndex);
       }
+
+      await onSave(updatedRow, currentRowIndex);
       await Promise.resolve(onRefresh());
       onClose();
     } catch (error: any) {
-      alert(
-        "Erro ao salvar equipamento: " +
-          (error.message || "Erro desconhecido")
-      );
+      alert("Erro ao salvar equipamento: " + error.message);
     } finally {
       setSaving(false);
     }
@@ -565,365 +362,89 @@ export default function EditarMobileModal({
     fontSize: "13px",
     outline: "none",
   };
+  const labelStyle: React.CSSProperties = { display: "flex", flexDirection: "column", gap: "6px", color: "var(--text-secondary)", fontSize: "12px", fontWeight: 600 };
+  const requiredLabel = (label: string, required = true) => `${label}${required ? " *" : ""}`;
 
-  const labelStyle: React.CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    color: "var(--text-secondary)",
-    fontSize: "12px",
-    fontWeight: 600,
-  };
-
-  const renderField = (
-    header: string | undefined,
-    label: string,
-    options?: {
-      type?: "text" | "date" | "select" | "textarea";
-      required?: boolean;
-      readOnly?: boolean;
-      choices?: Array<{ value: string; label: string }>;
-      numericOnly?: boolean;
-      disabled?: boolean;
-      helper?: string;
-    }
-  ) => {
+  const textField = (header: string | undefined, label: string, required = false, numeric = false) => {
     if (!header) return null;
-
-    const type = options?.type || "text";
-    const required = Boolean(options?.required);
-    const readOnly = Boolean(options?.readOnly);
-    const disabled = Boolean(options?.disabled);
-
     return (
       <label style={labelStyle}>
-        {label}{required ? " *" : ""}
-        {type === "select" ? (
-          <select
-            value={formData[header] || ""}
-            required={required}
-            disabled={disabled}
-            onChange={(event) => handleChange(header, event.target.value)}
-            style={{ ...inputStyle, opacity: disabled ? 0.65 : 1 }}
-          >
-            <option value="">Selecione</option>
-            {(options?.choices || []).map((choice) => (
-              <option key={choice.value} value={choice.value}>
-                {choice.label}
-              </option>
-            ))}
-          </select>
-        ) : type === "textarea" ? (
-          <textarea
-            value={formData[header] || ""}
-            rows={3}
-            onChange={(event) => handleChange(header, event.target.value)}
-            style={{ ...inputStyle, resize: "vertical" }}
-          />
-        ) : (
-          <input
-            type={type}
-            value={formData[header] || ""}
-            required={required}
-            readOnly={readOnly}
-            disabled={disabled}
-            inputMode={options?.numericOnly ? "numeric" : undefined}
-            onChange={(event) =>
-              handleChange(
-                header,
-                options?.numericOnly
-                  ? event.target.value.replace(/\D/g, "")
-                  : event.target.value
-              )
-            }
-            style={{
-              ...inputStyle,
-              cursor: readOnly || disabled ? "not-allowed" : undefined,
-              opacity: readOnly || disabled ? 0.7 : 1,
-            }}
-          />
-        )}
-        {options?.helper && (
-          <span
-            style={{
-              color: "var(--text-muted)",
-              fontSize: "10px",
-              fontWeight: 500,
-            }}
-          >
-            {options.helper}
-          </span>
-        )}
+        {requiredLabel(label, required)}
+        <input
+          type="text"
+          inputMode={numeric ? "numeric" : undefined}
+          pattern={numeric ? "[0-9]*" : undefined}
+          required={required}
+          value={formData[header] || ""}
+          onChange={(event) => handleChange(header, numeric ? event.target.value.replace(/\D/g, "") : event.target.value)}
+          style={inputStyle}
+        />
       </label>
     );
   };
 
-  const appValue = appHeader ? formData[appHeader] || "" : "";
-  const isTodos = normalize(appValue) === "todos";
+  const selectField = (header: string | undefined, label: string, options: string[], required = true, onValueChange?: (value: string) => void) => {
+    if (!header) return null;
+    return (
+      <label style={labelStyle}>
+        {requiredLabel(label, required)}
+        <select
+          required={required}
+          value={formData[header] || ""}
+          onChange={(event) => onValueChange ? onValueChange(event.target.value) : handleChange(header, event.target.value)}
+          style={inputStyle}
+        >
+          <option value="">Selecione</option>
+          {options.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+      </label>
+    );
+  };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(15, 23, 42, 0.65)",
-        backdropFilter: "blur(8px)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "20px",
-        zIndex: 1100,
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "900px",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          backgroundColor: "var(--bg-secondary)",
-          border: "1px solid var(--border-primary)",
-          borderRadius: "14px",
-          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-        }}
-      >
+    <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(8px)", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", zIndex: 1100 }}>
+      <div style={{ width: "100%", maxWidth: "900px", maxHeight: "90vh", overflowY: "auto", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "14px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
         <form onSubmit={handleSubmit}>
-          <div
-            style={{
-              padding: "20px 22px",
-              borderBottom: "1px solid var(--border-primary)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "16px",
-            }}
-          >
+          <div style={{ padding: "20px 22px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
             <div>
-              <h2
-                style={{
-                  margin: 0,
-                  color: "var(--text-primary)",
-                  fontSize: "20px",
-                }}
-              >
-                Editar Equipamento
-              </h2>
-              <p
-                style={{
-                  margin: "5px 0 0",
-                  color: "var(--text-muted)",
-                  fontSize: "12px",
-                }}
-              >
-                {currentCollector || "Equipamento"} · campos com * são obrigatórios.
-              </p>
+              <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: "20px" }}>Editar Equipamento</h2>
+              <p style={{ margin: "5px 0 0", color: "var(--text-muted)", fontSize: "12px" }}>{coletorHeader ? formData[coletorHeader] || "Equipamento" : "Equipamento"}</p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving || returning}
-              style={{
-                width: "34px",
-                height: "34px",
-                borderRadius: "8px",
-                border: "1px solid var(--border-primary)",
-                backgroundColor: "var(--bg-primary)",
-                color: "var(--text-primary)",
-                cursor: saving || returning ? "not-allowed" : "pointer",
-                fontSize: "18px",
-              }}
-            >
-              ×
-            </button>
+            <button type="button" onClick={onClose} disabled={saving || returning} style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", cursor: "pointer", fontSize: "18px" }}>×</button>
           </div>
 
-          <div
-            style={{
-              padding: "22px",
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: "18px",
-            }}
-          >
-            {renderField(setorHeader, "Setor", {
-              type: "select",
-              required: true,
-              choices: setores.map((item) => ({ value: item, label: item })),
-            })}
-            {renderField(setorLocalizadoHeader, "Setor localizado", {
-              type: "select",
-              required: true,
-              choices: setores.map((item) => ({ value: item, label: item })),
-            })}
-            {renderField(coletorHeader, "Coletor", { required: true })}
-            {renderField(snHeader, "SN", {
-              required: true,
-              numericOnly: true,
-            })}
-            {renderField(finalHeader, "FINAL", {
-              required: true,
-              numericOnly: true,
-            })}
-            {renderField(macHeader, "MAC", { required: true })}
-            {renderField(ipHeader, "IP")}
-            {renderField(appHeader, "App de uso", {
-              type: "select",
-              required: true,
-              disabled: isOperationalStatus,
-              choices: appOptions.map((item) => ({ value: item, label: item })),
-              helper: isOperationalStatus
-                ? "Não altere o App enquanto o equipamento estiver em empréstimo/manutenção."
-                : undefined,
-            })}
-            {renderField(entregueHeader, "Entregue", { type: "date" })}
-            {renderField(versaoHeader, "Versão", {
-              required: Boolean(appValue) && !isTodos,
-              disabled: isTodos || isOperationalStatus,
-              helper: isTodos
-                ? "Para TODOS, as versões são controladas individualmente na opção Apps."
-                : "Ao alterar a versão, data, contador e responsável são atualizados automaticamente.",
-            })}
+          <div style={{ padding: "22px", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "18px" }}>
+            {selectField(setorHeader, "Setor", sectors, true, handleSectorChange)}
+            {selectField(setorLocalizadoHeader, "Setor localizado", sectors, true)}
+            {textField(coletorHeader, "Coletor", true)}
+            {textField(snHeader, "SN", true, true)}
+            {textField(finalHeader, "FINAL", true, true)}
+            {textField(macHeader, "MAC", true)}
+            {textField(ipHeader, "IP", false)}
+            {selectField(appHeader, "App de uso", [...configuredApps, "TODOS"], true)}
+            {entregueHeader && <label style={labelStyle}>{requiredLabel("Entregue", false)}<input type="date" value={formData[entregueHeader] || ""} onChange={(event) => handleChange(entregueHeader, event.target.value)} style={inputStyle} /></label>}
+            {versaoHeader && <label style={labelStyle}>{requiredLabel("Versão", !isTodos)}<input type="text" required={!isTodos} disabled={isTodos} value={isTodos ? "" : formData[versaoHeader] || ""} onChange={(event) => handleChange(versaoHeader, event.target.value)} style={{ ...inputStyle, opacity: isTodos ? 0.6 : 1, cursor: isTodos ? "not-allowed" : "text" }} /></label>}
 
-            {statusHeader && (
-              isOperationalStatus ? (
-                <label style={labelStyle}>
-                  Status
-                  <input
-                    type="text"
-                    value={getStatusLabel(currentStatus)}
-                    readOnly
-                    style={{
-                      ...inputStyle,
-                      cursor: "not-allowed",
-                      opacity: 0.75,
-                    }}
-                  />
-                  <span
-                    style={{
-                      color: "var(--text-muted)",
-                      fontSize: "10px",
-                      fontWeight: 500,
-                    }}
-                  >
-                    Status controlado automaticamente pela rotina de empréstimo.
-                  </span>
-                </label>
-              ) : (
-                renderField(statusHeader, "Status", {
-                  type: "select",
-                  required: true,
-                  choices: [
-                    { value: "A", label: "Ativo" },
-                    { value: "I", label: "Inativo" },
-                  ],
-                })
-              )
-            )}
+            {statusHeader && (isOperationalStatus ? (
+              <label style={labelStyle}>Status *<input type="text" value={getStatusLabel(currentStatus)} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.75 }} /><span style={{ color: "var(--text-muted)", fontSize: "10px", fontWeight: 500 }}>Status controlado automaticamente pela rotina de empréstimo.</span></label>
+            ) : selectField(statusHeader, "Status", ["A", "I"], true))}
 
-            {renderField(statusAtualizacaoHeader, "Status atualização", {
-              readOnly: true,
-              helper: "Calculado automaticamente pela versão atual e versão de referência.",
-            })}
-            {renderField(dataAtualizacaoHeader, "Data atualização", {
-              type: "date",
-              readOnly: true,
-            })}
-            {renderField(contadorHeader, "Contador atualização", {
-              readOnly: true,
-            })}
-            {renderField(
-              responsavelAtualizacaoHeader,
-              "Responsável atualização",
-              { readOnly: true }
-            )}
-            {obsHeader && (
-              <div style={{ gridColumn: "1 / -1" }}>
-                {renderField(obsHeader, "Observação", { type: "textarea" })}
-              </div>
-            )}
+            {statusAtualizacaoHeader && <label style={labelStyle}>Status atualização<input type="text" value={automaticStatus} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }} /></label>}
+            {dataAtualizacaoHeader && <label style={labelStyle}>Data atualização<input type="text" value={formData[dataAtualizacaoHeader] || ""} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }} /></label>}
+            {contadorHeader && <label style={labelStyle}>Contador atualização<input type="text" value={formData[contadorHeader] || ""} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }} /></label>}
+            {responsavelAtualizacaoHeader && <label style={labelStyle}>Responsável atualização<input type="text" value={formData[responsavelAtualizacaoHeader] || ""} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }} /></label>}
+
+            {obsHeader && <label style={{ ...labelStyle, gridColumn: "1 / -1" }}>{requiredLabel("Observação", false)}<textarea value={formData[obsHeader] || ""} onChange={(event) => handleChange(obsHeader, event.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical" }} /></label>}
           </div>
 
-          <div
-            style={{
-              padding: "16px 22px",
-              borderTop: "1px solid var(--border-primary)",
-              display: "flex",
-              justifyContent: "space-between",
-              gap: "12px",
-              flexWrap: "wrap",
-            }}
-          >
+          <div style={{ padding: "16px 22px", borderTop: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              {canTemporarilyReplace && (
-                <button
-                  type="button"
-                  onClick={() => setShowSubstitute(true)}
-                  disabled={saving || returning}
-                  style={{
-                    padding: "10px 18px",
-                    backgroundColor: "rgba(245, 158, 11, 0.14)",
-                    color: "#F59E0B",
-                    border: "1px solid rgba(245, 158, 11, 0.35)",
-                    borderRadius: "8px",
-                    cursor: saving || returning ? "not-allowed" : "pointer",
-                    fontWeight: 700,
-                  }}
-                >
-                  Substituir temporariamente
-                </button>
-              )}
-              {canFinalizeLoan && (
-                <button
-                  type="button"
-                  onClick={handleFinalizeLoan}
-                  disabled={saving || returning}
-                  style={{
-                    padding: "10px 18px",
-                    backgroundColor: "rgba(16, 185, 129, 0.14)",
-                    color: "#10B981",
-                    border: "1px solid rgba(16, 185, 129, 0.35)",
-                    borderRadius: "8px",
-                    cursor: saving || returning ? "not-allowed" : "pointer",
-                    fontWeight: 700,
-                  }}
-                >
-                  {returning ? "Finalizando..." : "Finalizar empréstimo"}
-                </button>
-              )}
+              {canTemporarilyReplace && <button type="button" onClick={() => setShowSubstitute(true)} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 700 }}>Substituir temporariamente</button>}
+              {canFinalizeLoan && <button type="button" onClick={handleFinalizeLoan} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "rgba(16, 185, 129, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 700 }}>{returning ? "Finalizando..." : "Finalizar empréstimo"}</button>}
             </div>
-
             <div style={{ display: "flex", gap: "12px" }}>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={saving || returning}
-                style={{
-                  padding: "10px 18px",
-                  backgroundColor: "var(--bg-primary)",
-                  color: "var(--text-primary)",
-                  border: "1px solid var(--border-primary)",
-                  borderRadius: "8px",
-                  cursor: saving || returning ? "not-allowed" : "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={saving || returning}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#3B82F6",
-                  color: "#FFFFFF",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: saving || returning ? "not-allowed" : "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                {saving ? "Salvando..." : "Salvar alterações"}
-              </button>
+              <button type="button" onClick={onClose} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 600 }}>Cancelar</button>
+              <button type="submit" disabled={saving || returning} style={{ padding: "10px 20px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 600 }}>{saving ? "Salvando..." : "Salvar alterações"}</button>
             </div>
           </div>
         </form>
