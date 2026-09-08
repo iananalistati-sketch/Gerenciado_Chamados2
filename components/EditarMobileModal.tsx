@@ -26,6 +26,7 @@ export default function EditarMobileModal({
     useState<Record<string, string>>({});
 
   const [saving, setSaving] = useState(false);
+  const [returning, setReturning] = useState(false);
   const [showSubstitute, setShowSubstitute] = useState(false);
 
   useEffect(() => {
@@ -95,9 +96,17 @@ export default function EditarMobileModal({
   const currentSector = setorHeader
     ? String(formData[setorHeader] || "").trim()
     : "";
+  const currentCollector = coletorHeader
+    ? String(formData[coletorHeader] || "").trim()
+    : "";
+
   const canTemporarilyReplace =
     currentStatus === "A" &&
     normalize(currentSector) !== normalize("TI-SUPORTE");
+
+  const canFinalizeLoan =
+    currentStatus === "E" &&
+    normalize(currentSector) === normalize("TI-SUPORTE");
 
   const handleChange = (
     header: string | undefined,
@@ -124,6 +133,70 @@ export default function EditarMobileModal({
     return localDate
       .toISOString()
       .split("T")[0];
+  };
+
+  const handleFinalizeLoan = async () => {
+    if (!canFinalizeLoan || !currentCollector) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Finalizar o empréstimo do equipamento reserva "${currentCollector}"?\n\nO equipamento original voltará para Ativo e a reserva retornará para TI-SUPORTE como disponível.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const observation = window.prompt(
+      "Observação da devolução (opcional):",
+      ""
+    );
+
+    if (observation === null) {
+      return;
+    }
+
+    setReturning(true);
+
+    try {
+      const response = await fetch(
+        "/api/mobiles/loan-return",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            reserveCollector: currentCollector,
+            responsible: currentUserName,
+            observation: observation.trim(),
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            "Erro ao finalizar empréstimo temporário."
+        );
+      }
+
+      alert(
+        `Empréstimo ${result.loanId || ""} finalizado com sucesso. O equipamento reserva voltou a ficar disponível.`.trim()
+      );
+
+      onClose();
+    } catch (error: any) {
+      alert(
+        "Erro ao finalizar empréstimo: " +
+          (error.message || "Erro desconhecido")
+      );
+    } finally {
+      setReturning(false);
+    }
   };
 
   const handleSubmit = async (
@@ -500,7 +573,7 @@ export default function EditarMobileModal({
             <button
               type="button"
               onClick={onClose}
-              disabled={saving}
+              disabled={saving || returning}
               style={{
                 width: "34px",
                 height: "34px",
@@ -545,6 +618,7 @@ export default function EditarMobileModal({
               "select",
               [
                 { value: "A", label: "Ativo" },
+                { value: "E", label: "Emprestado" },
                 { value: "I", label: "Inativo" },
                 { value: "M", label: "Manutenção" },
               ]
@@ -616,23 +690,44 @@ export default function EditarMobileModal({
               flexWrap: "wrap",
             }}
           >
-            <div>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               {canTemporarilyReplace && (
                 <button
                   type="button"
                   onClick={() => setShowSubstitute(true)}
-                  disabled={saving}
+                  disabled={saving || returning}
                   style={{
                     padding: "10px 18px",
                     backgroundColor: "rgba(245, 158, 11, 0.14)",
                     color: "#F59E0B",
                     border: "1px solid rgba(245, 158, 11, 0.35)",
                     borderRadius: "8px",
-                    cursor: saving ? "not-allowed" : "pointer",
+                    cursor: saving || returning ? "not-allowed" : "pointer",
                     fontWeight: 700,
                   }}
                 >
                   Substituir temporariamente
+                </button>
+              )}
+
+              {canFinalizeLoan && (
+                <button
+                  type="button"
+                  onClick={handleFinalizeLoan}
+                  disabled={saving || returning}
+                  style={{
+                    padding: "10px 18px",
+                    backgroundColor: "rgba(16, 185, 129, 0.14)",
+                    color: "#10B981",
+                    border: "1px solid rgba(16, 185, 129, 0.35)",
+                    borderRadius: "8px",
+                    cursor: saving || returning ? "not-allowed" : "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  {returning
+                    ? "Finalizando..."
+                    : "Finalizar empréstimo"}
                 </button>
               )}
             </div>
@@ -641,7 +736,7 @@ export default function EditarMobileModal({
               <button
                 type="button"
                 onClick={onClose}
-                disabled={saving}
+                disabled={saving || returning}
                 style={{
                   padding: "10px 18px",
                   backgroundColor:
@@ -651,7 +746,7 @@ export default function EditarMobileModal({
                   border:
                     "1px solid var(--border-primary)",
                   borderRadius: "8px",
-                  cursor: saving
+                  cursor: saving || returning
                     ? "not-allowed"
                     : "pointer",
                   fontWeight: 600,
@@ -662,14 +757,14 @@ export default function EditarMobileModal({
 
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || returning}
                 style={{
                   padding: "10px 20px",
                   backgroundColor: "#3B82F6",
                   color: "#FFFFFF",
                   border: "none",
                   borderRadius: "8px",
-                  cursor: saving
+                  cursor: saving || returning
                     ? "not-allowed"
                     : "pointer",
                   fontWeight: 600,
