@@ -381,8 +381,8 @@ export default function ControleMobiles({
       </div>}
 
       <DetalhesAppsMobileModal isOpen={viewingAppsRow !== null} coletor={viewingAppsColetor} appRows={viewingApps} mobileApps={mobileApps} mobileConfig={mobileConfig} currentUserName={currentUserName} canEdit={canEdit} onSave={onSaveMobileApp} onClose={() => setViewingAppsRow(null)} />
-      <EditarMobileModal isOpen={editingRow !== null} row={editingRow} headers={headers} allRows={rows} currentUserName={currentUserName} normalize={normalize} onClose={handleCloseEdit} onSave={onSaveRow} onRefresh={onRefresh} />
-      <NovoMobileModal isOpen={showCreateModal} headers={headers} allRows={rows} normalize={normalize} onClose={() => setShowCreateModal(false)} onCreate={onCreateRow} />
+      <EditarMobileModal isOpen={editingRow !== null} row={editingRow} headers={headers} allRows={rows} mobileConfig={mobileConfig} mobileApps={mobileApps} currentUserName={currentUserName} normalize={normalize} onClose={handleCloseEdit} onSave={onSaveRow} onSaveMobileApp={onSaveMobileApp} onRefresh={onRefresh} />
+      <NovoMobileModal isOpen={showCreateModal} headers={headers} allRows={rows} mobileConfig={mobileConfig} currentUserName={currentUserName} normalize={normalize} onClose={() => setShowCreateModal(false)} onCreate={onCreateRow} />
       <AtualizacaoLoteMobilesModal isOpen={showBulkUpdateModal} selectedCount={selectedRows.length} currentUserName={currentUserName} onClose={() => setShowBulkUpdateModal(false)} onApply={handleBulkUpdate} />
     </div>
   );
