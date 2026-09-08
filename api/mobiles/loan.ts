@@ -333,6 +333,7 @@ export default async function handler(req: any, res: any) {
     ) {
       reserveUpdated.push("");
     }
+    reserveUpdated[statusIdx] = "E";
     reserveUpdated[setorLocalizadoIdx] = originalSector;
 
     const loanId = makeLoanId();
