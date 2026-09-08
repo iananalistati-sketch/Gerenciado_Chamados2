@@ -73,6 +73,10 @@ export default function ControleMobiles({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: "asc" | "desc";
+  }>({ key: "", direction: "asc" });
 
   const itemsPerPage = 20;
   const headers = data[0] || [];
@@ -238,12 +242,89 @@ export default function ControleMobiles({
 
   useEffect(() => setCurrentPage(1), [search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / itemsPerPage));
-  const paginatedRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const handleSort = (key: string) => {
+    setSortConfig((previous) => ({
+      key,
+      direction:
+        previous.key === key && previous.direction === "asc"
+          ? "desc"
+          : "asc",
+    }));
+    setCurrentPage(1);
+  };
+
+  const getSortValue = (row: string[], key: string): string | number => {
+    switch (key) {
+      case "setor":
+        return setorIdx !== -1 ? String(row[setorIdx] || "") : "";
+      case "coletor":
+        return coletorIdx !== -1 ? String(row[coletorIdx] || "") : "";
+      case "sn":
+        return snIdx !== -1 ? String(row[snIdx] || "") : "";
+      case "ip":
+        return ipIdx !== -1 ? String(row[ipIdx] || "") : "";
+      case "app":
+        return appIdx !== -1 ? String(row[appIdx] || "") : "";
+      case "appsAtualizados": {
+        const summary = getMobileUpdateSummary(row);
+        return summary.totalApps > 0
+          ? summary.updatedApps / summary.totalApps
+          : -1;
+      }
+      case "statusAtualizacao":
+        return getMobileUpdateSummary(row).status;
+      case "status":
+        return statusIdx !== -1 ? String(row[statusIdx] || "") : "";
+      default:
+        return "";
+    }
+  };
+
+  const sortedRows = useMemo(() => {
+    if (!sortConfig.key) return filteredRows;
+
+    return [...filteredRows].sort((a, b) => {
+      const first = getSortValue(a, sortConfig.key);
+      const second = getSortValue(b, sortConfig.key);
+
+      let comparison = 0;
+
+      if (typeof first === "number" && typeof second === "number") {
+        comparison = first - second;
+      } else {
+        comparison = String(first).localeCompare(String(second), "pt-BR", {
+          numeric: true,
+          sensitivity: "base",
+        });
+      }
+
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    });
+  }, [filteredRows, sortConfig, setorIdx, coletorIdx, snIdx, ipIdx, appIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / itemsPerPage));
+  const paginatedRows = sortedRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const clearFilters = () => {
-    setSearch(""); setSetorFilter(""); setAppFilter(""); setStatusFilter(""); setStatusAtualizacaoFilter(""); setVersaoFilter(""); setCurrentPage(1);
+    setSearch("");
+    setSetorFilter("");
+    setAppFilter("");
+    setStatusFilter("");
+    setStatusAtualizacaoFilter("");
+    setVersaoFilter("");
+    setCurrentPage(1);
   };
+
+  const toggleStatusFilter = (status: string) => {
+    setStatusFilter((current) => normalizeValue(current) === normalizeValue(status) ? "" : status);
+    setCurrentPage(1);
+  };
+
+  const toggleUpdateStatusFilter = (status: string) => {
+    setStatusAtualizacaoFilter((current) => normalizeValue(current) === normalizeValue(status) ? "" : status);
+    setCurrentPage(1);
+  };
+
   const handleEdit = (row: string[]) => { if (canEdit) setEditingRow(row); };
   const handleCloseEdit = () => setEditingRow(null);
   const handleToggleRow = (row: string[]) => {
@@ -307,11 +388,31 @@ export default function ControleMobiles({
     return { backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)" };
   };
   const inputStyle: React.CSSProperties = { padding: "10px 12px", backgroundColor: "var(--bg-input)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", fontSize: "13px", outline: "none", minHeight: "40px" };
+
   const cards = [
-    { label: "Total de Equipamentos", value: totalEquipamentos, detail: `${totalAtivos} ativos` },
-    { label: "Atualizados", value: totalAtualizados, detail: `${progressoAtualizacao}% do total` },
-    { label: "Pendentes", value: totalPendentes, detail: "Aguardando atualização" },
-    { label: "Não Localizados", value: totalNaoLocalizados, detail: "Conferência pendente" },
+    { label: "Total de Equipamentos", value: totalEquipamentos, detail: `${totalAtivos} ativos`, filter: "TOTAL" },
+    { label: "Atualizados", value: totalAtualizados, detail: `${progressoAtualizacao}% do total`, filter: "ATUALIZADO" },
+    { label: "Pendentes", value: totalPendentes, detail: "Aguardando atualização", filter: "PENDENTE" },
+    { label: "Não Localizados", value: totalNaoLocalizados, detail: "Conferência pendente", filter: "" },
+  ];
+
+  const statusCards = [
+    { label: "Ativos", value: totalAtivos, color: "var(--text-primary)", filter: "A" },
+    { label: "Emprestados", value: totalEmprestados, color: "#3B82F6", filter: "E" },
+    { label: "Manutenção", value: totalManutencao, color: "#F59E0B", filter: "M" },
+    { label: "Inativos", value: totalInativos, color: "var(--text-primary)", filter: "I" },
+  ];
+
+  const tableColumns = [
+    { title: "Setor", key: "setor" },
+    { title: "Coletor", key: "coletor" },
+    { title: "SN", key: "sn" },
+    { title: "IP", key: "ip" },
+    { title: "App de uso", key: "app" },
+    { title: "Apps atualizados", key: "appsAtualizados" },
+    { title: "Status atualização", key: "statusAtualizacao" },
+    { title: "Status", key: "status" },
+    { title: "Ações", key: "" },
   ];
 
   return (
@@ -328,11 +429,68 @@ export default function ControleMobiles({
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
-        {cards.map((card) => <div key={card.label} style={{ padding: "20px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}><div style={{ color: "var(--text-muted)", fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>{card.label}</div><div style={{ color: "var(--text-primary)", fontSize: "28px", fontWeight: 700 }}>{card.value}</div><div style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "6px" }}>{card.detail}</div></div>)}
+        {cards.map((card) => {
+          const isActive = card.filter === "TOTAL"
+            ? !hasActiveFilters
+            : card.filter && normalizeValue(statusAtualizacaoFilter) === normalizeValue(card.filter);
+          const clickable = card.filter !== "";
+          return (
+            <div
+              key={card.label}
+              role={clickable ? "button" : undefined}
+              tabIndex={clickable ? 0 : undefined}
+              onClick={() => {
+                if (card.filter === "TOTAL") clearFilters();
+                else if (card.filter) toggleUpdateStatusFilter(card.filter);
+              }}
+              onKeyDown={(event) => {
+                if (!clickable || (event.key !== "Enter" && event.key !== " ")) return;
+                event.preventDefault();
+                if (card.filter === "TOTAL") clearFilters();
+                else toggleUpdateStatusFilter(card.filter);
+              }}
+              style={{
+                padding: "20px",
+                backgroundColor: "var(--bg-secondary)",
+                border: isActive ? "1px solid #3B82F6" : "1px solid var(--border-primary)",
+                borderRadius: "12px",
+                cursor: clickable ? "pointer" : "default",
+                boxShadow: isActive ? "0 0 0 1px rgba(59, 130, 246, 0.18)" : "none",
+              }}
+              title={clickable ? "Clique para aplicar/remover o filtro rápido" : ""}
+            >
+              <div style={{ color: "var(--text-muted)", fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>{card.label}</div>
+              <div style={{ color: "var(--text-primary)", fontSize: "28px", fontWeight: 700 }}>{card.value}</div>
+              <div style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "6px" }}>{card.detail}</div>
+            </div>
+          );
+        })}
       </div>
 
       <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-        {[{ label: "Ativos", value: totalAtivos, color: "var(--text-primary)" }, { label: "Emprestados", value: totalEmprestados, color: "#3B82F6" }, { label: "Manutenção", value: totalManutencao, color: "#F59E0B" }, { label: "Inativos", value: totalInativos, color: "var(--text-primary)" }].map((item) => <div key={item.label} style={{ padding: "8px 12px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "8px", color: "var(--text-muted)", fontSize: "12px" }}>{item.label}: <strong style={{ color: item.color }}>{item.value}</strong></div>)}
+        {statusCards.map((item) => {
+          const isActive = normalizeValue(statusFilter) === normalizeValue(item.filter);
+          return (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => toggleStatusFilter(item.filter)}
+              style={{
+                padding: "8px 12px",
+                backgroundColor: "var(--bg-secondary)",
+                border: isActive ? "1px solid #3B82F6" : "1px solid var(--border-primary)",
+                borderRadius: "8px",
+                color: "var(--text-muted)",
+                fontSize: "12px",
+                cursor: "pointer",
+                boxShadow: isActive ? "0 0 0 1px rgba(59, 130, 246, 0.18)" : "none",
+              }}
+              title="Clique para aplicar/remover o filtro rápido"
+            >
+              {item.label}: <strong style={{ color: item.color }}>{item.value}</strong>
+            </button>
+          );
+        })}
       </div>
 
       <ReservasMobilesPanel data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />
@@ -359,7 +517,42 @@ export default function ControleMobiles({
       {!loading && !error && data.length > 1 && <div style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div><strong style={{ color: "var(--text-primary)" }}>Equipamentos cadastrados</strong><span style={{ marginLeft: "10px", color: "var(--text-muted)", fontSize: "12px" }}>{filteredRows.length} de {totalEquipamentos} registros</span></div></div>
         <div style={{ width: "100%", overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1180px" }}>
-          <thead><tr style={{ backgroundColor: "var(--bg-primary)" }}><th style={{ width: "42px", padding: "12px 10px", textAlign: "center", borderBottom: "1px solid var(--border-primary)" }}>{canEdit && <input type="checkbox" checked={allCurrentPageSelected} onChange={handleToggleCurrentPage} title="Selecionar página atual" style={{ cursor: "pointer" }} />}</th>{["Setor", "Coletor", "SN", "IP", "App de uso", "Apps atualizados", "Status atualização", "Status", "Ações"].map((title) => <th key={title} style={{ padding: "12px 14px", textAlign: "left", color: "var(--text-muted)", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", borderBottom: "1px solid var(--border-primary)" }}>{title}</th>)}</tr></thead>
+          <thead>
+            <tr style={{ backgroundColor: "var(--bg-primary)" }}>
+              <th style={{ width: "42px", padding: "12px 10px", textAlign: "center", borderBottom: "1px solid var(--border-primary)" }}>{canEdit && <input type="checkbox" checked={allCurrentPageSelected} onChange={handleToggleCurrentPage} title="Selecionar página atual" style={{ cursor: "pointer" }} />}</th>
+              {tableColumns.map((column) => {
+                const sortable = Boolean(column.key);
+                const activeSort = sortConfig.key === column.key;
+                return (
+                  <th
+                    key={column.title}
+                    onClick={() => sortable && handleSort(column.key)}
+                    title={sortable ? "Clique para ordenar" : ""}
+                    style={{
+                      padding: "12px 14px",
+                      textAlign: "left",
+                      color: activeSort ? "var(--text-primary)" : "var(--text-muted)",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                      borderBottom: "1px solid var(--border-primary)",
+                      cursor: sortable ? "pointer" : "default",
+                      userSelect: "none",
+                    }}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                      {column.title}
+                      {sortable && (
+                        <span style={{ fontSize: "10px", opacity: activeSort ? 1 : 0.45 }}>
+                          {activeSort ? (sortConfig.direction === "asc" ? "↑" : "↓") : "↕"}
+                        </span>
+                      )}
+                    </span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
           <tbody>{paginatedRows.length === 0 ? <tr><td colSpan={10} style={{ padding: "28px", textAlign: "center", color: "var(--text-muted)" }}>Nenhum equipamento encontrado com os filtros selecionados.</td></tr> : paginatedRows.map((row, index) => {
             const globalIndex = (currentPage - 1) * itemsPerPage + index;
             const mobileUpdateSummary = getMobileUpdateSummary(row);
