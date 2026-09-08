@@ -70,10 +70,6 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    /*
-     * Fluxo padrão das demais abas.
-     * Mantemos o comportamento já existente para chamados.
-     */
     if (sheet !== MOBILE_CONTROL_SHEET) {
       await sheets.spreadsheets.values.append({
         spreadsheetId,
@@ -90,11 +86,6 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    /*
-     * Cadastro de mobile.
-     * O equipamento físico é armazenado em tbControleMobiles,
-     * enquanto as versões dos aplicativos ficam em tbMobileApps.
-     */
     const [
       controlResponse,
       appsResponse,
@@ -150,20 +141,11 @@ export default async function handler(req: any, res: any) {
       configValues[0] || [];
 
     const controlColetorIdx =
-      findHeaderIndex(
-        controlHeaders,
-        "Coletor"
-      );
+      findHeaderIndex(controlHeaders, "Coletor");
     const controlSnIdx =
-      findHeaderIndex(
-        controlHeaders,
-        "SN"
-      );
+      findHeaderIndex(controlHeaders, "SN");
     const controlStatusIdx =
-      findHeaderIndex(
-        controlHeaders,
-        "Status"
-      );
+      findHeaderIndex(controlHeaders, "Status");
     const controlAppIdx =
       findHeaderIndex(
         controlHeaders,
@@ -215,10 +197,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const physicalRow = [
-      ...rowData.slice(
-        0,
-        controlHeaders.length
-      ),
+      ...rowData.slice(0, controlHeaders.length),
     ];
 
     while (
@@ -245,9 +224,7 @@ export default async function handler(req: any, res: any) {
     const initialVersion =
       controlVersaoIdx !== -1
         ? String(
-            physicalRow[
-              controlVersaoIdx
-            ] || ""
+            physicalRow[controlVersaoIdx] || ""
           ).trim()
         : "";
 
@@ -278,9 +255,6 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    /*
-     * Validações de integridade também no servidor.
-     */
     const duplicateSn =
       controlValues
         .slice(1)
@@ -310,23 +284,18 @@ export default async function handler(req: any, res: any) {
           .some((row) => {
             const existingCollector =
               String(
-                row[
-                  controlColetorIdx
-                ] || ""
+                row[controlColetorIdx] || ""
               ).trim();
             const existingStatus =
               String(
-                row[
-                  controlStatusIdx
-                ] || ""
+                row[controlStatusIdx] || ""
               )
                 .trim()
                 .toUpperCase();
 
             return (
-              normalize(
-                existingCollector
-              ) === normalize(coletor) &&
+              normalize(existingCollector) ===
+                normalize(coletor) &&
               existingStatus === "A"
             );
           });
@@ -344,6 +313,11 @@ export default async function handler(req: any, res: any) {
         configHeaders,
         "APP_USO"
       );
+    const appUsoIdx =
+      findHeaderIndex(
+        appHeaders,
+        "APP_USO"
+      );
 
     if (configAppIdx === -1) {
       return res.status(400).json({
@@ -352,14 +326,19 @@ export default async function handler(req: any, res: any) {
       });
     }
 
+    if (appUsoIdx === -1) {
+      return res.status(400).json({
+        error:
+          "A coluna APP_USO não foi encontrada em tbMobileApps.",
+      });
+    }
+
     const configuredApps = Array.from(
       new Set(
         configValues
           .slice(1)
           .map((row) =>
-            String(
-              row[configAppIdx] || ""
-            ).trim()
+            String(row[configAppIdx] || "").trim()
           )
           .filter(
             (app) =>
@@ -369,10 +348,40 @@ export default async function handler(req: any, res: any) {
       )
     );
 
-    if (configuredApps.length === 0) {
+    const existingApps = Array.from(
+      new Set(
+        appsValues
+          .slice(1)
+          .map((row) =>
+            String(row[appUsoIdx] || "").trim()
+          )
+          .filter(
+            (app) =>
+              app !== "" &&
+              normalize(app) !== "todos"
+          )
+      )
+    );
+
+    const knownAppsMap = new Map<string, string>();
+
+    [...configuredApps, ...existingApps].forEach(
+      (app) => {
+        const key = normalize(app);
+        if (key && !knownAppsMap.has(key)) {
+          knownAppsMap.set(key, app);
+        }
+      }
+    );
+
+    const knownApps = Array.from(
+      knownAppsMap.values()
+    );
+
+    if (knownApps.length === 0) {
       return res.status(400).json({
         error:
-          "Nenhum aplicativo está configurado em tbConfigMobiles.",
+          "Nenhum aplicativo foi encontrado em tbConfigMobiles ou tbMobileApps.",
       });
     }
 
@@ -386,45 +395,31 @@ export default async function handler(req: any, res: any) {
         });
       }
 
-      appsToCreate = configuredApps;
+      appsToCreate = knownApps;
     } else {
-      const configuredApp =
-        configuredApps.find(
+      const knownApp =
+        knownApps.find(
           (app) =>
             normalize(app) ===
             normalize(appScope)
         );
 
-      if (!configuredApp) {
+      if (!knownApp) {
         return res.status(400).json({
           error:
-            `O aplicativo "${appScope}" não está cadastrado em tbConfigMobiles.`,
+            `O aplicativo "${appScope}" não está cadastrado em tbConfigMobiles nem em tbMobileApps.`,
         });
       }
 
-      appsToCreate = [configuredApp];
+      appsToCreate = [knownApp];
     }
 
     const appColetorIdx =
-      findHeaderIndex(
-        appHeaders,
-        "COLETOR"
-      );
+      findHeaderIndex(appHeaders, "COLETOR");
     const appSnIdx =
-      findHeaderIndex(
-        appHeaders,
-        "SN"
-      );
-    const appUsoIdx =
-      findHeaderIndex(
-        appHeaders,
-        "APP_USO"
-      );
+      findHeaderIndex(appHeaders, "SN");
     const appVersaoIdx =
-      findHeaderIndex(
-        appHeaders,
-        "VERSAO"
-      );
+      findHeaderIndex(appHeaders, "VERSAO");
     const appDataAtualizacaoIdx =
       findHeaderIndex(
         appHeaders,
@@ -446,10 +441,7 @@ export default async function handler(req: any, res: any) {
         "CONTADOR_ATUALIZACAO"
       );
     const appObsIdx =
-      findHeaderIndex(
-        appHeaders,
-        "OBS"
-      );
+      findHeaderIndex(appHeaders, "OBS");
 
     if (
       appColetorIdx === -1 ||
@@ -477,27 +469,18 @@ export default async function handler(req: any, res: any) {
           appsToCreate.length === 1
             ? initialVersion
             : "";
-        row[appContadorAtualizacaoIdx] =
-          "0";
+        row[appContadorAtualizacaoIdx] = "0";
 
-        if (
-          appDataAtualizacaoIdx !== -1
-        ) {
+        if (appDataAtualizacaoIdx !== -1) {
           row[appDataAtualizacaoIdx] = "";
         }
 
-        if (
-          appStatusAtualizacaoIdx !== -1
-        ) {
+        if (appStatusAtualizacaoIdx !== -1) {
           row[appStatusAtualizacaoIdx] = "";
         }
 
-        if (
-          appResponsavelAtualizacaoIdx !== -1
-        ) {
-          row[
-            appResponsavelAtualizacaoIdx
-          ] = "";
+        if (appResponsavelAtualizacaoIdx !== -1) {
+          row[appResponsavelAtualizacaoIdx] = "";
         }
 
         if (appObsIdx !== -1) {
@@ -507,10 +490,6 @@ export default async function handler(req: any, res: any) {
         return row;
       });
 
-    /*
-     * Campos legados de versão permanecem vazios no cadastro físico.
-     * A fonte de verdade passa a ser tbMobileApps.
-     */
     [
       controlVersaoIdx,
       controlDataAtualizacaoIdx,
