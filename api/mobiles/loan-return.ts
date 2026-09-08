@@ -41,6 +41,8 @@ export default async function handler(req: any, res: any) {
       reserveCollector,
       responsible,
       observation,
+      updateLocation = true,
+      returnSector,
     } = req.body || {};
 
     const reserve = String(
@@ -48,6 +50,9 @@ export default async function handler(req: any, res: any) {
     ).trim();
     const returnResponsible = String(
       responsible || ""
+    ).trim();
+    const requestedReturnSector = String(
+      returnSector || ""
     ).trim();
 
     if (!reserve) {
@@ -59,6 +64,13 @@ export default async function handler(req: any, res: any) {
     if (!returnResponsible) {
       return res.status(400).json({
         error: "Responsável pela devolução não informado.",
+      });
+    }
+
+    if (updateLocation && !requestedReturnSector) {
+      return res.status(400).json({
+        error:
+          "Informe o setor de localização para devolução do equipamento original.",
       });
     }
 
@@ -150,6 +162,10 @@ export default async function handler(req: any, res: any) {
       loanHeaders,
       "COLETOR_SUBSTITUIDO"
     );
+    const loanDestinationIdx = findHeaderIndex(
+      loanHeaders,
+      "SETOR_DESTINO"
+    );
     const loanReturnDateIdx = findHeaderIndex(
       loanHeaders,
       "DATA_DEVOLUCAO"
@@ -204,6 +220,12 @@ export default async function handler(req: any, res: any) {
     const originalCollector = String(
       loan.row[loanOriginalIdx] || ""
     ).trim();
+    const recordedDestination =
+      loanDestinationIdx !== -1
+        ? String(loan.row[loanDestinationIdx] || "").trim()
+        : "";
+    const effectiveReturnSector =
+      requestedReturnSector || recordedDestination;
 
     const findControlRow = (collector: string) =>
       controlValues
@@ -264,9 +286,12 @@ export default async function handler(req: any, res: any) {
     }
 
     reserveUpdated[statusIdx] = "A";
-    reserveUpdated[setorLocalizadoIdx] = "TI-SUPORTE";
-
     originalUpdated[statusIdx] = "A";
+
+    if (updateLocation) {
+      reserveUpdated[setorLocalizadoIdx] = "TI-SUPORTE";
+      originalUpdated[setorLocalizadoIdx] = effectiveReturnSector;
+    }
 
     loanUpdated[loanStatusIdx] = "FINALIZADO";
     loanUpdated[loanReturnDateIdx] =
@@ -274,16 +299,21 @@ export default async function handler(req: any, res: any) {
     loanUpdated[loanReturnResponsibleIdx] =
       returnResponsible;
 
-    if (
-      loanObsIdx !== -1 &&
-      String(observation || "").trim()
-    ) {
+    const notes: string[] = [];
+
+    if (String(observation || "").trim()) {
+      notes.push(String(observation || "").trim());
+    }
+
+    if (updateLocation && effectiveReturnSector) {
+      notes.push(`Setor de devolução: ${effectiveReturnSector}`);
+    }
+
+    if (loanObsIdx !== -1 && notes.length > 0) {
       const previousObs = String(
         loanUpdated[loanObsIdx] || ""
       ).trim();
-      const returnObs = String(
-        observation || ""
-      ).trim();
+      const returnObs = notes.join(" | ");
 
       loanUpdated[loanObsIdx] = previousObs
         ? `${previousObs} | Devolução: ${returnObs}`
@@ -319,6 +349,9 @@ export default async function handler(req: any, res: any) {
           : "",
       reserveCollector: reserve,
       originalCollector,
+      returnSector:
+        updateLocation ? effectiveReturnSector : "",
+      locationUpdated: Boolean(updateLocation),
     });
   } catch (error: any) {
     console.error("ERRO MOBILE LOAN RETURN:", error);
