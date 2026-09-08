@@ -67,6 +67,7 @@ export default function ControleMobiles({
   const [statusFilter, setStatusFilter] = useState("");
   const [statusAtualizacaoFilter, setStatusAtualizacaoFilter] = useState("");
   const [versaoFilter, setVersaoFilter] = useState("");
+  const [locationDivergenceOnly, setLocationDivergenceOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [editingRow, setEditingRow] = useState<string[] | null>(null);
   const [viewingAppsRow, setViewingAppsRow] = useState<string[] | null>(null);
@@ -170,6 +171,18 @@ export default function ControleMobiles({
     return { totalApps: appRows.length, updatedApps, pendingApps, unknownApps, status };
   };
 
+  const isLocationDivergent = (row: string[]) => {
+    if (setorIdx === -1 || setorLocalizadoIdx === -1 || statusIdx === -1) return false;
+
+    const status = String(row[statusIdx] || "").trim().toUpperCase();
+    const setor = String(row[setorIdx] || "").trim();
+    const localizado = String(row[setorLocalizadoIdx] || "").trim();
+
+    if (status !== "A" || !setor || !localizado) return false;
+
+    return normalizeValue(setor) !== normalizeValue(localizado);
+  };
+
   const getOriginalIndex = (row: string[]): number | null => {
     const value = (row as any)._originalIndex;
     return typeof value === "number" ? value : null;
@@ -214,6 +227,7 @@ export default function ControleMobiles({
   const totalAtualizados = rows.filter((row) => normalizeValue(getMobileUpdateSummary(row).status) === "atualizado").length;
   const totalPendentes = rows.filter((row) => normalizeValue(getMobileUpdateSummary(row).status) === "pendente").length;
   const totalNaoLocalizados = statusAtualizacaoIdx !== -1 ? rows.filter((row) => normalizeValue(row[statusAtualizacaoIdx] || "") === "nao localizado").length : 0;
+  const totalLocationDivergences = rows.filter(isLocationDivergent).length;
   const progressoAtualizacao = totalEquipamentos > 0 ? Math.round((totalAtualizados / totalEquipamentos) * 100) : 0;
 
   const filteredRows = useMemo(() => rows.filter((row) => {
@@ -237,10 +251,11 @@ export default function ControleMobiles({
       const versionRows = appFilter ? appRowsMatchingApp : appRows;
       if (mobileAppVersaoIdx === -1 || !versionRows.some((appRow) => normalizeValue(appRow[mobileAppVersaoIdx] || "") === normalizeValue(versaoFilter))) return false;
     }
+    if (locationDivergenceOnly && !isLocationDivergent(row)) return false;
     return true;
-  }), [rows, search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, ipIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
+  }), [rows, search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, ipIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
 
-  useEffect(() => setCurrentPage(1), [search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter]);
+  useEffect(() => setCurrentPage(1), [search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly]);
 
   const handleSort = (key: string) => {
     setSortConfig((previous) => ({
@@ -257,6 +272,8 @@ export default function ControleMobiles({
     switch (key) {
       case "setor":
         return setorIdx !== -1 ? String(row[setorIdx] || "") : "";
+      case "setorLocalizado":
+        return setorLocalizadoIdx !== -1 ? String(row[setorLocalizadoIdx] || "") : "";
       case "coletor":
         return coletorIdx !== -1 ? String(row[coletorIdx] || "") : "";
       case "sn":
@@ -300,7 +317,7 @@ export default function ControleMobiles({
 
       return sortConfig.direction === "asc" ? comparison : -comparison;
     });
-  }, [filteredRows, sortConfig, setorIdx, coletorIdx, snIdx, ipIdx, appIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
+  }, [filteredRows, sortConfig, setorIdx, setorLocalizadoIdx, coletorIdx, snIdx, ipIdx, appIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
 
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / itemsPerPage));
   const paginatedRows = sortedRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -312,6 +329,7 @@ export default function ControleMobiles({
     setStatusFilter("");
     setStatusAtualizacaoFilter("");
     setVersaoFilter("");
+    setLocationDivergenceOnly(false);
     setCurrentPage(1);
   };
 
@@ -322,6 +340,11 @@ export default function ControleMobiles({
 
   const toggleUpdateStatusFilter = (status: string) => {
     setStatusAtualizacaoFilter((current) => normalizeValue(current) === normalizeValue(status) ? "" : status);
+    setCurrentPage(1);
+  };
+
+  const toggleLocationDivergenceFilter = () => {
+    setLocationDivergenceOnly((current) => !current);
     setCurrentPage(1);
   };
 
@@ -363,7 +386,7 @@ export default function ControleMobiles({
     await onBulkUpdate(preparedUpdates); clearSelection();
   };
 
-  const hasActiveFilters = search || setorFilter || appFilter || statusFilter || statusAtualizacaoFilter || versaoFilter;
+  const hasActiveFilters = search || setorFilter || appFilter || statusFilter || statusAtualizacaoFilter || versaoFilter || locationDivergenceOnly;
   const getStatusLabel = (value: string) => {
     switch (String(value || "").trim().toUpperCase()) {
       case "A": return "Ativo";
@@ -394,6 +417,7 @@ export default function ControleMobiles({
     { label: "Atualizados", value: totalAtualizados, detail: `${progressoAtualizacao}% do total`, filter: "ATUALIZADO" },
     { label: "Pendentes", value: totalPendentes, detail: "Aguardando atualização", filter: "PENDENTE" },
     { label: "Não Localizados", value: totalNaoLocalizados, detail: "Conferência pendente", filter: "" },
+    { label: "Fora do setor", value: totalLocationDivergences, detail: "Ativos em localização divergente", filter: "LOCATION" },
   ];
 
   const statusCards = [
@@ -405,6 +429,7 @@ export default function ControleMobiles({
 
   const tableColumns = [
     { title: "Setor", key: "setor" },
+    { title: "Setor localizado", key: "setorLocalizado" },
     { title: "Coletor", key: "coletor" },
     { title: "SN", key: "sn" },
     { title: "IP", key: "ip" },
@@ -430,9 +455,12 @@ export default function ControleMobiles({
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
         {cards.map((card) => {
+          const isLocationCard = card.filter === "LOCATION";
           const isActive = card.filter === "TOTAL"
             ? !hasActiveFilters
-            : card.filter && normalizeValue(statusAtualizacaoFilter) === normalizeValue(card.filter);
+            : isLocationCard
+              ? locationDivergenceOnly
+              : card.filter && normalizeValue(statusAtualizacaoFilter) === normalizeValue(card.filter);
           const clickable = card.filter !== "";
           return (
             <div
@@ -441,12 +469,14 @@ export default function ControleMobiles({
               tabIndex={clickable ? 0 : undefined}
               onClick={() => {
                 if (card.filter === "TOTAL") clearFilters();
+                else if (isLocationCard) toggleLocationDivergenceFilter();
                 else if (card.filter) toggleUpdateStatusFilter(card.filter);
               }}
               onKeyDown={(event) => {
                 if (!clickable || (event.key !== "Enter" && event.key !== " ")) return;
                 event.preventDefault();
                 if (card.filter === "TOTAL") clearFilters();
+                else if (isLocationCard) toggleLocationDivergenceFilter();
                 else toggleUpdateStatusFilter(card.filter);
               }}
               style={{
@@ -505,6 +535,7 @@ export default function ControleMobiles({
           <select value={versaoFilter} onChange={(event) => setVersaoFilter(event.target.value)} style={inputStyle}><option value="">{appFilter ? `Todas as versões de ${appFilter}` : "Todas as versões"}</option>{versoes.map((versao) => <option key={versao} value={versao}>{versao}</option>)}</select>
         </div>
         {appFilter && <div style={{ marginTop: "10px", color: "var(--text-muted)", fontSize: "11px" }}>Os filtros de versão e status de atualização estão sendo aplicados ao App <strong style={{ color: "var(--text-primary)" }}>{appFilter}</strong>.</div>}
+        {locationDivergenceOnly && <div style={{ marginTop: "10px", color: "#F59E0B", fontSize: "11px", fontWeight: 600 }}>Filtro rápido ativo: exibindo somente equipamentos Ativos cujo Setor localizado é diferente do Setor de referência.</div>}
         {hasActiveFilters && <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}><button type="button" onClick={clearFilters} style={{ padding: "8px 14px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar filtros</button></div>}
       </div>
 
@@ -516,7 +547,7 @@ export default function ControleMobiles({
 
       {!loading && !error && data.length > 1 && <div style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div><strong style={{ color: "var(--text-primary)" }}>Equipamentos cadastrados</strong><span style={{ marginLeft: "10px", color: "var(--text-muted)", fontSize: "12px" }}>{filteredRows.length} de {totalEquipamentos} registros</span></div></div>
-        <div style={{ width: "100%", overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1180px" }}>
+        <div style={{ width: "100%", overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1320px" }}>
           <thead>
             <tr style={{ backgroundColor: "var(--bg-primary)" }}>
               <th style={{ width: "42px", padding: "12px 10px", textAlign: "center", borderBottom: "1px solid var(--border-primary)" }}>{canEdit && <input type="checkbox" checked={allCurrentPageSelected} onChange={handleToggleCurrentPage} title="Selecionar página atual" style={{ cursor: "pointer" }} />}</th>
@@ -553,12 +584,37 @@ export default function ControleMobiles({
               })}
             </tr>
           </thead>
-          <tbody>{paginatedRows.length === 0 ? <tr><td colSpan={10} style={{ padding: "28px", textAlign: "center", color: "var(--text-muted)" }}>Nenhum equipamento encontrado com os filtros selecionados.</td></tr> : paginatedRows.map((row, index) => {
+          <tbody>{paginatedRows.length === 0 ? <tr><td colSpan={11} style={{ padding: "28px", textAlign: "center", color: "var(--text-muted)" }}>Nenhum equipamento encontrado com os filtros selecionados.</td></tr> : paginatedRows.map((row, index) => {
             const globalIndex = (currentPage - 1) * itemsPerPage + index;
             const mobileUpdateSummary = getMobileUpdateSummary(row);
+            const locationDivergent = isLocationDivergent(row);
+            const locatedSector = setorLocalizadoIdx !== -1 ? String(row[setorLocalizadoIdx] || "").trim() : "";
             return <tr key={`${row[coletorIdx] || "mobile"}-${row[snIdx] || globalIndex}-${globalIndex}`} style={{ borderBottom: "1px solid var(--border-primary)" }}>
               <td style={{ width: "42px", padding: "12px 10px", textAlign: "center" }}>{canEdit && <input type="checkbox" checked={getOriginalIndex(row) !== null && selectedRows.includes(getOriginalIndex(row) as number)} onChange={() => handleToggleRow(row)} style={{ cursor: "pointer" }} />}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px" }}>{setorIdx !== -1 ? row[setorIdx] || "-" : "-"}</td>
+              <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px" }}>
+                <div>{locatedSector || "-"}</div>
+                {locationDivergent && (
+                  <span
+                    title={`Setor de referência: ${setorIdx !== -1 ? row[setorIdx] || "-" : "-"}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      marginTop: "5px",
+                      padding: "3px 7px",
+                      borderRadius: "999px",
+                      backgroundColor: "rgba(245, 158, 11, 0.14)",
+                      color: "#F59E0B",
+                      border: "1px solid rgba(245, 158, 11, 0.35)",
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    ⚠ Fora do setor
+                  </span>
+                )}
+              </td>
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", fontWeight: 700, whiteSpace: "nowrap" }}>{coletorIdx !== -1 ? row[coletorIdx] || "-" : "-"}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{snIdx !== -1 ? row[snIdx] || "-" : "-"}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{ipIdx !== -1 ? row[ipIdx] || "-" : "-"}</td>
