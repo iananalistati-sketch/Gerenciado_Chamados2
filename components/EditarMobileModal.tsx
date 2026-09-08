@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import SubstituirMobileModal from "./SubstituirMobileModal";
 
 interface EditarMobileModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export default function EditarMobileModal({
     useState<Record<string, string>>({});
 
   const [saving, setSaving] = useState(false);
+  const [showSubstitute, setShowSubstitute] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !row) {
@@ -38,6 +40,7 @@ export default function EditarMobileModal({
     });
 
     setFormData(values);
+    setShowSubstitute(false);
   }, [isOpen, row, headers]);
 
   if (!isOpen || !row) {
@@ -85,6 +88,16 @@ export default function EditarMobileModal({
     "Responsável atualização",
     "Responsavel atualizacao"
   );
+
+  const currentStatus = statusHeader
+    ? String(formData[statusHeader] || "").trim().toUpperCase()
+    : "";
+  const currentSector = setorHeader
+    ? String(formData[setorHeader] || "").trim()
+    : "";
+  const canTemporarilyReplace =
+    currentStatus === "A" &&
+    normalize(currentSector) !== normalize("TI-SUPORTE");
 
   const handleChange = (
     header: string | undefined,
@@ -186,11 +199,6 @@ export default function EditarMobileModal({
         normalize("Status")
     );
 
-    /*
-     * REGRA 1:
-     * SN representa o equipamento físico
-     * e não pode se repetir.
-     */
     const duplicateSn = allRows.some(
       (otherRow) => {
         const otherRowIndex =
@@ -218,12 +226,6 @@ export default function EditarMobileModal({
       return;
     }
 
-    /*
-     * REGRA 2:
-     * Coletor pode existir historicamente,
-     * porém somente um registro ATIVO
-     * pode possuir o mesmo Coletor.
-     */
     if (status === "A") {
       const activeCollectorExists =
         allRows.some((otherRow) => {
@@ -266,9 +268,6 @@ export default function EditarMobileModal({
       ...formData,
     };
 
-    /*
-     * Verifica se houve alteração de versão.
-     */
     if (versaoHeader) {
       const versaoIdx =
         headers.indexOf(versaoHeader);
@@ -282,28 +281,17 @@ export default function EditarMobileModal({
       ).trim();
 
       if (originalVersion !== newVersion) {
-        /*
-         * Atualiza automaticamente
-         * a data da atualização.
-         */
         if (dataAtualizacaoHeader) {
           updatedData[dataAtualizacaoHeader] =
             getToday();
         }
 
-        /*
-         * Registra automaticamente
-         * o usuário autenticado.
-         */
         if (responsavelAtualizacaoHeader) {
           updatedData[
             responsavelAtualizacaoHeader
           ] = currentUserName;
         }
 
-        /*
-         * Incrementa contador.
-         */
         if (contadorHeader) {
           const contadorIdx =
             headers.indexOf(contadorHeader);
@@ -540,93 +528,36 @@ export default function EditarMobileModal({
               gap: "18px",
             }}
           >
-            {field(
-              setorHeader,
-              "Setor"
-            )}
-
-            {field(
-              setorLocalizadoHeader,
-              "Setor localizado"
-            )}
-
-            {field(
-              coletorHeader,
-              "Coletor"
-            )}
-
-            {field(
-              snHeader,
-              "SN"
-            )}
-
-            {field(
-              finalHeader,
-              "FINAL"
-            )}
-
-            {field(
-              macHeader,
-              "MAC"
-            )}
-
-            {field(
-              ipHeader,
-              "IP"
-            )}
-
-            {field(
-              appHeader,
-              "App de uso"
-            )}
-
-            {field(
-              entregueHeader,
-              "Entregue"
-            )}
-
-            {field(
-              versaoHeader,
-              "Versão"
-            )}
+            {field(setorHeader, "Setor")}
+            {field(setorLocalizadoHeader, "Setor localizado")}
+            {field(coletorHeader, "Coletor")}
+            {field(snHeader, "SN")}
+            {field(finalHeader, "FINAL")}
+            {field(macHeader, "MAC")}
+            {field(ipHeader, "IP")}
+            {field(appHeader, "App de uso")}
+            {field(entregueHeader, "Entregue")}
+            {field(versaoHeader, "Versão")}
 
             {field(
               statusHeader,
               "Status",
               "select",
               [
-                {
-                  value: "A",
-                  label: "Ativo",
-                },
-                {
-                  value: "I",
-                  label: "Inativo",
-                },
-                {
-                  value: "M",
-                  label: "Manutenção",
-                },
+                { value: "A", label: "Ativo" },
+                { value: "I", label: "Inativo" },
+                { value: "M", label: "Manutenção" },
               ]
             )}
 
             {statusAtualizacaoHeader && (
               <label style={labelStyle}>
                 Status atualização
-
                 <input
                   type="text"
-                  value={
-                    formData[
-                      statusAtualizacaoHeader
-                    ] || ""
-                  }
+                  value={formData[statusAtualizacaoHeader] || ""}
                   readOnly
-                  style={{
-                    ...inputStyle,
-                    cursor: "not-allowed",
-                    opacity: 0.7,
-                  }}
+                  style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }}
                 />
               </label>
             )}
@@ -634,20 +565,11 @@ export default function EditarMobileModal({
             {dataAtualizacaoHeader && (
               <label style={labelStyle}>
                 Data atualização
-
                 <input
                   type="text"
-                  value={
-                    formData[
-                      dataAtualizacaoHeader
-                    ] || ""
-                  }
+                  value={formData[dataAtualizacaoHeader] || ""}
                   readOnly
-                  style={{
-                    ...inputStyle,
-                    cursor: "not-allowed",
-                    opacity: 0.7,
-                  }}
+                  style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }}
                 />
               </label>
             )}
@@ -655,20 +577,11 @@ export default function EditarMobileModal({
             {contadorHeader && (
               <label style={labelStyle}>
                 Contador atualização
-
                 <input
                   type="text"
-                  value={
-                    formData[
-                      contadorHeader
-                    ] || ""
-                  }
+                  value={formData[contadorHeader] || ""}
                   readOnly
-                  style={{
-                    ...inputStyle,
-                    cursor: "not-allowed",
-                    opacity: 0.7,
-                  }}
+                  style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }}
                 />
               </label>
             )}
@@ -676,35 +589,18 @@ export default function EditarMobileModal({
             {responsavelAtualizacaoHeader && (
               <label style={labelStyle}>
                 Responsável atualização
-
                 <input
                   type="text"
-                  value={
-                    formData[
-                      responsavelAtualizacaoHeader
-                    ] || ""
-                  }
+                  value={formData[responsavelAtualizacaoHeader] || ""}
                   readOnly
-                  style={{
-                    ...inputStyle,
-                    cursor: "not-allowed",
-                    opacity: 0.7,
-                  }}
+                  style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }}
                 />
               </label>
             )}
 
             {obsHeader && (
-              <div
-                style={{
-                  gridColumn: "1 / -1",
-                }}
-              >
-                {field(
-                  obsHeader,
-                  "Observação",
-                  "textarea"
-                )}
+              <div style={{ gridColumn: "1 / -1" }}>
+                {field(obsHeader, "Observação", "textarea")}
               </div>
             )}
           </div>
@@ -715,54 +611,92 @@ export default function EditarMobileModal({
               borderTop:
                 "1px solid var(--border-primary)",
               display: "flex",
-              justifyContent: "flex-end",
+              justifyContent: "space-between",
               gap: "12px",
+              flexWrap: "wrap",
             }}
           >
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              style={{
-                padding: "10px 18px",
-                backgroundColor:
-                  "var(--bg-primary)",
-                color:
-                  "var(--text-primary)",
-                border:
-                  "1px solid var(--border-primary)",
-                borderRadius: "8px",
-                cursor: saving
-                  ? "not-allowed"
-                  : "pointer",
-                fontWeight: 600,
-              }}
-            >
-              Cancelar
-            </button>
+            <div>
+              {canTemporarilyReplace && (
+                <button
+                  type="button"
+                  onClick={() => setShowSubstitute(true)}
+                  disabled={saving}
+                  style={{
+                    padding: "10px 18px",
+                    backgroundColor: "rgba(245, 158, 11, 0.14)",
+                    color: "#F59E0B",
+                    border: "1px solid rgba(245, 158, 11, 0.35)",
+                    borderRadius: "8px",
+                    cursor: saving ? "not-allowed" : "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Substituir temporariamente
+                </button>
+              )}
+            </div>
 
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#3B82F6",
-                color: "#FFFFFF",
-                border: "none",
-                borderRadius: "8px",
-                cursor: saving
-                  ? "not-allowed"
-                  : "pointer",
-                fontWeight: 600,
-              }}
-            >
-              {saving
-                ? "Salvando..."
-                : "Salvar alterações"}
-            </button>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={saving}
+                style={{
+                  padding: "10px 18px",
+                  backgroundColor:
+                    "var(--bg-primary)",
+                  color:
+                    "var(--text-primary)",
+                  border:
+                    "1px solid var(--border-primary)",
+                  borderRadius: "8px",
+                  cursor: saving
+                    ? "not-allowed"
+                    : "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="submit"
+                disabled={saving}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#3B82F6",
+                  color: "#FFFFFF",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: saving
+                    ? "not-allowed"
+                    : "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                {saving
+                  ? "Salvando..."
+                  : "Salvar alterações"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
+
+      <SubstituirMobileModal
+        isOpen={showSubstitute}
+        equipment={row}
+        headers={headers}
+        allRows={allRows}
+        currentUserName={currentUserName}
+        normalize={normalize}
+        onClose={() => setShowSubstitute(false)}
+        onSuccess={() => {
+          setShowSubstitute(false);
+          onClose();
+        }}
+      />
     </div>
   );
 }
