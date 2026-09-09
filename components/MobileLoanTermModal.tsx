@@ -69,7 +69,7 @@ export default function MobileLoanTermModal({
           </div>
         </div>
 
-        <article className="mobile-term-document">
+        <article className={`mobile-term-document mobile-term-document-${type}`}>
           <header className="mobile-term-document-header">
             <img src="https://cssjd-ti.s3.us-east-2.amazonaws.com/LOGO.png" alt="Complexo de Saúde São João de Deus" />
             <div>

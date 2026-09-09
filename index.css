@@ -607,6 +607,87 @@ body,
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
+
+  body.printing-mobile-term .mobile-term-signatures,
+  body.printing-mobile-term .mobile-term-signatures > div,
+  body.printing-mobile-term .mobile-term-document footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan {
+    font-size: 10.25px;
+    line-height: 1.32;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan .mobile-term-document-header {
+    padding-bottom: 7px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan .mobile-term-document-header img {
+    width: 148px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan .mobile-term-document-header div {
+    font-size: 9.5px;
+    line-height: 1.35;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan h1 {
+    margin: 11px 0 10px;
+    font-size: 15px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan h2 {
+    margin: 9px 0 5px;
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan p {
+    margin: 5px 0;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan table {
+    margin: 5px 0 7px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan th,
+  body.printing-mobile-term .mobile-term-document-loan td {
+    padding: 4px 6px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan th {
+    font-size: 9.75px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan ol {
+    margin: 4px 0 5px;
+    padding-left: 19px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan li {
+    margin-bottom: 2px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan .mobile-term-date {
+    margin-top: 10px !important;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan .mobile-term-signatures {
+    gap: 34px;
+    margin-top: 30px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan .mobile-term-signatures small {
+    padding-top: 4px;
+    font-size: 8.75px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-loan footer {
+    padding-top: 5px;
+    font-size: 7.75px;
+  }
 }
 
 .login-page {
