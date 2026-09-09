@@ -1479,7 +1479,7 @@ function AppContent() {
   };
 
   return (
-    <div style={{ 
+    <div className="app-shell" style={{
       minHeight: '100vh',
       backgroundColor: 'var(--bg-primary)', 
       color: 'var(--text-primary)',
@@ -1488,6 +1488,7 @@ function AppContent() {
       transition: 'background-color 0.25s ease, color 0.25s ease'
     }}>
       <div
+        className="app-container"
         style={{
           width: "100%",
           maxWidth: "none",
@@ -1495,6 +1496,7 @@ function AppContent() {
         }}
       >
         <div
+          className="app-header"
           style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -1505,6 +1507,7 @@ function AppContent() {
           }}
         >
           <div
+            className="app-brand"
             style={{
               display: "flex",
               alignItems: "center",
@@ -1512,6 +1515,7 @@ function AppContent() {
             }}
           >
             <img
+              className="app-logo"
               src="https://cssjd-ti.s3.us-east-2.amazonaws.com/LOGO.png"
               alt="São João de Deus"
               style={{
@@ -1522,7 +1526,7 @@ function AppContent() {
               }}
             />
 
-            <div>
+            <div className="app-title">
               <h1>Gestor de Chamados</h1>
 
               <p>
@@ -1532,6 +1536,7 @@ function AppContent() {
           </div>
 
           <div
+            className="app-account-bar"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1542,7 +1547,7 @@ function AppContent() {
               borderRadius: '10px'
             }}
           >
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <span className="app-account-name" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               {user?.displayName || user?.email || 'Usuário autenticado'}
             </span>
 
@@ -1630,7 +1635,7 @@ function AppContent() {
           </div>
         </div>
         
-        <div style={{ 
+        <div className="app-sheet-selector" style={{
           marginBottom: '32px', 
           padding: '20px', 
           backgroundColor: 'var(--bg-secondary)',
@@ -1665,8 +1670,8 @@ function AppContent() {
             <option value="tbChamadosForhealth">ForHealth</option>
             <option value="tbControleMobiles">Controle de Mobiles</option>
           </select>
-          <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-primary)', margin: '0 10px' }}></div>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          <div className="app-sheet-divider" style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-primary)', margin: '0 10px' }}></div>
+          <span className="app-sheet-help" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             A estrutura de campos é atualizada dinamicamente conforme a aba.
           </span>
         </div>

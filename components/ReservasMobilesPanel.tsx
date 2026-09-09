@@ -291,7 +291,7 @@ export default function ReservasMobilesPanel({
   };
 
   return (
-    <div style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
+    <div className="mobile-reserves-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
         <div>
           <strong style={{ color: "var(--text-primary)", fontSize: "15px" }}>Reservas TI-SUPORTE</strong>
@@ -301,7 +301,7 @@ export default function ReservasMobilesPanel({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "18px" }}>
+      <div className="mobile-reserves-metrics" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "18px" }}>
         <button type="button" onClick={() => setActivePanel("all")} style={panelStyle("all", "#3B82F6")} title="Mostrar todas as reservas da TI-SUPORTE">
           <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Total de reservas</div>
           <strong style={{ color: "var(--text-primary)", fontSize: "24px" }}>{reservas.length}</strong>

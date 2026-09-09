@@ -122,6 +122,7 @@ export default function AtualizacaoLoteMobilesModal({
 
   return (
     <div
+      className="mobile-modal-overlay"
       style={{
         position: "fixed",
         inset: 0,
@@ -136,6 +137,7 @@ export default function AtualizacaoLoteMobilesModal({
       }}
     >
       <div
+        className="mobile-modal-card"
         style={{
           width: "100%",
           maxWidth: "650px",
@@ -150,6 +152,7 @@ export default function AtualizacaoLoteMobilesModal({
       >
         <form onSubmit={handleSubmit}>
           <div
+            className="mobile-modal-header"
             style={{
               padding: "20px 22px",
               borderBottom:
@@ -216,6 +219,7 @@ export default function AtualizacaoLoteMobilesModal({
           </div>
 
           <div
+            className="mobile-modal-grid"
             style={{
               padding: "22px",
               display: "grid",

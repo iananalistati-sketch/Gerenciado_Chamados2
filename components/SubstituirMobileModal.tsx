@@ -191,6 +191,7 @@ export default function SubstituirMobileModal({
 
   return (
     <div
+      className="mobile-modal-overlay"
       style={{
         position: "fixed",
         inset: 0,
@@ -204,6 +205,7 @@ export default function SubstituirMobileModal({
       }}
     >
       <div
+        className="mobile-modal-card"
         style={{
           width: "100%",
           maxWidth: "660px",

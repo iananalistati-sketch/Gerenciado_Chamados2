@@ -403,10 +403,10 @@ export default function EditarMobileModal({
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(8px)", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", zIndex: 1100 }}>
-      <div style={{ width: "100%", maxWidth: "900px", maxHeight: "90vh", overflowY: "auto", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "14px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
+    <div className="mobile-modal-overlay" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(8px)", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", zIndex: 1100 }}>
+      <div className="mobile-modal-card" style={{ width: "100%", maxWidth: "900px", maxHeight: "90vh", overflowY: "auto", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "14px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
         <form onSubmit={handleSubmit}>
-          <div style={{ padding: "20px 22px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
+          <div className="mobile-modal-header" style={{ padding: "20px 22px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
             <div>
               <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: "20px" }}>Editar Equipamento</h2>
               <p style={{ margin: "5px 0 0", color: "var(--text-muted)", fontSize: "12px" }}>{coletorHeader ? formData[coletorHeader] || "Equipamento" : "Equipamento"}</p>
@@ -414,7 +414,7 @@ export default function EditarMobileModal({
             <button type="button" onClick={onClose} disabled={saving || returning} style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", cursor: "pointer", fontSize: "18px" }}>×</button>
           </div>
 
-          <div style={{ padding: "22px", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "18px" }}>
+          <div className="mobile-modal-grid" style={{ padding: "22px", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "18px" }}>
             {selectField(setorHeader, "Setor", sectors, true, handleSectorChange)}
             {selectField(setorLocalizadoHeader, "Setor localizado", sectors, true)}
             {textField(coletorHeader, "Coletor", true)}
@@ -452,7 +452,7 @@ export default function EditarMobileModal({
             {obsHeader && <label style={{ ...labelStyle, gridColumn: "1 / -1" }}>{requiredLabel("Observação", false)}<textarea value={formData[obsHeader] || ""} onChange={(event) => handleChange(obsHeader, event.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical" }} /></label>}
           </div>
 
-          <div style={{ padding: "16px 22px", borderTop: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+          <div className="mobile-modal-footer" style={{ padding: "16px 22px", borderTop: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               {canTemporarilyReplace && <button type="button" onClick={() => setShowSubstitute(true)} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 700 }}>Substituir temporariamente</button>}
               {canFinalizeLoan && <button type="button" onClick={handleFinalizeLoan} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "rgba(16, 185, 129, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 700 }}>{returning ? "Finalizando..." : "Finalizar empréstimo"}</button>}

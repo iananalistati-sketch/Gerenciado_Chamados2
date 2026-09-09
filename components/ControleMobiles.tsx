@@ -444,19 +444,19 @@ export default function ControleMobiles({
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+    <div className="mobile-control" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      <div className="mobile-control-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
         <div>
           <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: "24px" }}>Controle de Mobiles</h2>
           <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: "13px" }}>Controle de equipamentos, versões e atualizações.</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <div className="mobile-control-actions" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <button type="button" onClick={onRefresh} disabled={loading} style={{ padding: "10px 16px", backgroundColor: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: loading ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: 600 }}>↻ Atualizar</button>
           {canEdit && <button type="button" onClick={() => setShowCreateModal(true)} style={{ padding: "10px 16px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 700, boxShadow: "0 4px 6px -1px rgba(59, 130, 246, 0.2)" }}>+ Novo Equipamento</button>}
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
+      <div className="mobile-summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
         {cards.map((card) => {
           const isLocationCard = card.filter === "LOCATION";
           const isActive = card.filter === "TOTAL"
@@ -500,7 +500,7 @@ export default function ControleMobiles({
         })}
       </div>
 
-      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+      <div className="mobile-status-filters" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
         {statusCards.map((item) => {
           const isActive = normalizeValue(statusFilter) === normalizeValue(item.filter);
           return (
@@ -528,8 +528,8 @@ export default function ControleMobiles({
 
       <ReservasMobilesPanel data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />
 
-      <div style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 2fr) repeat(5, minmax(140px, 1fr))", gap: "12px" }}>
+      <div className="mobile-filter-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
+        <div className="mobile-filter-grid" style={{ display: "grid", gridTemplateColumns: "minmax(220px, 2fr) repeat(5, minmax(140px, 1fr))", gap: "12px" }}>
           <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar Coletor, SN, IP, MAC, App ou versão..." style={inputStyle} />
           <select value={setorFilter} onChange={(event) => setSetorFilter(event.target.value)} style={inputStyle}><option value="">Todos os setores</option>{setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}</select>
           <select value={appFilter} onChange={(event) => setAppFilter(event.target.value)} style={inputStyle}><option value="">Todos os apps</option>{apps.map((app) => <option key={app} value={app}>{app}</option>)}</select>
@@ -542,15 +542,51 @@ export default function ControleMobiles({
         {hasActiveFilters && <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}><button type="button" onClick={clearFilters} style={{ padding: "8px 14px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar filtros</button></div>}
       </div>
 
-      {canEdit && selectedRows.length > 0 && <div style={{ padding: "14px 16px", backgroundColor: "var(--bg-secondary)", border: "1px solid #3B82F6", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div style={{ color: "var(--text-primary)", fontSize: "13px", fontWeight: 600 }}>{selectedRows.length} equipamento{selectedRows.length !== 1 ? "s" : ""} selecionado{selectedRows.length !== 1 ? "s" : ""}</div><div style={{ display: "flex", gap: "10px" }}><button type="button" onClick={clearSelection} style={{ padding: "8px 12px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar seleção</button><button type="button" onClick={() => setShowBulkUpdateModal(true)} style={{ padding: "8px 14px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>Atualizar selecionados</button></div></div>}
+      {canEdit && selectedRows.length > 0 && <div className="mobile-selection-bar" style={{ padding: "14px 16px", backgroundColor: "var(--bg-secondary)", border: "1px solid #3B82F6", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div style={{ color: "var(--text-primary)", fontSize: "13px", fontWeight: 600 }}>{selectedRows.length} equipamento{selectedRows.length !== 1 ? "s" : ""} selecionado{selectedRows.length !== 1 ? "s" : ""}</div><div style={{ display: "flex", gap: "10px" }}><button type="button" onClick={clearSelection} style={{ padding: "8px 12px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar seleção</button><button type="button" onClick={() => setShowBulkUpdateModal(true)} style={{ padding: "8px 14px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>Atualizar selecionados</button></div></div>}
 
       {loading && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Carregando equipamentos...</div>}
       {!loading && error && <div style={{ padding: "16px", borderRadius: "10px", backgroundColor: "rgba(220, 38, 38, 0.12)", border: "1px solid #DC2626", color: "#DC2626" }}>{error}</div>}
       {!loading && !error && data.length <= 1 && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Nenhum equipamento encontrado na aba tbControleMobiles.</div>}
 
-      {!loading && !error && data.length > 1 && <div style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div><strong style={{ color: "var(--text-primary)" }}>Equipamentos cadastrados</strong><span style={{ marginLeft: "10px", color: "var(--text-muted)", fontSize: "12px" }}>{filteredRows.length} de {totalEquipamentos} registros</span></div></div>
-        <div style={{ width: "100%", overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1320px" }}>
+      {!loading && !error && data.length > 1 && <div className="mobile-equipment-section" style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", overflow: "hidden" }}>
+        <div className="mobile-equipment-heading" style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div><strong style={{ color: "var(--text-primary)" }}>Equipamentos cadastrados</strong><span style={{ marginLeft: "10px", color: "var(--text-muted)", fontSize: "12px" }}>{filteredRows.length} de {totalEquipamentos} registros</span></div></div>
+        <div className="mobile-equipment-cards">
+          {paginatedRows.length === 0 ? (
+            <div className="mobile-empty-state">Nenhum equipamento encontrado com os filtros selecionados.</div>
+          ) : paginatedRows.map((row, index) => {
+            const globalIndex = (currentPage - 1) * itemsPerPage + index;
+            const rowIndex = getOriginalIndex(row);
+            const summary = getMobileUpdateSummary(row);
+            const locatedSector = setorLocalizadoIdx !== -1 ? String(row[setorLocalizadoIdx] || "").trim() : "";
+            const referenceSector = setorIdx !== -1 ? String(row[setorIdx] || "").trim() : "";
+            const locationDivergent = isLocationDivergent(row);
+            return (
+              <article className="mobile-equipment-card" key={`card-${row[coletorIdx] || "mobile"}-${row[snIdx] || globalIndex}-${globalIndex}`}>
+                <div className="mobile-equipment-card-top">
+                  {canEdit && <input aria-label={`Selecionar ${coletorIdx !== -1 ? row[coletorIdx] || "equipamento" : "equipamento"}`} type="checkbox" checked={rowIndex !== null && selectedRows.includes(rowIndex)} onChange={() => handleToggleRow(row)} />}
+                  <div className="mobile-equipment-card-title">
+                    <strong>{coletorIdx !== -1 ? row[coletorIdx] || "-" : "-"}</strong>
+                    <span>{referenceSector || "Setor não informado"}</span>
+                  </div>
+                  <span style={{ ...getStatusStyle(statusIdx !== -1 ? row[statusIdx] || "" : ""), padding: "5px 8px", borderRadius: "999px", fontSize: "10px", fontWeight: 700 }}>{statusIdx !== -1 ? getStatusLabel(row[statusIdx] || "") : "Não informado"}</span>
+                </div>
+                <div className="mobile-equipment-card-grid">
+                  <div><span>Localização</span><strong>{locatedSector || "-"}</strong>{locationDivergent && <small>⚠ Fora do setor</small>}</div>
+                  <div><span>SN</span><strong>{snIdx !== -1 ? row[snIdx] || "-" : "-"}</strong></div>
+                  <div><span>IP</span><strong>{ipIdx !== -1 ? row[ipIdx] || "-" : "-"}</strong></div>
+                  <div><span>App de uso</span><strong>{appIdx !== -1 ? row[appIdx] || "-" : "-"}</strong></div>
+                  <div><span>Apps atualizados</span><strong>{summary.totalApps > 0 ? `${summary.updatedApps} / ${summary.totalApps}` : "Nenhum App"}</strong></div>
+                  <div><span>Atualização</span><strong style={{ ...getUpdateStatusStyle(summary.status), padding: "4px 7px", borderRadius: "999px", fontSize: "10px" }}>{summary.status}</strong></div>
+                </div>
+                <div className="mobile-equipment-card-actions">
+                  <button type="button" onClick={() => setViewingAppsRow(row)}>Ver Apps</button>
+                  {canEdit && <button type="button" onClick={() => handleEdit(row)}>Editar equipamento</button>}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <div className="mobile-equipment-desktop" style={{ width: "100%", overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1320px" }}>
           <thead>
             <tr style={{ backgroundColor: "var(--bg-primary)" }}>
               <th style={{ width: "42px", padding: "12px 10px", textAlign: "center", borderBottom: "1px solid var(--border-primary)" }}>{canEdit && <input type="checkbox" checked={allCurrentPageSelected} onChange={handleToggleCurrentPage} title="Selecionar página atual" style={{ cursor: "pointer" }} />}</th>

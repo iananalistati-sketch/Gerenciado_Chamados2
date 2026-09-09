@@ -474,6 +474,7 @@ export default function DetalhesAppsMobileModal({
 
   return (
     <div
+      className="mobile-modal-overlay"
       style={{
         position: "fixed",
         inset: 0,
@@ -496,6 +497,7 @@ export default function DetalhesAppsMobileModal({
       }}
     >
       <div
+        className="mobile-modal-card"
         style={{
           width: "100%",
           maxWidth: "980px",

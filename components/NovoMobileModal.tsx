@@ -487,6 +487,7 @@ export default function NovoMobileModal({
 
   return (
     <div
+      className="mobile-modal-overlay"
       style={{
         position: "fixed",
         inset: 0,
@@ -500,6 +501,7 @@ export default function NovoMobileModal({
       }}
     >
       <div
+        className="mobile-modal-card"
         style={{
           width: "100%",
           maxWidth: "900px",
@@ -513,6 +515,7 @@ export default function NovoMobileModal({
       >
         <form onSubmit={handleSubmit}>
           <div
+            className="mobile-modal-header"
             style={{
               padding: "20px 22px",
               borderBottom: "1px solid var(--border-primary)",
@@ -562,6 +565,7 @@ export default function NovoMobileModal({
           </div>
 
           <div
+            className="mobile-modal-grid"
             style={{
               padding: "22px",
               display: "grid",
@@ -642,6 +646,7 @@ export default function NovoMobileModal({
           </div>
 
           <div
+            className="mobile-modal-footer"
             style={{
               padding: "16px 22px",
               borderTop: "1px solid var(--border-primary)",

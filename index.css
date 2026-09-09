@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+.mobile-equipment-cards {
+  display: none;
+}
+
 .login-page {
   min-height: 100vh;
   display: flex;
@@ -280,4 +299,397 @@
 
   --accent-primary: #2563eb;
   --danger: #dc2626;
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    padding: 14px 12px 28px !important;
+  }
+
+  .app-container,
+  .app-header,
+  .app-brand,
+  .app-account-bar,
+  .app-sheet-selector,
+  .mobile-control,
+  .mobile-filter-panel,
+  .mobile-reserves-panel {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-header {
+    align-items: stretch !important;
+    gap: 14px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .app-brand {
+    width: 100%;
+    gap: 10px !important;
+  }
+
+  .app-logo {
+    width: 132px !important;
+  }
+
+  .app-title {
+    min-width: 0;
+  }
+
+  .app-title h1 {
+    margin: 0 0 4px;
+    font-size: 19px;
+    line-height: 1.2;
+  }
+
+  .app-title p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .app-account-bar {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    padding: 10px !important;
+  }
+
+  .app-account-name {
+    grid-column: 1 / -1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-account-bar > button {
+    width: 100%;
+    min-height: 42px;
+    padding: 8px !important;
+  }
+
+  .app-sheet-selector {
+    margin-bottom: 20px !important;
+    padding: 14px !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .app-sheet-selector label,
+  .app-sheet-selector select {
+    width: 100%;
+  }
+
+  .app-sheet-selector select,
+  .mobile-filter-grid input,
+  .mobile-filter-grid select,
+  .mobile-modal-card input,
+  .mobile-modal-card select,
+  .mobile-modal-card textarea {
+    font-size: 16px !important;
+  }
+
+  .app-sheet-divider,
+  .app-sheet-help {
+    display: none;
+  }
+
+  .dashboard {
+    gap: 14px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .dashboard-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .dashboard-metrics > div {
+    min-width: 0;
+    padding: 15px !important;
+  }
+
+  .dashboard-metrics h3 {
+    margin: 0;
+    font-size: 27px !important;
+  }
+
+  .dashboard-metrics p {
+    min-height: 30px;
+    margin-top: 0;
+    line-height: 1.25;
+  }
+
+  .dashboard-charts {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .dashboard-charts > div {
+    min-width: 0;
+    padding: 14px !important;
+  }
+
+  .mobile-control {
+    gap: 16px !important;
+  }
+
+  .mobile-control-header {
+    align-items: stretch !important;
+    order: 0;
+  }
+
+  .mobile-control-header h2 {
+    font-size: 21px !important;
+  }
+
+  .mobile-control-actions {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-control-actions > button {
+    min-height: 44px;
+    padding: 9px !important;
+  }
+
+  .mobile-summary-grid {
+    order: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .mobile-summary-grid > div {
+    min-width: 0;
+    padding: 14px !important;
+  }
+
+  .mobile-summary-grid > div:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-summary-grid > div > div:nth-child(2) {
+    font-size: 24px !important;
+  }
+
+  .mobile-status-filters {
+    order: 3;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+  }
+
+  .mobile-status-filters button {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .mobile-reserves-panel,
+  .mobile-filter-panel {
+    padding: 12px !important;
+  }
+
+  .mobile-filter-panel {
+    order: 2;
+  }
+
+  .mobile-selection-bar {
+    order: 4;
+  }
+
+  .mobile-equipment-section {
+    order: 5;
+  }
+
+  .mobile-reserves-panel {
+    order: 6;
+  }
+
+  .mobile-reserves-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .mobile-reserves-metrics button {
+    min-width: 0;
+    padding: 12px !important;
+  }
+
+  .mobile-filter-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 9px !important;
+  }
+
+  .mobile-filter-grid input,
+  .mobile-filter-grid select {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px !important;
+  }
+
+  .mobile-equipment-heading {
+    padding: 14px 12px !important;
+  }
+
+  .mobile-equipment-heading span {
+    display: block;
+    margin: 4px 0 0 !important;
+  }
+
+  .mobile-equipment-desktop {
+    display: none !important;
+  }
+
+  .mobile-equipment-cards {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .mobile-equipment-card {
+    min-width: 0;
+    padding: 13px;
+    border: 1px solid var(--border-primary);
+    border-radius: 11px;
+    background: var(--bg-primary);
+  }
+
+  .mobile-equipment-card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+  }
+
+  .mobile-equipment-card-top > input {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    margin: 1px 0 0;
+  }
+
+  .mobile-equipment-card-title {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .mobile-equipment-card-title strong {
+    overflow-wrap: anywhere;
+    color: var(--text-primary);
+    font-size: 15px;
+  }
+
+  .mobile-equipment-card-title span {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+
+  .mobile-equipment-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px 12px;
+    margin-top: 14px;
+  }
+
+  .mobile-equipment-card-grid > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .mobile-equipment-card-grid span {
+    color: var(--text-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .mobile-equipment-card-grid strong {
+    width: fit-content;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  .mobile-equipment-card-grid small {
+    color: #f59e0b;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .mobile-equipment-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .mobile-equipment-card-actions button {
+    min-height: 42px;
+    padding: 8px;
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: #3b82f6;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .mobile-equipment-card-actions button:first-child {
+    color: #10b981;
+  }
+
+  .mobile-empty-state {
+    padding: 24px 12px;
+    color: var(--text-muted);
+    text-align: center;
+    font-size: 12px;
+  }
+
+  .mobile-modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .mobile-modal-card {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 96dvh !important;
+    border-radius: 16px 16px 0 0 !important;
+    overflow-y: auto !important;
+  }
+
+  .mobile-modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 15px 14px !important;
+    background: var(--bg-secondary);
+  }
+
+  .mobile-modal-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+    padding: 16px 14px !important;
+  }
+
+  .mobile-modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom)) !important;
+    background: var(--bg-secondary);
+  }
+
+  .mobile-modal-footer > div,
+  .mobile-modal-footer button {
+    flex: 1;
+  }
 }
