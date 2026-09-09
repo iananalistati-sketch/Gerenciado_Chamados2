@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { MobileLoanTermData } from "./mobileLoanTermData";
 
 interface MobileLoanTermModalProps {
@@ -54,7 +55,7 @@ export default function MobileLoanTermModal({
   const condition = data.returnCondition.toUpperCase();
   const isChecked = (key: string) => condition.split("|").map((item) => item.trim()).includes(key);
 
-  return (
+  return createPortal(
     <div className="mobile-term-overlay" role="dialog" aria-modal="true" aria-label={type === "loan" ? "Termo de empréstimo" : "Termo de devolução"}>
       <div className="mobile-term-shell">
         <div className="mobile-term-toolbar no-print">
@@ -152,6 +153,7 @@ export default function MobileLoanTermModal({
           <footer>Fundação Geraldo Corrêa – Complexo de Saúde São João de Deus | Rua do Cobre, nº 800, Bairro Niterói, Divinópolis/MG | CEP 35.500-227</footer>
         </article>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../auth/api";
 import DevolverMobileModal from "./DevolverMobileModal";
+import MobileLoanHistory from "./MobileLoanHistory";
 import MobileLoanTermModal from "./MobileLoanTermModal";
 import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData";
 
@@ -12,6 +13,7 @@ interface ReservasMobilesPanelProps {
 }
 
 type PanelView = "all" | "available" | "loaned" | "openLoans" | "history" | "divergent";
+type ReserveSortKey = "collector" | "serial" | "status" | "currentLocation" | "expectedLocation" | "locationStatus";
 
 const normalize = (value: string) =>
   String(value || "")
@@ -32,6 +34,7 @@ export default function ReservasMobilesPanel({
   const [returnCollector, setReturnCollector] = useState("");
   const [termPreview, setTermPreview] = useState<{ type: "loan" | "return"; data: MobileLoanTermData } | null>(null);
   const [activePanel, setActivePanel] = useState<PanelView>("openLoans");
+  const [reserveSort, setReserveSort] = useState<{ key: ReserveSortKey; direction: "asc" | "desc" }>({ key: "collector", direction: "asc" });
 
   const headers = data[0] || [];
   const rows = data.slice(1);
@@ -183,8 +186,29 @@ export default function ReservasMobilesPanel({
     return reservas;
   }, [activePanel, reservas, reservasDisponiveis, reservasEmprestadas, reservasLocalizacaoDivergente]);
 
+  const sortedVisibleReserves = useMemo(() => [...visibleReserves].sort((first, second) => {
+    const value = (row: string[]) => {
+      if (reserveSort.key === "collector") return getReserveCollector(row);
+      if (reserveSort.key === "serial") return snIdx !== -1 ? String(row[snIdx] || "") : "";
+      if (reserveSort.key === "status") return statusIdx !== -1 ? String(row[statusIdx] || "") : "";
+      if (reserveSort.key === "currentLocation") return getReserveLocationRaw(row);
+      if (reserveSort.key === "expectedLocation") return getExpectedLocation(row);
+      return isReserveLocationDivergent(row) ? "Divergente" : "Sem divergência";
+    };
+    const comparison = value(first).localeCompare(value(second), "pt-BR", {
+      numeric: true,
+      sensitivity: "base",
+    });
+    return reserveSort.direction === "asc" ? comparison : -comparison;
+  }), [reserveSort, visibleReserves]);
+
+  const toggleReserveSort = (key: ReserveSortKey) => setReserveSort((previous) => ({
+    key,
+    direction: previous.key === key && previous.direction === "asc" ? "desc" : "asc",
+  }));
+
   const showingLoans = activePanel === "openLoans" || activePanel === "history";
-  const displayedLoans = activePanel === "history" ? loanRows : openLoans;
+  const displayedLoans = openLoans;
 
   const finishLoan = (loan: string[]) => {
     if (!canEdit) return;
@@ -296,11 +320,24 @@ export default function ReservasMobilesPanel({
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "760px" }}>
               <thead>
                 <tr style={{ backgroundColor: "var(--bg-primary)" }}>
-                  {["Reserva", "SN", "Status", "Localização atual", "Localização esperada", "Situação da localização"].map((title) => (
-                    <th key={title} style={{ padding: "10px 12px", textAlign: "left", color: "var(--text-muted)", fontSize: "11px", borderBottom: "1px solid var(--border-primary)", whiteSpace: "nowrap" }}>
-                      {title}
-                    </th>
-                  ))}
+                  {([
+                    ["Reserva", "collector"],
+                    ["SN", "serial"],
+                    ["Status", "status"],
+                    ["Localização atual", "currentLocation"],
+                    ["Localização esperada", "expectedLocation"],
+                    ["Situação da localização", "locationStatus"],
+                  ] as Array<[string, ReserveSortKey]>).map(([title, key]) => {
+                    const active = reserveSort.key === key;
+                    return (
+                      <th key={key} onClick={() => toggleReserveSort(key)} title="Clique para ordenar" style={{ padding: "10px 12px", textAlign: "left", color: active ? "var(--text-primary)" : "var(--text-muted)", fontSize: "11px", borderBottom: "1px solid var(--border-primary)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                          {title}
+                          <span style={{ fontSize: "10px", opacity: active ? 1 : 0.45 }}>{active ? (reserveSort.direction === "asc" ? "↑" : "↓") : "↕"}</span>
+                        </span>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -311,7 +348,7 @@ export default function ReservasMobilesPanel({
                     </td>
                   </tr>
                 ) : (
-                  visibleReserves.map((row, index) => {
+                  sortedVisibleReserves.map((row, index) => {
                     const collector = getReserveCollector(row) || "-";
                     const status = statusIdx !== -1 ? String(row[statusIdx] || "").trim() : "";
                     const location = getReserveLocationRaw(row);
@@ -347,9 +384,17 @@ export default function ReservasMobilesPanel({
             </table>
           </div>
         </div>
+      ) : activePanel === "history" ? (
+        <MobileLoanHistory
+          headers={loanHeaders}
+          rows={loanRows}
+          loading={loadingLoans}
+          getCurrentLocation={getReserveLocation}
+          onOpenTerm={(type, termData) => setTermPreview({ type, data: termData })}
+        />
       ) : (
         <div>
-          <div style={{ marginBottom: "10px", color: "var(--text-muted)", fontSize: "12px" }}>{activePanel === "history" ? "Histórico de empréstimos e termos" : "Empréstimos temporários em aberto"}</div>
+          <div style={{ marginBottom: "10px", color: "var(--text-muted)", fontSize: "12px" }}>Empréstimos temporários em aberto</div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1020px" }}>
               <thead>
@@ -365,7 +410,7 @@ export default function ReservasMobilesPanel({
                 {displayedLoans.length === 0 ? (
                   <tr>
                     <td colSpan={10} style={{ padding: "18px", textAlign: "center", color: "var(--text-muted)", fontSize: "12px" }}>
-                      {loadingLoans ? "Carregando empréstimos..." : activePanel === "history" ? "Nenhum empréstimo registrado." : "Nenhum empréstimo aberto."}
+                      {loadingLoans ? "Carregando empréstimos..." : "Nenhum empréstimo aberto."}
                     </td>
                   </tr>
                 ) : (
