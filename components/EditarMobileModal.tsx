@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SubstituirMobileModal from "./SubstituirMobileModal";
-import { apiFetch } from "../auth/api";
+import DevolverMobileModal from "./DevolverMobileModal";
 import { useAppDialog } from "../contexts/AppDialogContext";
 
 interface EditarMobileModalProps {
@@ -32,11 +32,11 @@ export default function EditarMobileModal({
   onSaveMobileApp,
   onRefresh,
 }: EditarMobileModalProps) {
-  const { alert: showAlert, confirm: showConfirm, prompt: showPrompt } = useAppDialog();
+  const { alert: showAlert } = useAppDialog();
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [returning, setReturning] = useState(false);
   const [showSubstitute, setShowSubstitute] = useState(false);
+  const [showReturn, setShowReturn] = useState(false);
 
   const getHeader = (...names: string[]) =>
     headers.find((header) =>
@@ -111,6 +111,7 @@ export default function EditarMobileModal({
     });
     setFormData(values);
     setShowSubstitute(false);
+    setShowReturn(false);
   }, [isOpen, row, headers]);
 
   if (!isOpen || !row) return null;
@@ -161,65 +162,6 @@ export default function EditarMobileModal({
     const now = new Date();
     const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
     return localDate.toISOString().split("T")[0];
-  };
-
-  const handleFinalizeLoan = async () => {
-    if (!canFinalizeLoan || !currentCollector) return;
-    const confirmed = await showConfirm(`O equipamento original voltará para Ativo e a reserva "${currentCollector}" ficará disponível novamente.`, {
-      title: "Finalizar empréstimo",
-      variant: "warning",
-      confirmLabel: "Continuar",
-    });
-    if (!confirmed) return;
-
-    const updateLocation = await showConfirm("A reserva retornará para TI-SUPORTE e você poderá informar onde o equipamento original ficará localizado.", {
-      title: "Atualizar localização",
-      variant: "info",
-      confirmLabel: "Sim, atualizar",
-      cancelLabel: "Manter atual",
-    });
-    let returnSector = "";
-    if (updateLocation) {
-      const informedSector = await showPrompt("Informe o setor de localização para devolução do equipamento original:", {
-        title: "Setor de devolução",
-        variant: "info",
-        defaultValue: currentLocation || currentSector || "",
-        confirmLabel: "Continuar",
-      });
-      if (informedSector === null) return;
-      returnSector = informedSector.trim();
-      if (!returnSector) {
-        await showAlert("Informe o setor de localização da devolução.", { variant: "warning" });
-        return;
-      }
-    }
-
-    const observation = await showPrompt("Observação da devolução (opcional):", {
-      title: "Observação da devolução",
-      variant: "info",
-      multiline: true,
-      placeholder: "Adicione uma observação, se necessário",
-      confirmLabel: "Finalizar empréstimo",
-    });
-    if (observation === null) return;
-    setReturning(true);
-
-    try {
-      const response = await apiFetch("/api/mobiles/loan-return", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reserveCollector: currentCollector, responsible: currentUserName, observation: observation.trim(), updateLocation, returnSector }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Erro ao finalizar empréstimo temporário.");
-      await Promise.resolve(onRefresh());
-      await showAlert(`Empréstimo ${result.loanId || ""} finalizado. O equipamento reserva voltou a ficar disponível.`.trim(), { title: "Empréstimo finalizado", variant: "success", confirmLabel: "Concluir" });
-      onClose();
-    } catch (error: any) {
-      await showAlert("Erro ao finalizar empréstimo: " + (error.message || "Erro desconhecido"), { variant: "error" });
-    } finally {
-      setReturning(false);
-    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -433,7 +375,7 @@ export default function EditarMobileModal({
               <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: "20px" }}>Editar Equipamento</h2>
               <p style={{ margin: "5px 0 0", color: "var(--text-muted)", fontSize: "12px" }}>{coletorHeader ? formData[coletorHeader] || "Equipamento" : "Equipamento"}</p>
             </div>
-            <button type="button" onClick={onClose} disabled={saving || returning} style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", cursor: "pointer", fontSize: "18px" }}>×</button>
+            <button type="button" onClick={onClose} disabled={saving} style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", cursor: "pointer", fontSize: "18px" }}>×</button>
           </div>
 
           <div className="mobile-modal-grid" style={{ padding: "22px", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "18px" }}>
@@ -476,12 +418,12 @@ export default function EditarMobileModal({
 
           <div className="mobile-modal-footer" style={{ padding: "16px 22px", borderTop: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              {canTemporarilyReplace && <button type="button" onClick={() => setShowSubstitute(true)} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 700 }}>Substituir temporariamente</button>}
-              {canFinalizeLoan && <button type="button" onClick={handleFinalizeLoan} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "rgba(16, 185, 129, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 700 }}>{returning ? "Finalizando..." : "Finalizar empréstimo"}</button>}
+              {canTemporarilyReplace && <button type="button" onClick={() => setShowSubstitute(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Substituir temporariamente</button>}
+              {canFinalizeLoan && <button type="button" onClick={() => setShowReturn(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(16, 185, 129, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Finalizar empréstimo</button>}
             </div>
             <div style={{ display: "flex", gap: "12px" }}>
-              <button type="button" onClick={onClose} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 600 }}>Cancelar</button>
-              <button type="submit" disabled={saving || returning} style={{ padding: "10px 20px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 600 }}>{saving ? "Salvando..." : "Salvar alterações"}</button>
+              <button type="button" onClick={onClose} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 600 }}>Cancelar</button>
+              <button type="submit" disabled={saving} style={{ padding: "10px 20px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 600 }}>{saving ? "Salvando..." : "Salvar alterações"}</button>
             </div>
           </div>
         </form>
@@ -498,6 +440,17 @@ export default function EditarMobileModal({
         onSuccess={async () => {
           await Promise.resolve(onRefresh());
           setShowSubstitute(false);
+          onClose();
+        }}
+      />
+      <DevolverMobileModal
+        isOpen={showReturn}
+        reserveCollector={currentCollector}
+        currentUserName={currentUserName}
+        onClose={() => setShowReturn(false)}
+        onSuccess={async () => {
+          await Promise.resolve(onRefresh());
+          setShowReturn(false);
           onClose();
         }}
       />

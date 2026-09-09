@@ -21,13 +21,20 @@ const findHeaderIndex = (
     )
   );
 
-const toLocalIsoDateTime = () => {
-  const now = new Date();
-  const local = new Date(
-    now.getTime() - now.getTimezoneOffset() * 60000
-  );
+const valueFromLoan = (
+  headers: string[],
+  row: string[],
+  ...names: string[]
+) => {
+  const index = findHeaderIndex(headers, ...names);
+  return index === -1 ? "" : String(row[index] || "").trim();
+};
 
-  return local.toISOString().slice(0, 19);
+const toLocalIsoDateTime = () => {
+  return new Date().toLocaleString("sv-SE", {
+    timeZone: "America/Sao_Paulo",
+    hour12: false,
+  }).replace(" ", "T");
 };
 
 export default async function handler(req: any, res: any) {
@@ -38,21 +45,23 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    await requireRole(req.headers.authorization, ["admin", "analyst"]);
+    const { decodedToken } = await requireRole(req.headers.authorization, ["admin", "analyst"]);
     const {
       reserveCollector,
-      responsible,
       observation,
       updateLocation = true,
       returnSector,
+      returnCollaboratorName,
+      returnCollaboratorRegistration,
+      returnCollaboratorRole,
+      returnCondition,
+      returnDetails,
     } = req.body || {};
 
     const reserve = String(
       reserveCollector || ""
     ).trim();
-    const returnResponsible = String(
-      responsible || ""
-    ).trim();
+    const returnResponsible = String(decodedToken.name || decodedToken.email || "").trim();
     const requestedReturnSector = String(
       returnSector || ""
     ).trim();
@@ -66,6 +75,38 @@ export default async function handler(req: any, res: any) {
     if (!returnResponsible) {
       return res.status(400).json({
         error: "Responsável pela devolução não informado.",
+      });
+    }
+
+    if (
+      !String(returnCollaboratorName || "").trim() ||
+      !String(returnCollaboratorRegistration || "").trim() ||
+      !String(returnCollaboratorRole || "").trim()
+    ) {
+      return res.status(400).json({
+        error: "Nome, matrícula e cargo de quem devolveu são obrigatórios.",
+      });
+    }
+
+    const normalizedConditions = Array.isArray(returnCondition)
+      ? returnCondition.map((item) => String(item || "").trim()).filter(Boolean)
+      : String(returnCondition || "").split("|").map((item) => item.trim()).filter(Boolean);
+    const allowedConditions = new Set([
+      "PERFEITO_ESTADO",
+      "APRESENTANDO_DEFEITO",
+      "FALTANDO_PECAS_ACESSORIOS",
+    ]);
+
+    if (normalizedConditions.length === 0 || normalizedConditions.some((item) => !allowedConditions.has(item))) {
+      return res.status(400).json({ error: "Informe uma condição de devolução válida." });
+    }
+
+    if (
+      normalizedConditions.some((item) => item !== "PERFEITO_ESTADO") &&
+      !String(returnDetails || "").trim()
+    ) {
+      return res.status(400).json({
+        error: "Detalhe o defeito ou as peças/acessórios faltantes.",
       });
     }
 
@@ -112,7 +153,7 @@ export default async function handler(req: any, res: any) {
         }),
         sheets.spreadsheets.values.get({
           spreadsheetId,
-          range: `${LOAN_SHEET}!A:Z`,
+          range: `${LOAN_SHEET}!A:AZ`,
         }),
       ]);
 
@@ -130,6 +171,24 @@ export default async function handler(req: any, res: any) {
 
     const controlHeaders = controlValues[0] || [];
     const loanHeaders = loanValues[0] || [];
+
+    const requiredReturnHeaders = [
+      "COLABORADOR_DEVOLUCAO_NOME",
+      "COLABORADOR_DEVOLUCAO_MATRICULA",
+      "COLABORADOR_DEVOLUCAO_CARGO",
+      "CONDICAO_DEVOLUCAO",
+      "DETALHES_DEVOLUCAO",
+      "OBS_DEVOLUCAO",
+    ];
+    const missingReturnHeaders = requiredReturnHeaders.filter(
+      (header) => findHeaderIndex(loanHeaders, header) === -1
+    );
+
+    if (missingReturnHeaders.length > 0) {
+      return res.status(400).json({
+        error: `A aba tbEmprestimosMobiles não possui as colunas: ${missingReturnHeaders.join(", ")}.`,
+      });
+    }
 
     const coletorIdx = findHeaderIndex(
       controlHeaders,
@@ -176,10 +235,12 @@ export default async function handler(req: any, res: any) {
       loanHeaders,
       "RESPONSAVEL_DEVOLUCAO"
     );
-    const loanObsIdx = findHeaderIndex(
-      loanHeaders,
-      "OBS"
-    );
+    const returnNameIdx = findHeaderIndex(loanHeaders, "COLABORADOR_DEVOLUCAO_NOME");
+    const returnRegistrationIdx = findHeaderIndex(loanHeaders, "COLABORADOR_DEVOLUCAO_MATRICULA");
+    const returnRoleIdx = findHeaderIndex(loanHeaders, "COLABORADOR_DEVOLUCAO_CARGO");
+    const returnConditionIdx = findHeaderIndex(loanHeaders, "CONDICAO_DEVOLUCAO");
+    const returnDetailsIdx = findHeaderIndex(loanHeaders, "DETALHES_DEVOLUCAO");
+    const returnObservationIdx = findHeaderIndex(loanHeaders, "OBS_DEVOLUCAO");
 
     if (
       coletorIdx === -1 ||
@@ -296,11 +357,15 @@ export default async function handler(req: any, res: any) {
     }
 
     loanUpdated[loanStatusIdx] = "FINALIZADO";
-    loanUpdated[loanReturnDateIdx] =
-      toLocalIsoDateTime();
+    const returnDate = toLocalIsoDateTime();
+    loanUpdated[loanReturnDateIdx] = returnDate;
     loanUpdated[loanReturnResponsibleIdx] =
       returnResponsible;
-
+    loanUpdated[returnNameIdx] = String(returnCollaboratorName).trim();
+    loanUpdated[returnRegistrationIdx] = String(returnCollaboratorRegistration).trim();
+    loanUpdated[returnRoleIdx] = String(returnCollaboratorRole).trim();
+    loanUpdated[returnConditionIdx] = normalizedConditions.join(" | ");
+    loanUpdated[returnDetailsIdx] = String(returnDetails || "").trim();
     const notes: string[] = [];
 
     if (String(observation || "").trim()) {
@@ -311,16 +376,8 @@ export default async function handler(req: any, res: any) {
       notes.push(`Setor de devolução: ${effectiveReturnSector}`);
     }
 
-    if (loanObsIdx !== -1 && notes.length > 0) {
-      const previousObs = String(
-        loanUpdated[loanObsIdx] || ""
-      ).trim();
-      const returnObs = notes.join(" | ");
-
-      loanUpdated[loanObsIdx] = previousObs
-        ? `${previousObs} | Devolução: ${returnObs}`
-        : `Devolução: ${returnObs}`;
-    }
+    const returnObservation = notes.join(" | ");
+    loanUpdated[returnObservationIdx] = returnObservation;
 
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,
@@ -354,6 +411,35 @@ export default async function handler(req: any, res: any) {
       returnSector:
         updateLocation ? effectiveReturnSector : "",
       locationUpdated: Boolean(updateLocation),
+      termData: {
+        loanId: loanIdIdx !== -1 ? String(loan.row[loanIdIdx] || "").trim() : "",
+        status: "FINALIZADO",
+        originalCollector,
+        originalSerial: valueFromLoan(loanHeaders, loanUpdated, "SN_SUBSTITUIDO"),
+        originalBrand: valueFromLoan(loanHeaders, loanUpdated, "MARCA_EQUIPAMENTO_ORIGINAL"),
+        originalModel: valueFromLoan(loanHeaders, loanUpdated, "MODELO_EQUIPAMENTO_ORIGINAL"),
+        reserveCollector: reserve,
+        reserveSerial: valueFromLoan(loanHeaders, loanUpdated, "SN_RESERVA"),
+        reserveBrand: valueFromLoan(loanHeaders, loanUpdated, "MARCA_EQUIPAMENTO_RESERVA"),
+        reserveModel: valueFromLoan(loanHeaders, loanUpdated, "MODELO_EQUIPAMENTO_RESERVA"),
+        destinationSector: valueFromLoan(loanHeaders, loanUpdated, "SETOR_DESTINO"),
+        serviceOrder: valueFromLoan(loanHeaders, loanUpdated, "ORDEM_SERVICO"),
+        loanDate: valueFromLoan(loanHeaders, loanUpdated, "DATA_EMPRESTIMO"),
+        loanResponsible: valueFromLoan(loanHeaders, loanUpdated, "RESPONSAVEL_EMPRESTIMO"),
+        loanCollaboratorName: valueFromLoan(loanHeaders, loanUpdated, "COLABORADOR_EMPRESTIMO_NOME"),
+        loanCollaboratorRegistration: valueFromLoan(loanHeaders, loanUpdated, "COLABORADOR_EMPRESTIMO_MATRICULA"),
+        loanCollaboratorRole: valueFromLoan(loanHeaders, loanUpdated, "COLABORADOR_EMPRESTIMO_CARGO"),
+        reason: valueFromLoan(loanHeaders, loanUpdated, "MOTIVO"),
+        observation: valueFromLoan(loanHeaders, loanUpdated, "OBS"),
+        returnDate,
+        returnResponsible,
+        returnCollaboratorName: String(returnCollaboratorName).trim(),
+        returnCollaboratorRegistration: String(returnCollaboratorRegistration).trim(),
+        returnCollaboratorRole: String(returnCollaboratorRole).trim(),
+        returnCondition: normalizedConditions.join(" | "),
+        returnDetails: String(returnDetails || "").trim(),
+        returnObservation,
+      },
     });
   } catch (error: any) {
     if (authErrorResponse(error, res)) return;

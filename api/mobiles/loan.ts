@@ -22,11 +22,10 @@ const findHeaderIndex = (
   );
 
 const toLocalIsoDateTime = () => {
-  const now = new Date();
-  const local = new Date(
-    now.getTime() - now.getTimezoneOffset() * 60000
-  );
-  return local.toISOString().slice(0, 19);
+  return new Date().toLocaleString("sv-SE", {
+    timeZone: "America/Sao_Paulo",
+    hour12: false,
+  }).replace(" ", "T");
 };
 
 const makeLoanId = () => {
@@ -50,16 +49,25 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    await requireRole(req.headers.authorization, ["admin", "analyst"]);
+    const { decodedToken } = await requireRole(req.headers.authorization, ["admin", "analyst"]);
     const {
       originalCollector,
       reserveCollector,
-      responsible,
       reason,
       observation,
       updateLocation = true,
       destinationSector,
+      serviceOrder,
+      loanCollaboratorName,
+      loanCollaboratorRegistration,
+      loanCollaboratorRole,
+      originalBrand,
+      originalModel,
+      reserveBrand,
+      reserveModel,
     } = req.body || {};
+
+    const responsible = String(decodedToken.name || decodedToken.email || "").trim();
 
     if (!String(originalCollector || "").trim()) {
       return res.status(400).json({
@@ -82,6 +90,27 @@ export default async function handler(req: any, res: any) {
     if (!String(reason || "").trim()) {
       return res.status(400).json({
         error: "Motivo do empréstimo não informado.",
+      });
+    }
+
+    if (
+      !String(loanCollaboratorName || "").trim() ||
+      !String(loanCollaboratorRegistration || "").trim() ||
+      !String(loanCollaboratorRole || "").trim()
+    ) {
+      return res.status(400).json({
+        error: "Nome, matrícula e cargo do colaborador são obrigatórios.",
+      });
+    }
+
+    if (
+      !String(originalBrand || "").trim() ||
+      !String(originalModel || "").trim() ||
+      !String(reserveBrand || "").trim() ||
+      !String(reserveModel || "").trim()
+    ) {
+      return res.status(400).json({
+        error: "Marca e modelo dos equipamentos são obrigatórios.",
       });
     }
 
@@ -140,7 +169,7 @@ export default async function handler(req: any, res: any) {
         }),
         sheets.spreadsheets.values.get({
           spreadsheetId,
-          range: `${LOAN_SHEET}!A:Z`,
+          range: `${LOAN_SHEET}!A:AZ`,
         }),
       ]);
 
@@ -165,6 +194,26 @@ export default async function handler(req: any, res: any) {
 
     const controlHeaders = controlValues[0] || [];
     const loanHeaders = loanValues[0] || [];
+
+    const requiredTermHeaders = [
+      "COLABORADOR_EMPRESTIMO_NOME",
+      "COLABORADOR_EMPRESTIMO_MATRICULA",
+      "COLABORADOR_EMPRESTIMO_CARGO",
+      "ORDEM_SERVICO",
+      "MARCA_EQUIPAMENTO_ORIGINAL",
+      "MODELO_EQUIPAMENTO_ORIGINAL",
+      "MARCA_EQUIPAMENTO_RESERVA",
+      "MODELO_EQUIPAMENTO_RESERVA",
+    ];
+    const missingTermHeaders = requiredTermHeaders.filter(
+      (header) => findHeaderIndex(loanHeaders, header) === -1
+    );
+
+    if (missingTermHeaders.length > 0) {
+      return res.status(400).json({
+        error: `A aba tbEmprestimosMobiles não possui as colunas: ${missingTermHeaders.join(", ")}.`,
+      });
+    }
 
     const coletorIdx = findHeaderIndex(
       controlHeaders,
@@ -425,6 +474,14 @@ export default async function handler(req: any, res: any) {
       String(observation || "").trim(),
       "OBS"
     );
+    setLoanValue(String(serviceOrder || "").trim(), "ORDEM_SERVICO");
+    setLoanValue(String(loanCollaboratorName).trim(), "COLABORADOR_EMPRESTIMO_NOME");
+    setLoanValue(String(loanCollaboratorRegistration).trim(), "COLABORADOR_EMPRESTIMO_MATRICULA");
+    setLoanValue(String(loanCollaboratorRole).trim(), "COLABORADOR_EMPRESTIMO_CARGO");
+    setLoanValue(String(originalBrand).trim(), "MARCA_EQUIPAMENTO_ORIGINAL");
+    setLoanValue(String(originalModel).trim(), "MODELO_EQUIPAMENTO_ORIGINAL");
+    setLoanValue(String(reserveBrand).trim(), "MARCA_EQUIPAMENTO_RESERVA");
+    setLoanValue(String(reserveModel).trim(), "MODELO_EQUIPAMENTO_RESERVA");
 
     const nextLoanRow = loanValues.length + 1;
 
@@ -459,6 +516,35 @@ export default async function handler(req: any, res: any) {
       destinationSector:
         updateLocation ? effectiveDestination : "",
       locationUpdated: Boolean(updateLocation),
+      termData: {
+        loanId,
+        status: "ABERTO",
+        originalCollector: String(originalCollector).trim(),
+        originalSerial: originalSn,
+        originalBrand: String(originalBrand).trim(),
+        originalModel: String(originalModel).trim(),
+        reserveCollector: String(reserveCollector).trim(),
+        reserveSerial: reserveSn,
+        reserveBrand: String(reserveBrand).trim(),
+        reserveModel: String(reserveModel).trim(),
+        destinationSector: effectiveDestination || originalSector,
+        serviceOrder: String(serviceOrder || "").trim(),
+        loanDate,
+        loanResponsible: responsible,
+        loanCollaboratorName: String(loanCollaboratorName).trim(),
+        loanCollaboratorRegistration: String(loanCollaboratorRegistration).trim(),
+        loanCollaboratorRole: String(loanCollaboratorRole).trim(),
+        reason: String(reason).trim(),
+        observation: String(observation || "").trim(),
+        returnDate: "",
+        returnResponsible: "",
+        returnCollaboratorName: "",
+        returnCollaboratorRegistration: "",
+        returnCollaboratorRole: "",
+        returnCondition: "",
+        returnDetails: "",
+        returnObservation: "",
+      },
     });
   } catch (error: any) {
     if (authErrorResponse(error, res)) return;

@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../auth/api";
-import { useAppDialog } from "../contexts/AppDialogContext";
+import DevolverMobileModal from "./DevolverMobileModal";
+import MobileLoanTermModal from "./MobileLoanTermModal";
+import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData";
 
 interface ReservasMobilesPanelProps {
   data: string[][];
@@ -9,7 +11,7 @@ interface ReservasMobilesPanelProps {
   onRefresh: () => void | Promise<void>;
 }
 
-type PanelView = "all" | "available" | "loaned" | "openLoans" | "divergent";
+type PanelView = "all" | "available" | "loaned" | "openLoans" | "history" | "divergent";
 
 const normalize = (value: string) =>
   String(value || "")
@@ -24,11 +26,11 @@ export default function ReservasMobilesPanel({
   canEdit,
   onRefresh,
 }: ReservasMobilesPanelProps) {
-  const { alert: showAlert, confirm: showConfirm, prompt: showPrompt } = useAppDialog();
   const [loans, setLoans] = useState<string[][]>([]);
   const [loadingLoans, setLoadingLoans] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [finishingCollector, setFinishingCollector] = useState<string | null>(null);
+  const [returnCollector, setReturnCollector] = useState("");
+  const [termPreview, setTermPreview] = useState<{ type: "loan" | "return"; data: MobileLoanTermData } | null>(null);
   const [activePanel, setActivePanel] = useState<PanelView>("openLoans");
 
   const headers = data[0] || [];
@@ -181,90 +183,16 @@ export default function ReservasMobilesPanel({
     return reservas;
   }, [activePanel, reservas, reservasDisponiveis, reservasEmprestadas, reservasLocalizacaoDivergente]);
 
-  const showingLoans = activePanel === "openLoans";
+  const showingLoans = activePanel === "openLoans" || activePanel === "history";
+  const displayedLoans = activePanel === "history" ? loanRows : openLoans;
 
-  const finishLoan = async (loan: string[]) => {
+  const finishLoan = (loan: string[]) => {
     if (!canEdit) return;
 
     const reserveCollector =
       reserveCollectorIdx !== -1 ? String(loan[reserveCollectorIdx] || "").trim() : "";
 
-    if (!reserveCollector) {
-      await showAlert("Não foi possível identificar o coletor reserva.", { variant: "error" });
-      return;
-    }
-
-    if (!await showConfirm(`Finalizar o empréstimo da reserva ${reserveCollector}?`, {
-      title: "Finalizar empréstimo",
-      variant: "warning",
-      confirmLabel: "Continuar",
-    })) {
-      return;
-    }
-
-    const updateLocation = await showConfirm(
-      "Deseja atualizar também o setor de localização na devolução?",
-      { title: "Atualizar localização", variant: "info", confirmLabel: "Sim, atualizar", cancelLabel: "Manter atual" }
-    );
-
-    let returnSector = "";
-    if (updateLocation) {
-      const suggestedSector =
-        destinationIdx !== -1 ? String(loan[destinationIdx] || "").trim() : "";
-
-      const informedSector = await showPrompt(
-        "Informe o setor onde o equipamento original ficará localizado:",
-        { title: "Setor de devolução", variant: "info", defaultValue: suggestedSector, confirmLabel: "Continuar" }
-      );
-
-      if (informedSector === null) return;
-      returnSector = informedSector.trim();
-
-      if (!returnSector) {
-        await showAlert("Informe o setor de localização para concluir a devolução.", { variant: "warning" });
-        return;
-      }
-    }
-
-    const observation = await showPrompt("Observação da devolução (opcional):", {
-      title: "Observação da devolução",
-      variant: "info",
-      multiline: true,
-      placeholder: "Adicione uma observação, se necessário",
-      confirmLabel: "Finalizar empréstimo",
-    });
-    if (observation === null) return;
-
-    setFinishingCollector(reserveCollector);
-
-    try {
-      const response = await apiFetch("/api/mobiles/loan-return", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reserveCollector,
-          responsible: currentUserName,
-          observation: observation.trim(),
-          updateLocation,
-          returnSector,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result?.error || "Erro ao finalizar empréstimo.");
-      }
-
-      await Promise.resolve(onRefresh());
-      await fetchLoans();
-      await showAlert("O equipamento reserva voltou a ficar disponível.", { title: "Empréstimo finalizado", variant: "success", confirmLabel: "Concluir" });
-    } catch (err: any) {
-      console.error("Erro ao finalizar empréstimo:", err);
-      await showAlert(err.message || "Erro ao finalizar empréstimo.", { variant: "error" });
-    } finally {
-      setFinishingCollector(null);
-    }
+    if (reserveCollector) setReturnCollector(reserveCollector);
   };
 
   const metricStyle: React.CSSProperties = {
@@ -310,7 +238,7 @@ export default function ReservasMobilesPanel({
         <div>
           <strong style={{ color: "var(--text-primary)", fontSize: "15px" }}>Reservas TI-SUPORTE</strong>
           <div style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "4px" }}>
-            Clique nos painéis para alternar entre reservas disponíveis, emprestadas, divergências e empréstimos em andamento.
+            Clique nos painéis para alternar entre reservas, empréstimos em andamento e histórico de termos.
           </div>
         </div>
       </div>
@@ -331,6 +259,10 @@ export default function ReservasMobilesPanel({
         <button type="button" onClick={() => setActivePanel("openLoans")} style={panelStyle("openLoans", "#F59E0B")} title="Mostrar empréstimos temporários em aberto">
           <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Empréstimos abertos</div>
           <strong style={{ color: "#F59E0B", fontSize: "24px" }}>{openLoans.length}</strong>
+        </button>
+        <button type="button" onClick={() => setActivePanel("history")} style={panelStyle("history", "#8B5CF6")} title="Mostrar o histórico e reimprimir termos">
+          <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Histórico de termos</div>
+          <strong style={{ color: "#8B5CF6", fontSize: "24px" }}>{loanRows.length}</strong>
         </button>
         <button type="button" onClick={() => setActivePanel("divergent")} style={panelStyle("divergent", "#DC2626")} title="Mostrar reservas cuja localização atual difere da localização esperada">
           <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Localização divergente</div>
@@ -417,7 +349,7 @@ export default function ReservasMobilesPanel({
         </div>
       ) : (
         <div>
-          <div style={{ marginBottom: "10px", color: "var(--text-muted)", fontSize: "12px" }}>Empréstimos temporários em aberto</div>
+          <div style={{ marginBottom: "10px", color: "var(--text-muted)", fontSize: "12px" }}>{activePanel === "history" ? "Histórico de empréstimos e termos" : "Empréstimos temporários em aberto"}</div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1020px" }}>
               <thead>
@@ -430,19 +362,21 @@ export default function ReservasMobilesPanel({
                 </tr>
               </thead>
               <tbody>
-                {openLoans.length === 0 ? (
+                {displayedLoans.length === 0 ? (
                   <tr>
                     <td colSpan={10} style={{ padding: "18px", textAlign: "center", color: "var(--text-muted)", fontSize: "12px" }}>
-                      {loadingLoans ? "Carregando empréstimos..." : "Nenhum empréstimo aberto."}
+                      {loadingLoans ? "Carregando empréstimos..." : activePanel === "history" ? "Nenhum empréstimo registrado." : "Nenhum empréstimo aberto."}
                     </td>
                   </tr>
                 ) : (
-                  openLoans.map((loan, index) => {
+                  displayedLoans.map((loan, index) => {
                     const reserveCollector = reserveCollectorIdx !== -1 ? loan[reserveCollectorIdx] || "-" : "-";
                     const key = idIdx !== -1 ? loan[idIdx] || `${reserveCollector}-${index}` : `${reserveCollector}-${index}`;
                     const currentLocation = getReserveLocation(String(reserveCollector));
                     const destination = destinationIdx !== -1 ? String(loan[destinationIdx] || "").trim() : "";
                     const locationDivergent = isLoanLocationDivergent(loan);
+                    const termData = loanRowToTermData(loanHeaders, loan);
+                    const finalized = normalize(termData.status) === "finalizado";
 
                     return (
                       <tr key={key} style={{ borderBottom: "1px solid var(--border-primary)" }}>
@@ -465,13 +399,11 @@ export default function ReservasMobilesPanel({
                         <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{responsibleIdx !== -1 ? loan[responsibleIdx] || "-" : "-"}</td>
                         <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{reasonIdx !== -1 ? loan[reasonIdx] || "-" : "-"}</td>
                         <td style={{ padding: "10px 12px" }}>
-                          {canEdit ? (
-                            <button type="button" onClick={() => finishLoan(loan)} disabled={finishingCollector === reserveCollector} style={{ padding: "7px 10px", backgroundColor: "#10B981", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: finishingCollector === reserveCollector ? "not-allowed" : "pointer", fontSize: "11px", fontWeight: 700 }}>
-                              {finishingCollector === reserveCollector ? "Finalizando..." : "Finalizar empréstimo"}
-                            </button>
-                          ) : (
-                            <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>Somente leitura</span>
-                          )}
+                          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                            <button type="button" onClick={() => setTermPreview({ type: "loan", data: termData })} style={{ padding: "7px 9px", color: "#3B82F6", background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Termo empréstimo</button>
+                            {finalized && termData.returnDate && <button type="button" onClick={() => setTermPreview({ type: "return", data: termData })} style={{ padding: "7px 9px", color: "#8B5CF6", background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Termo devolução</button>}
+                            {!finalized && canEdit && <button type="button" onClick={() => finishLoan(loan)} style={{ padding: "7px 10px", backgroundColor: "#10B981", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Finalizar empréstimo</button>}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -488,6 +420,22 @@ export default function ReservasMobilesPanel({
           {openLoansLocationDivergent.length} empréstimo{openLoansLocationDivergent.length !== 1 ? "s" : ""} aberto{openLoansLocationDivergent.length !== 1 ? "s" : ""} com localização divergente.
         </div>
       )}
+      <DevolverMobileModal
+        isOpen={Boolean(returnCollector)}
+        reserveCollector={returnCollector}
+        currentUserName={currentUserName}
+        onClose={() => setReturnCollector("")}
+        onSuccess={async () => {
+          await Promise.resolve(onRefresh());
+          await fetchLoans();
+        }}
+      />
+      <MobileLoanTermModal
+        isOpen={termPreview !== null}
+        type={termPreview?.type || "loan"}
+        data={termPreview?.data || null}
+        onClose={() => setTermPreview(null)}
+      />
     </div>
   );
 }

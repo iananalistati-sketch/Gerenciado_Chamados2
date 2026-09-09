@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../auth/api";
 import { useAppDialog } from "../contexts/AppDialogContext";
+import MobileLoanTermModal from "./MobileLoanTermModal";
+import type { MobileLoanTermData } from "./mobileLoanTermData";
 
 interface SubstituirMobileModalProps {
   isOpen: boolean;
@@ -29,6 +31,15 @@ export default function SubstituirMobileModal({
   const [observation, setObservation] = useState("");
   const [updateLocation, setUpdateLocation] = useState(true);
   const [destinationSector, setDestinationSector] = useState("");
+  const [loanCollaboratorName, setLoanCollaboratorName] = useState("");
+  const [loanCollaboratorRegistration, setLoanCollaboratorRegistration] = useState("");
+  const [loanCollaboratorRole, setLoanCollaboratorRole] = useState("");
+  const [serviceOrder, setServiceOrder] = useState("");
+  const [originalBrand, setOriginalBrand] = useState("Urovo");
+  const [originalModel, setOriginalModel] = useState("DT50");
+  const [reserveBrand, setReserveBrand] = useState("Urovo");
+  const [reserveModel, setReserveModel] = useState("DT50");
+  const [termData, setTermData] = useState<MobileLoanTermData | null>(null);
   const [saving, setSaving] = useState(false);
 
   const getIndex = (...names: string[]) =>
@@ -62,6 +73,15 @@ export default function SubstituirMobileModal({
     setObservation("");
     setUpdateLocation(true);
     setDestinationSector(originalLocation || originalSector);
+    setLoanCollaboratorName("");
+    setLoanCollaboratorRegistration("");
+    setLoanCollaboratorRole("");
+    setServiceOrder("");
+    setOriginalBrand("Urovo");
+    setOriginalModel("DT50");
+    setReserveBrand("Urovo");
+    setReserveModel("DT50");
+    setTermData(null);
   }, [isOpen, equipment, originalLocation, originalSector]);
 
   const reserves = useMemo(() => {
@@ -131,6 +151,16 @@ export default function SubstituirMobileModal({
       return;
     }
 
+    if (!loanCollaboratorName.trim() || !loanCollaboratorRegistration.trim() || !loanCollaboratorRole.trim()) {
+      await showAlert("Informe nome, matrícula e cargo do colaborador que receberá o equipamento.", { variant: "warning" });
+      return;
+    }
+
+    if (!originalBrand.trim() || !originalModel.trim() || !reserveBrand.trim() || !reserveModel.trim()) {
+      await showAlert("Informe marca e modelo dos dois equipamentos.", { variant: "warning" });
+      return;
+    }
+
     if (updateLocation && !destinationSector.trim()) {
       await showAlert("Informe o setor de localização para onde o equipamento reserva será enviado.", { variant: "warning" });
       return;
@@ -147,11 +177,18 @@ export default function SubstituirMobileModal({
         body: JSON.stringify({
           originalCollector,
           reserveCollector,
-          responsible: currentUserName,
           reason: reason.trim(),
           observation: observation.trim(),
           updateLocation,
           destinationSector: destinationSector.trim(),
+          serviceOrder: serviceOrder.trim(),
+          loanCollaboratorName: loanCollaboratorName.trim(),
+          loanCollaboratorRegistration: loanCollaboratorRegistration.trim(),
+          loanCollaboratorRole: loanCollaboratorRole.trim(),
+          originalBrand: originalBrand.trim(),
+          originalModel: originalModel.trim(),
+          reserveBrand: reserveBrand.trim(),
+          reserveModel: reserveModel.trim(),
         }),
       });
 
@@ -163,13 +200,7 @@ export default function SubstituirMobileModal({
         );
       }
 
-      await showAlert(
-        `Substituição temporária registrada com sucesso. Empréstimo ${result.loanId}.`,
-        { title: "Substituição registrada", variant: "success", confirmLabel: "Concluir" }
-      );
-
-      onClose();
-      await onSuccess();
+      setTermData(result.termData as MobileLoanTermData);
     } catch (error: any) {
       await showAlert(
         "Erro ao registrar substituição temporária: " +
@@ -213,6 +244,8 @@ export default function SubstituirMobileModal({
         style={{
           width: "100%",
           maxWidth: "660px",
+          maxHeight: "92vh",
+          overflowY: "auto",
           backgroundColor: "var(--bg-secondary)",
           border: "1px solid var(--border-primary)",
           borderRadius: "14px",
@@ -221,6 +254,7 @@ export default function SubstituirMobileModal({
       >
         <form onSubmit={handleSubmit}>
           <div
+            className="mobile-modal-header"
             style={{
               padding: "20px 22px",
               borderBottom: "1px solid var(--border-primary)",
@@ -270,7 +304,7 @@ export default function SubstituirMobileModal({
             </button>
           </div>
 
-          <div style={{ padding: "22px", display: "grid", gap: "16px" }}>
+          <div className="mobile-modal-grid" style={{ padding: "22px", display: "grid", gap: "16px" }}>
             <div
               style={{
                 padding: "14px",
@@ -291,7 +325,34 @@ export default function SubstituirMobileModal({
               Setor de origem: {originalSector || "-"}
               <br />
               Localização atual: {originalLocation || "-"}
+              <br />
+              Técnico responsável: {currentUserName || "-"}
             </div>
+
+            <section className="mobile-loan-form-section">
+              <div className="mobile-loan-form-section-title">
+                <strong>Colaborador que receberá o equipamento</strong>
+                <span>Estes dados serão usados no termo de empréstimo.</span>
+              </div>
+              <div className="mobile-loan-form-grid">
+                <label style={{ display: "grid", gap: "6px", color: "var(--text-secondary)", fontSize: "12px", fontWeight: 600 }}>
+                  Nome completo *
+                  <input type="text" value={loanCollaboratorName} onChange={(event) => setLoanCollaboratorName(event.target.value)} style={inputStyle} />
+                </label>
+                <label style={{ display: "grid", gap: "6px", color: "var(--text-secondary)", fontSize: "12px", fontWeight: 600 }}>
+                  Matrícula *
+                  <input type="text" inputMode="numeric" value={loanCollaboratorRegistration} onChange={(event) => setLoanCollaboratorRegistration(event.target.value)} style={inputStyle} />
+                </label>
+                <label style={{ display: "grid", gap: "6px", color: "var(--text-secondary)", fontSize: "12px", fontWeight: 600 }}>
+                  Cargo *
+                  <input type="text" value={loanCollaboratorRole} onChange={(event) => setLoanCollaboratorRole(event.target.value)} style={inputStyle} />
+                </label>
+                <label style={{ display: "grid", gap: "6px", color: "var(--text-secondary)", fontSize: "12px", fontWeight: 600 }}>
+                  Ordem de Serviço
+                  <input type="text" value={serviceOrder} onChange={(event) => setServiceOrder(event.target.value)} placeholder="Opcional" style={inputStyle} />
+                </label>
+              </div>
+            </section>
 
             <label style={{ display: "grid", gap: "6px", color: "var(--text-secondary)", fontSize: "12px", fontWeight: 600 }}>
               Equipamento reserva do TI-SUPORTE
@@ -332,6 +393,25 @@ export default function SubstituirMobileModal({
                 Nenhum equipamento ativo do setor TI-SUPORTE está disponível para seleção.
               </div>
             )}
+
+            <section className="mobile-loan-form-section">
+              <div className="mobile-loan-form-section-title">
+                <strong>Identificação para o termo</strong>
+                <span>Os valores sugeridos podem ser alterados antes do registro.</span>
+              </div>
+              <div className="mobile-loan-equipment-grid">
+                <div>
+                  <b>Original · {originalCollector || "-"}</b>
+                  <label>Marca *<input type="text" value={originalBrand} onChange={(event) => setOriginalBrand(event.target.value)} style={inputStyle} /></label>
+                  <label>Modelo *<input type="text" value={originalModel} onChange={(event) => setOriginalModel(event.target.value)} style={inputStyle} /></label>
+                </div>
+                <div>
+                  <b>Reserva · {reserveCollector || "Selecione acima"}</b>
+                  <label>Marca *<input type="text" value={reserveBrand} onChange={(event) => setReserveBrand(event.target.value)} style={inputStyle} /></label>
+                  <label>Modelo *<input type="text" value={reserveModel} onChange={(event) => setReserveModel(event.target.value)} style={inputStyle} /></label>
+                </div>
+              </div>
+            </section>
 
             <div
               style={{
@@ -411,6 +491,7 @@ export default function SubstituirMobileModal({
           </div>
 
           <div
+            className="mobile-modal-footer"
             style={{
               padding: "16px 22px",
               borderTop: "1px solid var(--border-primary)",
@@ -450,11 +531,21 @@ export default function SubstituirMobileModal({
                 opacity: saving || reserves.length === 0 ? 0.65 : 1,
               }}
             >
-              {saving ? "Registrando..." : "Confirmar substituição"}
+              {saving ? "Registrando..." : "Registrar e gerar termo"}
             </button>
           </div>
         </form>
       </div>
+      <MobileLoanTermModal
+        isOpen={termData !== null}
+        type="loan"
+        data={termData}
+        onClose={async () => {
+          setTermData(null);
+          onClose();
+          await onSuccess();
+        }}
+      />
     </div>
   );
 }
