@@ -1,4 +1,5 @@
 import React from "react";
+import { useAppDialog } from "../contexts/AppDialogContext";
 
 type CobrancaModalProps = {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export default function CobrancaModal({
   onSaveRow,
   onExport
 }: CobrancaModalProps) {
+  const { alert: showAlert } = useAppDialog();
   if (!isOpen) return null;
 
   const headers = data[0] || [];
@@ -38,7 +40,7 @@ export default function CobrancaModal({
     const rowIndex = (row as any)._originalIndex;
 
     if (rowIndex === undefined || rowIndex === null) {
-      alert("Não foi possível identificar o índice original do chamado.");
+      await showAlert("Não foi possível identificar o índice original do chamado.", { variant: "error" });
       return;
     }
 

@@ -16,6 +16,7 @@ import ChangePassword from "./components/ChangePassword";
 import { useTheme } from "./contexts/ThemeContext";
 import ControleMobiles from "./components/ControleMobiles";
 import { apiFetch } from "./auth/api";
+import { useAppDialog } from "./contexts/AppDialogContext";
 
 /**
  * App.tsx - Mínimo Funcional
@@ -25,6 +26,17 @@ import { apiFetch } from "./auth/api";
 function AppContent() {
   const { user, role, permissions, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { alert: showAppAlert, confirm: showAppConfirm } = useAppDialog();
+  const alert = (message: unknown) => {
+    const text = String(message || "");
+    const normalized = text.toLowerCase();
+    const variant = normalized.includes("sucesso")
+      ? "success"
+      : normalized.includes("erro") || normalized.includes("não foi possível")
+        ? "error"
+        : "warning";
+    void showAppAlert(text, { variant });
+  };
 
   const [data, setData] = useState<string[][]>([]);
   // allData: Armazena os dados de todas as abas carregadas
@@ -677,9 +689,10 @@ function AppContent() {
       return;
     }
   
-    const confirmed = window.confirm(
+    const confirmed = await showAppConfirm(
       "Confirma a exclusão deste chamado?\n\n" +
-      "O registro será marcado como excluído e poderá ser consultado em \"Ver Excluídos\"."
+      "O registro será marcado como excluído e poderá ser consultado em \"Ver Excluídos\".",
+      { title: "Excluir chamado", variant: "warning", confirmLabel: "Excluir chamado" }
     );
   
     if (!confirmed) {

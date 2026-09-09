@@ -5,6 +5,7 @@ import {
 } from "react";
 import { FirebaseError } from "firebase/app";
 import { auth } from "../firebase";
+import { useAppDialog } from "../contexts/AppDialogContext";
 
 type UserRole = "admin" | "analyst" | "viewer";
 
@@ -31,6 +32,7 @@ export default function UserManagement({
   isOpen,
   onClose,
 }: UserManagementProps) {
+  const { confirm: showConfirm } = useAppDialog();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -84,10 +86,14 @@ export default function UserManagement({
         ? "ativar"
         : "desativar";
 
-    const confirmed =
-      window.confirm(
-        `Confirma ${action} o usuário ${user.email}?`
-      );
+    const confirmed = await showConfirm(
+      `Confirma ${action} o usuário ${user.email}?`,
+      {
+        title: user.disabled ? "Ativar usuário" : "Desativar usuário",
+        variant: "warning",
+        confirmLabel: user.disabled ? "Ativar" : "Desativar",
+      }
+    );
 
     if (!confirmed) {
       return;

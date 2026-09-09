@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useAppDialog } from "../contexts/AppDialogContext";
 
 interface NovoMobileModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export default function NovoMobileModal({
   onClose,
   onCreate,
 }: NovoMobileModalProps) {
+  const { alert: showAlert } = useAppDialog();
   const [formData, setFormData] =
     useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -244,7 +246,7 @@ export default function NovoMobileModal({
     label: string
   ) => {
     if (!header || !String(formData[header] || "").trim()) {
-      alert(`Informe ${label}.`);
+      void showAlert(`Informe ${label}.`, { variant: "warning" });
       return false;
     }
     return true;
@@ -263,7 +265,7 @@ export default function NovoMobileModal({
       !appHeader ||
       !statusHeader
     ) {
-      alert("A estrutura de colunas do controle de mobiles está incompleta.");
+      await showAlert("A estrutura de colunas do controle de mobiles está incompleta.", { variant: "error" });
       return;
     }
 
@@ -282,18 +284,18 @@ export default function NovoMobileModal({
       : "";
 
     if (normalize(app) !== "todos" && !version) {
-      alert("Informe a Versão para equipamentos que utilizam um App específico.");
+      await showAlert("Informe a Versão para equipamentos que utilizam um App específico.", { variant: "warning" });
       return;
     }
 
     const sn = String(formData[snHeader] || "").trim();
     const final = String(formData[finalHeader] || "").trim();
     if (!/^\d+$/.test(sn)) {
-      alert("O SN deve conter apenas números.");
+      await showAlert("O SN deve conter apenas números.", { variant: "warning" });
       return;
     }
     if (!/^\d+$/.test(final)) {
-      alert("O FINAL deve conter apenas números.");
+      await showAlert("O FINAL deve conter apenas números.", { variant: "warning" });
       return;
     }
 
@@ -301,7 +303,7 @@ export default function NovoMobileModal({
       .trim()
       .toUpperCase();
     if (!["A", "I"].includes(status)) {
-      alert("Informe um Status válido: Ativo ou Inativo.");
+      await showAlert("Informe um Status válido: Ativo ou Inativo.", { variant: "warning" });
       return;
     }
 
@@ -316,7 +318,7 @@ export default function NovoMobileModal({
     });
 
     if (duplicateSn) {
-      alert(`Já existe um equipamento cadastrado com o SN "${sn}".`);
+      await showAlert(`Já existe um equipamento cadastrado com o SN "${sn}".`, { variant: "warning" });
       return;
     }
 
@@ -333,9 +335,7 @@ export default function NovoMobileModal({
       });
 
       if (activeCollectorExists) {
-        alert(
-          `Já existe um equipamento ATIVO utilizando o Coletor "${coletor}".`
-        );
+        await showAlert(`Já existe um equipamento ATIVO utilizando o Coletor "${coletor}".`, { variant: "warning" });
         return;
       }
     }
@@ -365,9 +365,10 @@ export default function NovoMobileModal({
       await onCreate(rowData);
       onClose();
     } catch (error: any) {
-      alert(
+      await showAlert(
         "Erro ao cadastrar equipamento: " +
-          (error.message || "Erro desconhecido")
+          (error.message || "Erro desconhecido"),
+        { variant: "error" }
       );
     } finally {
       setSaving(false);

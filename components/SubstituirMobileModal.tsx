@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../auth/api";
+import { useAppDialog } from "../contexts/AppDialogContext";
 
 interface SubstituirMobileModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export default function SubstituirMobileModal({
   onClose,
   onSuccess,
 }: SubstituirMobileModalProps) {
+  const { alert: showAlert } = useAppDialog();
   const [reserveCollector, setReserveCollector] = useState("");
   const [reason, setReason] = useState("");
   const [observation, setObservation] = useState("");
@@ -120,17 +122,17 @@ export default function SubstituirMobileModal({
     event.preventDefault();
 
     if (!reserveCollector) {
-      alert("Selecione o equipamento reserva do TI-SUPORTE.");
+      await showAlert("Selecione o equipamento reserva do TI-SUPORTE.", { variant: "warning" });
       return;
     }
 
     if (!reason.trim()) {
-      alert("Informe o motivo da substituição temporária.");
+      await showAlert("Informe o motivo da substituição temporária.", { variant: "warning" });
       return;
     }
 
     if (updateLocation && !destinationSector.trim()) {
-      alert("Informe o setor de localização para onde o equipamento reserva será enviado.");
+      await showAlert("Informe o setor de localização para onde o equipamento reserva será enviado.", { variant: "warning" });
       return;
     }
 
@@ -161,16 +163,18 @@ export default function SubstituirMobileModal({
         );
       }
 
-      alert(
-        `Substituição temporária registrada com sucesso. Empréstimo ${result.loanId}.`
+      await showAlert(
+        `Substituição temporária registrada com sucesso. Empréstimo ${result.loanId}.`,
+        { title: "Substituição registrada", variant: "success", confirmLabel: "Concluir" }
       );
 
       onClose();
       await onSuccess();
     } catch (error: any) {
-      alert(
+      await showAlert(
         "Erro ao registrar substituição temporária: " +
-          (error.message || "Erro desconhecido")
+          (error.message || "Erro desconhecido"),
+        { variant: "error" }
       );
     } finally {
       setSaving(false);

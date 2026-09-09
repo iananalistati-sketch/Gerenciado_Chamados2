@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SubstituirMobileModal from "./SubstituirMobileModal";
 import { apiFetch } from "../auth/api";
+import { useAppDialog } from "../contexts/AppDialogContext";
 
 interface EditarMobileModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export default function EditarMobileModal({
   onSaveMobileApp,
   onRefresh,
 }: EditarMobileModalProps) {
+  const { alert: showAlert, confirm: showConfirm, prompt: showPrompt } = useAppDialog();
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [returning, setReturning] = useState(false);
@@ -163,22 +165,42 @@ export default function EditarMobileModal({
 
   const handleFinalizeLoan = async () => {
     if (!canFinalizeLoan || !currentCollector) return;
-    const confirmed = window.confirm(`Finalizar o empréstimo do equipamento reserva "${currentCollector}"?\n\nO equipamento original voltará para Ativo e a reserva ficará disponível novamente.`);
+    const confirmed = await showConfirm(`O equipamento original voltará para Ativo e a reserva "${currentCollector}" ficará disponível novamente.`, {
+      title: "Finalizar empréstimo",
+      variant: "warning",
+      confirmLabel: "Continuar",
+    });
     if (!confirmed) return;
 
-    const updateLocation = window.confirm("Deseja atualizar o setor de localização na devolução?\n\nSe confirmar, a reserva retornará para TI-SUPORTE e você poderá informar o setor onde o equipamento original será devolvido.");
+    const updateLocation = await showConfirm("A reserva retornará para TI-SUPORTE e você poderá informar onde o equipamento original ficará localizado.", {
+      title: "Atualizar localização",
+      variant: "info",
+      confirmLabel: "Sim, atualizar",
+      cancelLabel: "Manter atual",
+    });
     let returnSector = "";
     if (updateLocation) {
-      const informedSector = window.prompt("Informe o setor de localização para devolução do equipamento original:", currentLocation || currentSector || "");
+      const informedSector = await showPrompt("Informe o setor de localização para devolução do equipamento original:", {
+        title: "Setor de devolução",
+        variant: "info",
+        defaultValue: currentLocation || currentSector || "",
+        confirmLabel: "Continuar",
+      });
       if (informedSector === null) return;
       returnSector = informedSector.trim();
       if (!returnSector) {
-        alert("Informe o setor de localização da devolução.");
+        await showAlert("Informe o setor de localização da devolução.", { variant: "warning" });
         return;
       }
     }
 
-    const observation = window.prompt("Observação da devolução (opcional):", "");
+    const observation = await showPrompt("Observação da devolução (opcional):", {
+      title: "Observação da devolução",
+      variant: "info",
+      multiline: true,
+      placeholder: "Adicione uma observação, se necessário",
+      confirmLabel: "Finalizar empréstimo",
+    });
     if (observation === null) return;
     setReturning(true);
 
@@ -191,10 +213,10 @@ export default function EditarMobileModal({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Erro ao finalizar empréstimo temporário.");
       await Promise.resolve(onRefresh());
-      alert(`Empréstimo ${result.loanId || ""} finalizado com sucesso. O equipamento reserva voltou a ficar disponível.`.trim());
+      await showAlert(`Empréstimo ${result.loanId || ""} finalizado. O equipamento reserva voltou a ficar disponível.`.trim(), { title: "Empréstimo finalizado", variant: "success", confirmLabel: "Concluir" });
       onClose();
     } catch (error: any) {
-      alert("Erro ao finalizar empréstimo: " + (error.message || "Erro desconhecido"));
+      await showAlert("Erro ao finalizar empréstimo: " + (error.message || "Erro desconhecido"), { variant: "error" });
     } finally {
       setReturning(false);
     }
@@ -203,7 +225,7 @@ export default function EditarMobileModal({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!setorHeader || !setorLocalizadoHeader || !coletorHeader || !snHeader || !finalHeader || !macHeader || !appHeader || !statusHeader) {
-      alert("Não foi possível identificar todos os campos obrigatórios do equipamento.");
+      await showAlert("Não foi possível identificar todos os campos obrigatórios do equipamento.", { variant: "error" });
       return;
     }
 
@@ -218,36 +240,36 @@ export default function EditarMobileModal({
     const version = versaoHeader ? String(formData[versaoHeader] || "").trim() : "";
 
     if (!setor || !localizado || !coletor || !sn || !finalValue || !mac || !app || !status) {
-      alert("Preencha todos os campos obrigatórios: Setor, Setor localizado, Coletor, SN, FINAL, MAC, App de uso e Status.");
+      await showAlert("Preencha todos os campos obrigatórios: Setor, Setor localizado, Coletor, SN, FINAL, MAC, App de uso e Status.", { variant: "warning" });
       return;
     }
     if (!/^\d+$/.test(sn)) {
-      alert("SN deve conter apenas números.");
+      await showAlert("SN deve conter apenas números.", { variant: "warning" });
       return;
     }
     if (!/^\d+$/.test(finalValue)) {
-      alert("FINAL deve conter apenas números.");
+      await showAlert("FINAL deve conter apenas números.", { variant: "warning" });
       return;
     }
     if (!isTodos && !version) {
-      alert("Informe a Versão para equipamentos vinculados a um App específico.");
+      await showAlert("Informe a Versão para equipamentos vinculados a um App específico.", { variant: "warning" });
       return;
     }
     if (normalize(originalApp) !== normalize(app)) {
-      alert("A alteração entre TODOS e um App específico ainda não é permitida pela edição simples. Essa mudança exige reorganizar os registros de tbMobileApps.");
+      await showAlert("A alteração entre TODOS e um App específico ainda não é permitida pela edição simples. Essa mudança exige reorganizar os registros de tbMobileApps.", { variant: "warning" });
       return;
     }
 
     const originalStatusIdx = headers.findIndex((header) => normalize(header) === normalize("Status"));
     const originalStatus = originalStatusIdx !== -1 ? String(row[originalStatusIdx] || "").trim().toUpperCase() : "";
     if ((status === "M" || status === "E") && status !== originalStatus) {
-      alert("Os status Manutenção e Emprestado são controlados automaticamente pela rotina de empréstimo e não podem ser definidos manualmente.");
+      await showAlert("Os status Manutenção e Emprestado são controlados automaticamente pela rotina de empréstimo e não podem ser definidos manualmente.", { variant: "warning" });
       return;
     }
 
     const currentRowIndex = (row as any)._originalIndex;
     if (currentRowIndex === undefined || currentRowIndex === null) {
-      alert("Não foi possível identificar a linha original do equipamento.");
+      await showAlert("Não foi possível identificar a linha original do equipamento.", { variant: "error" });
       return;
     }
 
@@ -262,7 +284,7 @@ export default function EditarMobileModal({
       return otherSn !== "" && normalize(otherSn) === normalize(sn);
     });
     if (duplicateSn) {
-      alert(`Já existe outro equipamento cadastrado com o SN "${sn}".`);
+      await showAlert(`Já existe outro equipamento cadastrado com o SN "${sn}".`, { variant: "warning" });
       return;
     }
 
@@ -275,7 +297,7 @@ export default function EditarMobileModal({
         return normalize(otherCollector) === normalize(coletor) && otherStatus === "A";
       });
       if (activeCollectorExists) {
-        alert(`Já existe outro equipamento ATIVO utilizando o Coletor "${coletor}".`);
+        await showAlert(`Já existe outro equipamento ATIVO utilizando o Coletor "${coletor}".`, { variant: "warning" });
         return;
       }
     }
@@ -346,7 +368,7 @@ export default function EditarMobileModal({
       await Promise.resolve(onRefresh());
       onClose();
     } catch (error: any) {
-      alert("Erro ao salvar equipamento: " + error.message);
+      await showAlert("Erro ao salvar equipamento: " + error.message, { variant: "error" });
     } finally {
       setSaving(false);
     }

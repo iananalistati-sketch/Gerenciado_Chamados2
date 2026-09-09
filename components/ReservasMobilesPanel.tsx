@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../auth/api";
+import { useAppDialog } from "../contexts/AppDialogContext";
 
 interface ReservasMobilesPanelProps {
   data: string[][];
@@ -23,6 +24,7 @@ export default function ReservasMobilesPanel({
   canEdit,
   onRefresh,
 }: ReservasMobilesPanelProps) {
+  const { alert: showAlert, confirm: showConfirm, prompt: showPrompt } = useAppDialog();
   const [loans, setLoans] = useState<string[][]>([]);
   const [loadingLoans, setLoadingLoans] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,16 +190,21 @@ export default function ReservasMobilesPanel({
       reserveCollectorIdx !== -1 ? String(loan[reserveCollectorIdx] || "").trim() : "";
 
     if (!reserveCollector) {
-      alert("Não foi possível identificar o coletor reserva.");
+      await showAlert("Não foi possível identificar o coletor reserva.", { variant: "error" });
       return;
     }
 
-    if (!window.confirm(`Finalizar o empréstimo da reserva ${reserveCollector}?`)) {
+    if (!await showConfirm(`Finalizar o empréstimo da reserva ${reserveCollector}?`, {
+      title: "Finalizar empréstimo",
+      variant: "warning",
+      confirmLabel: "Continuar",
+    })) {
       return;
     }
 
-    const updateLocation = window.confirm(
-      "Deseja atualizar também o setor de localização na devolução?"
+    const updateLocation = await showConfirm(
+      "Deseja atualizar também o setor de localização na devolução?",
+      { title: "Atualizar localização", variant: "info", confirmLabel: "Sim, atualizar", cancelLabel: "Manter atual" }
     );
 
     let returnSector = "";
@@ -205,21 +212,28 @@ export default function ReservasMobilesPanel({
       const suggestedSector =
         destinationIdx !== -1 ? String(loan[destinationIdx] || "").trim() : "";
 
-      const informedSector = window.prompt(
+      const informedSector = await showPrompt(
         "Informe o setor onde o equipamento original ficará localizado:",
-        suggestedSector
+        { title: "Setor de devolução", variant: "info", defaultValue: suggestedSector, confirmLabel: "Continuar" }
       );
 
       if (informedSector === null) return;
       returnSector = informedSector.trim();
 
       if (!returnSector) {
-        alert("Informe o setor de localização para concluir a devolução.");
+        await showAlert("Informe o setor de localização para concluir a devolução.", { variant: "warning" });
         return;
       }
     }
 
-    const observation = window.prompt("Observação da devolução (opcional):", "") ?? "";
+    const observation = await showPrompt("Observação da devolução (opcional):", {
+      title: "Observação da devolução",
+      variant: "info",
+      multiline: true,
+      placeholder: "Adicione uma observação, se necessário",
+      confirmLabel: "Finalizar empréstimo",
+    });
+    if (observation === null) return;
 
     setFinishingCollector(reserveCollector);
 
@@ -244,10 +258,10 @@ export default function ReservasMobilesPanel({
 
       await Promise.resolve(onRefresh());
       await fetchLoans();
-      alert("Empréstimo finalizado com sucesso.");
+      await showAlert("O equipamento reserva voltou a ficar disponível.", { title: "Empréstimo finalizado", variant: "success", confirmLabel: "Concluir" });
     } catch (err: any) {
       console.error("Erro ao finalizar empréstimo:", err);
-      alert(err.message || "Erro ao finalizar empréstimo.");
+      await showAlert(err.message || "Erro ao finalizar empréstimo.", { variant: "error" });
     } finally {
       setFinishingCollector(null);
     }
