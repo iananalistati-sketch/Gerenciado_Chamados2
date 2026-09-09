@@ -47,6 +47,8 @@ const normalize = (value: string) =>
 const normalizeValue = (value: string) =>
   normalize(String(value || ""));
 
+type MobileSection = "overview" | "equipment" | "loans" | "history";
+
 export default function ControleMobiles({
   data,
   mobileConfig,
@@ -79,6 +81,8 @@ export default function ControleMobiles({
     key: string;
     direction: "asc" | "desc";
   }>({ key: "", direction: "asc" });
+  const [activeSection, setActiveSection] = useState<MobileSection>("equipment");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const itemsPerPage = 20;
   const headers = data[0] || [];
@@ -394,6 +398,7 @@ export default function ControleMobiles({
   };
 
   const hasActiveFilters = search || setorFilter || setorLocalizadoFilter || appFilter || statusFilter || statusAtualizacaoFilter || versaoFilter || locationDivergenceOnly;
+  const advancedFilterCount = [setorLocalizadoFilter, appFilter, statusAtualizacaoFilter, versaoFilter].filter(Boolean).length;
   const getStatusLabel = (value: string) => {
     switch (String(value || "").trim().toUpperCase()) {
       case "A": return "Ativo";
@@ -447,6 +452,13 @@ export default function ControleMobiles({
     { title: "Ações", key: "" },
   ];
 
+  const navigationItems: Array<{ key: MobileSection; label: string; description: string }> = [
+    { key: "overview", label: "Visão geral", description: "Indicadores e atalhos" },
+    { key: "equipment", label: "Equipamentos", description: "Inventário e atualizações" },
+    { key: "loans", label: "Empréstimos", description: "Reservas e devoluções" },
+    { key: "history", label: "Histórico", description: "Consultas e exportação" },
+  ];
+
   return (
     <div className="mobile-control" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       <div className="mobile-control-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
@@ -460,7 +472,26 @@ export default function ControleMobiles({
         </div>
       </div>
 
-      <div className="mobile-summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
+      <nav className="mobile-control-navigation" aria-label="Áreas do Controle de Mobiles">
+        {navigationItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={activeSection === item.key ? "is-active" : ""}
+            aria-current={activeSection === item.key ? "page" : undefined}
+            onClick={() => setActiveSection(item.key)}
+          >
+            <strong>{item.label}</strong>
+            <span>{item.description}</span>
+          </button>
+        ))}
+      </nav>
+
+      {activeSection === "overview" && <div className="mobile-section-intro">
+        <div><strong>Visão geral do parque</strong><span>Selecione um indicador para abrir o inventário já filtrado.</span></div>
+      </div>}
+
+      {activeSection === "overview" && <div className="mobile-summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
         {cards.map((card) => {
           const isLocationCard = card.filter === "LOCATION";
           const isActive = card.filter === "TOTAL"
@@ -478,6 +509,7 @@ export default function ControleMobiles({
                 if (card.filter === "TOTAL") clearFilters();
                 else if (isLocationCard) toggleLocationDivergenceFilter();
                 else if (card.filter) toggleUpdateStatusFilter(card.filter);
+                if (clickable) setActiveSection("equipment");
               }}
               onKeyDown={(event) => {
                 if (!clickable || (event.key !== "Enter" && event.key !== " ")) return;
@@ -485,6 +517,7 @@ export default function ControleMobiles({
                 if (card.filter === "TOTAL") clearFilters();
                 else if (isLocationCard) toggleLocationDivergenceFilter();
                 else toggleUpdateStatusFilter(card.filter);
+                setActiveSection("equipment");
               }}
               style={{
                 padding: "20px",
@@ -502,16 +535,19 @@ export default function ControleMobiles({
             </div>
           );
         })}
-      </div>
+      </div>}
 
-      <div className="mobile-status-filters" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+      {(activeSection === "overview" || activeSection === "equipment") && <div className="mobile-status-filters" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
         {statusCards.map((item) => {
           const isActive = normalizeValue(statusFilter) === normalizeValue(item.filter);
           return (
             <button
               key={item.label}
               type="button"
-              onClick={() => toggleStatusFilter(item.filter)}
+              onClick={() => {
+                toggleStatusFilter(item.filter);
+                setActiveSection("equipment");
+              }}
               style={{
                 padding: "8px 12px",
                 backgroundColor: "var(--bg-secondary)",
@@ -528,32 +564,53 @@ export default function ControleMobiles({
             </button>
           );
         })}
-      </div>
+      </div>}
 
-      <ReservasMobilesPanel data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />
+      {activeSection === "loans" && <ReservasMobilesPanel mode="operations" data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />}
+      {activeSection === "history" && <ReservasMobilesPanel mode="history" data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />}
 
-      <div className="mobile-filter-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
-        <div className="mobile-filter-grid" style={{ display: "grid", gridTemplateColumns: "minmax(220px, 2fr) repeat(6, minmax(140px, 1fr))", gap: "12px" }}>
+      {activeSection === "equipment" && <div className="mobile-section-intro">
+        <div><strong>Inventário de equipamentos</strong><span>Use a pesquisa e os filtros rápidos; abra os filtros avançados somente quando necessário.</span></div>
+      </div>}
+
+      {activeSection === "equipment" && <div className="mobile-filter-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
+        <div className="mobile-filter-primary">
           <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar Coletor, SN, IP, MAC, App ou versão..." style={inputStyle} />
           <select value={setorFilter} onChange={(event) => setSetorFilter(event.target.value)} style={inputStyle}><option value="">Todos os setores</option>{setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}</select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={inputStyle}><option value="">Todos os status</option>{statusOptions.map((status) => <option key={status} value={status}>{getStatusLabel(status)}</option>)}</select>
+          <button type="button" className={showAdvancedFilters || advancedFilterCount > 0 ? "mobile-advanced-filter-button is-active" : "mobile-advanced-filter-button"} onClick={() => setShowAdvancedFilters((current) => !current)} aria-expanded={showAdvancedFilters}>
+            {showAdvancedFilters ? "Ocultar filtros" : "Mais filtros"}{advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ""}
+          </button>
+        </div>
+        {showAdvancedFilters && <div className="mobile-filter-advanced">
           <select value={setorLocalizadoFilter} onChange={(event) => setSetorLocalizadoFilter(event.target.value)} style={inputStyle}><option value="">Todos os setores localizados</option>{setoresLocalizados.map((setor) => <option key={setor} value={setor}>{setor}</option>)}</select>
           <select value={appFilter} onChange={(event) => setAppFilter(event.target.value)} style={inputStyle}><option value="">Todos os apps</option>{apps.map((app) => <option key={app} value={app}>{app}</option>)}</select>
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={inputStyle}><option value="">Todos os status</option>{statusOptions.map((status) => <option key={status} value={status}>{getStatusLabel(status)}</option>)}</select>
           <select value={statusAtualizacaoFilter} onChange={(event) => setStatusAtualizacaoFilter(event.target.value)} style={inputStyle}><option value="">Todos os status de atualização</option>{statusAtualizacaoOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>
           <select value={versaoFilter} onChange={(event) => setVersaoFilter(event.target.value)} style={inputStyle}><option value="">{appFilter ? `Todas as versões de ${appFilter}` : "Todas as versões"}</option>{versoes.map((versao) => <option key={versao} value={versao}>{versao}</option>)}</select>
-        </div>
+        </div>}
         {appFilter && <div style={{ marginTop: "10px", color: "var(--text-muted)", fontSize: "11px" }}>Os filtros de versão e status de atualização estão sendo aplicados ao App <strong style={{ color: "var(--text-primary)" }}>{appFilter}</strong>.</div>}
         {locationDivergenceOnly && <div style={{ marginTop: "10px", color: "#F59E0B", fontSize: "11px", fontWeight: 600 }}>Filtro rápido ativo: exibindo somente equipamentos Ativos cujo Setor localizado é diferente do Setor de referência.</div>}
-        {hasActiveFilters && <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}><button type="button" onClick={clearFilters} style={{ padding: "8px 14px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar filtros</button></div>}
-      </div>
+        {hasActiveFilters && <div className="mobile-active-filters">
+          <span>Filtros ativos:</span>
+          {search && <button type="button" onClick={() => setSearch("")}>Pesquisa: {search} ×</button>}
+          {setorFilter && <button type="button" onClick={() => setSetorFilter("")}>Setor: {setorFilter} ×</button>}
+          {statusFilter && <button type="button" onClick={() => setStatusFilter("")}>Status: {getStatusLabel(statusFilter)} ×</button>}
+          {setorLocalizadoFilter && <button type="button" onClick={() => setSetorLocalizadoFilter("")}>Localizado: {setorLocalizadoFilter} ×</button>}
+          {appFilter && <button type="button" onClick={() => { setAppFilter(""); setVersaoFilter(""); }}>App: {appFilter} ×</button>}
+          {statusAtualizacaoFilter && <button type="button" onClick={() => setStatusAtualizacaoFilter("")}>Atualização: {statusAtualizacaoFilter} ×</button>}
+          {versaoFilter && <button type="button" onClick={() => setVersaoFilter("")}>Versão: {versaoFilter} ×</button>}
+          {locationDivergenceOnly && <button type="button" onClick={() => setLocationDivergenceOnly(false)}>Fora do setor ×</button>}
+          <button type="button" className="mobile-clear-all-filters" onClick={clearFilters}>Limpar todos</button>
+        </div>}
+      </div>}
 
-      {canEdit && selectedRows.length > 0 && <div className="mobile-selection-bar" style={{ padding: "14px 16px", backgroundColor: "var(--bg-secondary)", border: "1px solid #3B82F6", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div style={{ color: "var(--text-primary)", fontSize: "13px", fontWeight: 600 }}>{selectedRows.length} equipamento{selectedRows.length !== 1 ? "s" : ""} selecionado{selectedRows.length !== 1 ? "s" : ""}</div><div style={{ display: "flex", gap: "10px" }}><button type="button" onClick={clearSelection} style={{ padding: "8px 12px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar seleção</button><button type="button" onClick={() => setShowBulkUpdateModal(true)} style={{ padding: "8px 14px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>Atualizar selecionados</button></div></div>}
+      {activeSection === "equipment" && canEdit && selectedRows.length > 0 && <div className="mobile-selection-bar" style={{ padding: "14px 16px", backgroundColor: "var(--bg-secondary)", border: "1px solid #3B82F6", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div style={{ color: "var(--text-primary)", fontSize: "13px", fontWeight: 600 }}>{selectedRows.length} equipamento{selectedRows.length !== 1 ? "s" : ""} selecionado{selectedRows.length !== 1 ? "s" : ""}</div><div style={{ display: "flex", gap: "10px" }}><button type="button" onClick={clearSelection} style={{ padding: "8px 12px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar seleção</button><button type="button" onClick={() => setShowBulkUpdateModal(true)} style={{ padding: "8px 14px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>Atualizar selecionados</button></div></div>}
 
-      {loading && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Carregando equipamentos...</div>}
-      {!loading && error && <div style={{ padding: "16px", borderRadius: "10px", backgroundColor: "rgba(220, 38, 38, 0.12)", border: "1px solid #DC2626", color: "#DC2626" }}>{error}</div>}
-      {!loading && !error && data.length <= 1 && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Nenhum equipamento encontrado na aba tbControleMobiles.</div>}
+      {activeSection === "equipment" && loading && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Carregando equipamentos...</div>}
+      {activeSection === "equipment" && !loading && error && <div style={{ padding: "16px", borderRadius: "10px", backgroundColor: "rgba(220, 38, 38, 0.12)", border: "1px solid #DC2626", color: "#DC2626" }}>{error}</div>}
+      {activeSection === "equipment" && !loading && !error && data.length <= 1 && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Nenhum equipamento encontrado na aba tbControleMobiles.</div>}
 
-      {!loading && !error && data.length > 1 && <div className="mobile-equipment-section" style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", overflow: "hidden" }}>
+      {activeSection === "equipment" && !loading && !error && data.length > 1 && <div className="mobile-equipment-section" style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", overflow: "hidden" }}>
         <div className="mobile-equipment-heading" style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div><strong style={{ color: "var(--text-primary)" }}>Equipamentos cadastrados</strong><span style={{ marginLeft: "10px", color: "var(--text-muted)", fontSize: "12px" }}>{filteredRows.length} de {totalEquipamentos} registros</span></div></div>
         <div className="mobile-equipment-cards">
           {paginatedRows.length === 0 ? (

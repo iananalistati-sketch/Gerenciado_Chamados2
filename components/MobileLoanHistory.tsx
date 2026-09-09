@@ -82,6 +82,7 @@ export default function MobileLoanHistory({
   const [sector, setSector] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>(defaultColumns);
   const [sort, setSort] = useState<{ key: string; direction: SortDirection }>({ key: "loanDate", direction: "desc" });
 
@@ -145,6 +146,8 @@ export default function MobileLoanHistory({
     visibleColumns.map((column) => ({ header: column.label, width: column.width, value: column.value })),
     sortedItems
   );
+  const advancedFilterCount = [status, sector].filter(Boolean).length;
+  const hasFilters = Boolean(search || status || sector || startDate || endDate);
 
   return (
     <section className="mobile-loan-history">
@@ -174,13 +177,23 @@ export default function MobileLoanHistory({
         </div>
       </div>
 
-      <div className="mobile-history-filters">
-        <label className="mobile-history-search"><span>Pesquisa geral</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ID, coletor, colaborador, OS..." /></label>
-        <label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos</option><option value="ABERTO">Aberto</option><option value="FINALIZADO">Finalizado</option></select></label>
-        <label><span>Setor de destino</span><select value={sector} onChange={(event) => setSector(event.target.value)}><option value="">Todos os setores</option>{sectors.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-        <label><span>Empréstimo a partir de</span><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>
-        <label><span>Empréstimo até</span><input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label>
-        <button type="button" onClick={clearFilters}>Limpar filtros</button>
+      <div className="mobile-history-filter-panel">
+        <div className="mobile-history-filters">
+          <label className="mobile-history-search"><span>Pesquisa geral</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ID, coletor, colaborador, OS..." /></label>
+          <label><span>Empréstimo a partir de</span><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>
+          <label><span>Empréstimo até</span><input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label>
+          <button type="button" className={showAdvancedFilters || advancedFilterCount > 0 ? "is-active" : ""} onClick={() => setShowAdvancedFilters((current) => !current)}>
+            {showAdvancedFilters ? "Ocultar filtros" : "Mais filtros"}{advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ""}
+          </button>
+        </div>
+        {showAdvancedFilters && <div className="mobile-history-secondary-filters">
+          <label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos</option><option value="ABERTO">Aberto</option><option value="FINALIZADO">Finalizado</option></select></label>
+          <label><span>Setor de destino</span><select value={sector} onChange={(event) => setSector(event.target.value)}><option value="">Todos os setores</option>{sectors.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+        </div>}
+        {hasFilters && <div className="mobile-history-filter-summary">
+          <span>{sortedItems.length} registro{sortedItems.length === 1 ? "" : "s"} encontrado{sortedItems.length === 1 ? "" : "s"}</span>
+          <button type="button" onClick={clearFilters}>Limpar filtros</button>
+        </div>}
       </div>
 
       <div className="mobile-history-table-wrap">

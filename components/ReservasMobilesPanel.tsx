@@ -6,6 +6,7 @@ import MobileLoanTermModal from "./MobileLoanTermModal";
 import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData";
 
 interface ReservasMobilesPanelProps {
+  mode?: "operations" | "history";
   data: string[][];
   currentUserName: string;
   canEdit: boolean;
@@ -23,6 +24,7 @@ const normalize = (value: string) =>
     .toLowerCase();
 
 export default function ReservasMobilesPanel({
+  mode = "operations",
   data,
   currentUserName,
   canEdit,
@@ -33,7 +35,7 @@ export default function ReservasMobilesPanel({
   const [error, setError] = useState<string | null>(null);
   const [returnCollector, setReturnCollector] = useState("");
   const [termPreview, setTermPreview] = useState<{ type: "loan" | "return"; data: MobileLoanTermData } | null>(null);
-  const [activePanel, setActivePanel] = useState<PanelView>("openLoans");
+  const [activePanel, setActivePanel] = useState<PanelView>(mode === "history" ? "history" : "openLoans");
   const [reserveSort, setReserveSort] = useState<{ key: ReserveSortKey; direction: "asc" | "desc" }>({ key: "collector", direction: "asc" });
 
   const headers = data[0] || [];
@@ -95,6 +97,13 @@ export default function ReservasMobilesPanel({
   useEffect(() => {
     fetchLoans();
   }, [fetchLoans, data]);
+
+  useEffect(() => {
+    setActivePanel((current) => {
+      if (mode === "history") return "history";
+      return current === "history" ? "openLoans" : current;
+    });
+  }, [mode]);
 
   const loanHeaders = loans[0] || [];
   const loanRows = loans.slice(1);
@@ -220,7 +229,13 @@ export default function ReservasMobilesPanel({
   };
 
   const metricStyle: React.CSSProperties = {
-    padding: "14px 16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "10px",
+    flex: "0 0 auto",
+    minWidth: "150px",
+    padding: "10px 12px",
     border: "1px solid var(--border-primary)",
     borderRadius: "10px",
     backgroundColor: "var(--bg-primary)",
@@ -258,16 +273,16 @@ export default function ReservasMobilesPanel({
 
   return (
     <div className="mobile-reserves-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
+      {mode === "operations" && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
         <div>
           <strong style={{ color: "var(--text-primary)", fontSize: "15px" }}>Reservas TI-SUPORTE</strong>
           <div style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "4px" }}>
-            Clique nos painéis para alternar entre reservas, empréstimos em andamento e histórico de termos.
+            Consulte reservas disponíveis, empréstimos em andamento e divergências de localização.
           </div>
         </div>
-      </div>
+      </div>}
 
-      <div className="mobile-reserves-metrics" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginBottom: "18px" }}>
+      {mode === "operations" && <div className="mobile-reserves-metrics" style={{ display: "flex", gap: "8px", marginBottom: "18px", overflowX: "auto", paddingBottom: "3px" }}>
         <button type="button" onClick={() => setActivePanel("all")} style={panelStyle("all", "#3B82F6")} title="Mostrar todas as reservas da TI-SUPORTE">
           <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Total de reservas</div>
           <strong style={{ color: "var(--text-primary)", fontSize: "24px" }}>{reservas.length}</strong>
@@ -284,17 +299,13 @@ export default function ReservasMobilesPanel({
           <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Empréstimos abertos</div>
           <strong style={{ color: "#F59E0B", fontSize: "24px" }}>{openLoans.length}</strong>
         </button>
-        <button type="button" onClick={() => setActivePanel("history")} style={panelStyle("history", "#8B5CF6")} title="Mostrar o histórico e reimprimir termos">
-          <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Histórico de termos</div>
-          <strong style={{ color: "#8B5CF6", fontSize: "24px" }}>{loanRows.length}</strong>
-        </button>
         <button type="button" onClick={() => setActivePanel("divergent")} style={panelStyle("divergent", "#DC2626")} title="Mostrar reservas cuja localização atual difere da localização esperada">
           <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Localização divergente</div>
           <strong style={{ color: "#DC2626", fontSize: "24px" }}>{reservasLocalizacaoDivergente.length}</strong>
         </button>
-      </div>
+      </div>}
 
-      {reservasDisponiveisForaTi.length > 0 && (
+      {mode === "operations" && reservasDisponiveisForaTi.length > 0 && (
         <div style={{ marginBottom: "14px", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(220, 38, 38, 0.35)", backgroundColor: "rgba(220, 38, 38, 0.08)", color: "#DC2626", fontSize: "12px" }}>
           ⚠ {reservasDisponiveisForaTi.length} reserva{reservasDisponiveisForaTi.length !== 1 ? "s" : ""} disponível{reservasDisponiveisForaTi.length !== 1 ? "is" : ""} fora da TI-SUPORTE: {reservasDisponiveisForaTi
             .map((row) => getReserveCollector(row))
