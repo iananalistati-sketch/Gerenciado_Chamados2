@@ -63,6 +63,7 @@ export default function ControleMobiles({
 }: ControleMobilesProps) {
   const [search, setSearch] = useState("");
   const [setorFilter, setSetorFilter] = useState("");
+  const [setorLocalizadoFilter, setSetorLocalizadoFilter] = useState("");
   const [appFilter, setAppFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [statusAtualizacaoFilter, setStatusAtualizacaoFilter] = useState("");
@@ -199,6 +200,7 @@ export default function ControleMobiles({
   };
 
   const setores = useMemo(() => uniqueValues(setorIdx), [data, setorIdx]);
+  const setoresLocalizados = useMemo(() => uniqueValues(setorLocalizadoIdx), [data, setorLocalizadoIdx]);
   const apps = useMemo(() => {
     if (mobileAppAppIdx === -1) return [];
     return Array.from(new Set(mobileApps.slice(1).map((row) => String(row[mobileAppAppIdx] || "").trim()).filter((value) => value && normalize(value) !== "todos"))).sort((a, b) =>
@@ -243,6 +245,7 @@ export default function ControleMobiles({
       if (![...physicalSearchValues, ...appSearchValues].some((value) => value.includes(searchValue))) return false;
     }
     if (setorFilter && normalizeValue(row[setorIdx] || "") !== normalizeValue(setorFilter)) return false;
+    if (setorLocalizadoFilter && normalizeValue(row[setorLocalizadoIdx] || "") !== normalizeValue(setorLocalizadoFilter)) return false;
     if (appFilter && appRowsMatchingApp.length === 0) return false;
     if (statusFilter && normalizeValue(row[statusIdx] || "") !== normalizeValue(statusFilter)) return false;
     if (statusAtualizacaoFilter) {
@@ -256,9 +259,9 @@ export default function ControleMobiles({
     }
     if (locationDivergenceOnly && !isLocationDivergent(row)) return false;
     return true;
-  }), [rows, search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, ipIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
+  }), [rows, search, setorFilter, setorLocalizadoFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, ipIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
 
-  useEffect(() => setCurrentPage(1), [search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly]);
+  useEffect(() => setCurrentPage(1), [search, setorFilter, setorLocalizadoFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly]);
 
   const handleSort = (key: string) => {
     setSortConfig((previous) => ({
@@ -328,6 +331,7 @@ export default function ControleMobiles({
   const clearFilters = () => {
     setSearch("");
     setSetorFilter("");
+    setSetorLocalizadoFilter("");
     setAppFilter("");
     setStatusFilter("");
     setStatusAtualizacaoFilter("");
@@ -389,7 +393,7 @@ export default function ControleMobiles({
     await onBulkUpdate(preparedUpdates); clearSelection();
   };
 
-  const hasActiveFilters = search || setorFilter || appFilter || statusFilter || statusAtualizacaoFilter || versaoFilter || locationDivergenceOnly;
+  const hasActiveFilters = search || setorFilter || setorLocalizadoFilter || appFilter || statusFilter || statusAtualizacaoFilter || versaoFilter || locationDivergenceOnly;
   const getStatusLabel = (value: string) => {
     switch (String(value || "").trim().toUpperCase()) {
       case "A": return "Ativo";
@@ -529,9 +533,10 @@ export default function ControleMobiles({
       <ReservasMobilesPanel data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />
 
       <div className="mobile-filter-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
-        <div className="mobile-filter-grid" style={{ display: "grid", gridTemplateColumns: "minmax(220px, 2fr) repeat(5, minmax(140px, 1fr))", gap: "12px" }}>
+        <div className="mobile-filter-grid" style={{ display: "grid", gridTemplateColumns: "minmax(220px, 2fr) repeat(6, minmax(140px, 1fr))", gap: "12px" }}>
           <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar Coletor, SN, IP, MAC, App ou versão..." style={inputStyle} />
           <select value={setorFilter} onChange={(event) => setSetorFilter(event.target.value)} style={inputStyle}><option value="">Todos os setores</option>{setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}</select>
+          <select value={setorLocalizadoFilter} onChange={(event) => setSetorLocalizadoFilter(event.target.value)} style={inputStyle}><option value="">Todos os setores localizados</option>{setoresLocalizados.map((setor) => <option key={setor} value={setor}>{setor}</option>)}</select>
           <select value={appFilter} onChange={(event) => setAppFilter(event.target.value)} style={inputStyle}><option value="">Todos os apps</option>{apps.map((app) => <option key={app} value={app}>{app}</option>)}</select>
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={inputStyle}><option value="">Todos os status</option>{statusOptions.map((status) => <option key={status} value={status}>{getStatusLabel(status)}</option>)}</select>
           <select value={statusAtualizacaoFilter} onChange={(event) => setStatusAtualizacaoFilter(event.target.value)} style={inputStyle}><option value="">Todos os status de atualização</option>{statusAtualizacaoOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>
