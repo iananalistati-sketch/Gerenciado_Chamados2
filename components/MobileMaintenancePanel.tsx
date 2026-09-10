@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from "react";
+import { apiFetch } from "../auth/api";
 import { useAppDialog } from "../contexts/AppDialogContext";
 
 interface MobileMaintenancePanelProps {
   data: string[][];
   canEdit: boolean;
-  onSaveRow: (rowData: string[], rowIndex: number) => Promise<void>;
   onRefresh: () => void | Promise<void>;
 }
 
@@ -18,7 +18,6 @@ const normalize = (value: string) =>
 export default function MobileMaintenancePanel({
   data,
   canEdit,
-  onSaveRow,
   onRefresh,
 }: MobileMaintenancePanelProps) {
   const { confirm: showConfirm, alert: showAlert } = useAppDialog();
@@ -105,9 +104,21 @@ export default function MobileMaintenancePanel({
 
     setReturningRow(rowIndex);
     try {
-      await onSaveRow(updatedRow, rowIndex);
-      await showAlert(`Equipamento ${collector} retornado para TI-SUPORTE com sucesso.`, { variant: "success" });
+      const response = await apiFetch("/api/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowData: updatedRow,
+          rowIndex,
+          sheet: "tbControleMobiles",
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error || "Não foi possível retornar o equipamento para TI-SUPORTE.");
+
       await onRefresh();
+      await showAlert(`Equipamento ${collector} retornado para TI-SUPORTE com sucesso.`, { variant: "success" });
     } catch (error: any) {
       await showAlert(error?.message || "Erro ao retornar o equipamento para TI-SUPORTE.", { variant: "error" });
     } finally {
