@@ -26,6 +26,10 @@ export interface MobileLoanTermData {
   returnCondition: string;
   returnDetails: string;
   returnObservation: string;
+  returnOccurrenceType: string;
+  misuseJustification: string;
+  sectorResponsibleName: string;
+  responsibilityTermIssued: string;
 }
 
 const normalize = (value: string) =>
@@ -77,5 +81,8 @@ export const loanRowToTermData = (
   returnCondition: getLoanValue(headers, row, "CONDICAO_DEVOLUCAO"),
   returnDetails: getLoanValue(headers, row, "DETALHES_DEVOLUCAO"),
   returnObservation: getLoanValue(headers, row, "OBS_DEVOLUCAO"),
+  returnOccurrenceType: getLoanValue(headers, row, "TIPO_OCORRENCIA_DEVOLUCAO"),
+  misuseJustification: getLoanValue(headers, row, "JUSTIFICATIVA_MAU_USO"),
+  sectorResponsibleName: getLoanValue(headers, row, "RESPONSAVEL_SETOR_NOME"),
+  responsibilityTermIssued: getLoanValue(headers, row, "TERMO_RESPONSABILIDADE_EMITIDO"),
 });
-
