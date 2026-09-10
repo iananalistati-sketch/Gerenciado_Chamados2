@@ -4,7 +4,7 @@ import type { MobileLoanTermData } from "./mobileLoanTermData";
 
 interface MobileLoanTermModalProps {
   isOpen: boolean;
-  type: "loan" | "return";
+  type: "loan" | "return" | "responsibility";
   data: MobileLoanTermData | null;
   onClose: () => void;
 }
@@ -28,6 +28,15 @@ const longDate = (value: string) => {
 };
 
 const display = (value: string) => value || "—";
+
+const occurrenceLabels: Record<string, string> = {
+  FALHA_TECNICA: "Falha técnica",
+  DESGASTE_NATURAL: "Desgaste natural",
+  AVARIA_FISICA: "Avaria física",
+  INDICIO_MAU_USO: "Indício de mau uso",
+  PECA_ACESSORIO_FALTANTE: "Peça ou acessório faltante",
+  EM_ANALISE: "Em análise",
+};
 
 export default function MobileLoanTermModal({
   isOpen,
@@ -54,13 +63,18 @@ export default function MobileLoanTermModal({
 
   const condition = data.returnCondition.toUpperCase();
   const isChecked = (key: string) => condition.split("|").map((item) => item.trim()).includes(key);
+  const termLabels = {
+    loan: "Termo de empréstimo",
+    return: "Termo de devolução",
+    responsibility: "Termo de mau uso e responsabilidade",
+  } as const;
 
   return createPortal(
-    <div className="mobile-term-overlay" role="dialog" aria-modal="true" aria-label={type === "loan" ? "Termo de empréstimo" : "Termo de devolução"}>
+    <div className="mobile-term-overlay" role="dialog" aria-modal="true" aria-label={termLabels[type]}>
       <div className="mobile-term-shell">
         <div className="mobile-term-toolbar no-print">
           <div>
-            <strong>{type === "loan" ? "Termo de empréstimo" : "Termo de devolução"}</strong>
+            <strong>{termLabels[type]}</strong>
             <span>Empréstimo {data.loanId || "sem identificação"}</span>
           </div>
           <div>
@@ -120,7 +134,7 @@ export default function MobileLoanTermModal({
                 <div><span /><small>{display(data.loanResponsible)}<br />Técnico responsável pela entrega</small></div>
               </div>
             </>
-          ) : (
+          ) : type === "return" ? (
             <>
               <h1>Termo de Devolução de Equipamento de TI</h1>
               <p>
@@ -146,6 +160,43 @@ export default function MobileLoanTermModal({
               <div className="mobile-term-signatures">
                 <div><span /><small>{display(data.returnCollaboratorName)}<br />Colaborador responsável pela devolução</small></div>
                 <div><span /><small>{display(data.returnResponsible)}<br />Técnico responsável pelo recebimento</small></div>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1>Termo de Ocorrência, Mau Uso e Responsabilidade</h1>
+              <p>
+                Pelo presente termo, fica registrada a ocorrência identificada na devolução do equipamento reserva abaixo, disponibilizado ao setor <strong>{display(data.destinationSector)}</strong> durante o empréstimo <strong>{display(data.loanId)}</strong>.
+              </p>
+
+              <h2>Identificação do equipamento e da ocorrência</h2>
+              <table>
+                <tbody>
+                  <tr><td><b>Equipamento reserva:</b> {display(data.reserveCollector)}</td><td><b>Número de série:</b> {display(data.reserveSerial)}</td></tr>
+                  <tr><td><b>Marca:</b> {display(data.reserveBrand)}</td><td><b>Modelo:</b> {display(data.reserveModel)}</td></tr>
+                  <tr><td><b>Setor responsável:</b> {display(data.destinationSector)}</td><td><b>Ordem de serviço:</b> {display(data.serviceOrder)}</td></tr>
+                  <tr><td><b>Data da devolução:</b> {formatDate(data.returnDate)}</td><td><b>Classificação:</b> {display(occurrenceLabels[data.returnOccurrenceType] || data.returnOccurrenceType)}</td></tr>
+                </tbody>
+              </table>
+
+              <h2>Descrição e justificativa</h2>
+              <p><b>Constatação na devolução:</b> {display(data.returnDetails)}</p>
+              <p><b>Justificativa do mau uso/responsabilidade:</b> {display(data.misuseJustification)}</p>
+              {data.returnObservation && <p><b>Observação complementar:</b> {data.returnObservation}</p>}
+
+              <h2>Ciência e responsabilidade</h2>
+              <p>
+                O setor declara ciência da ocorrência registrada e do encaminhamento do equipamento para avaliação técnica e manutenção. Sendo confirmada avaria decorrente de mau uso, dano físico ou ausência de peça/acessório, os custos de reparo ou reposição serão direcionados ao setor responsável, conforme as normas, a apuração técnica e as autorizações internas da instituição.
+              </p>
+              <p>
+                Este documento registra a condição constatada no recebimento do equipamento e não substitui o diagnóstico técnico, que poderá complementar a apuração da ocorrência e a definição das providências aplicáveis.
+              </p>
+
+              <p className="mobile-term-date">Divinópolis, {longDate(data.returnDate)}.</p>
+              <div className="mobile-term-signatures mobile-term-signatures-three">
+                <div><span /><small>{display(data.returnCollaboratorName)}<br />Responsável pela devolução</small></div>
+                <div><span /><small>{display(data.sectorResponsibleName)}<br />Coordenação/responsável pelo setor</small></div>
+                <div><span /><small>Supervisor de TI<br />Ciência e validação</small></div>
               </div>
             </>
           )}
