@@ -286,6 +286,11 @@ body,
   margin-top: 46px;
 }
 
+.mobile-term-signatures-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
 .mobile-term-signatures > div {
   text-align: center;
 }
@@ -310,6 +315,26 @@ body,
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 400;
+}
+
+.mobile-return-responsibility-notice,
+.mobile-return-technical-notice {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.mobile-return-responsibility-notice {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.09);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+}
+
+.mobile-return-technical-notice {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.28);
 }
 
 .mobile-loan-form-grid,
@@ -687,6 +712,41 @@ body,
   body.printing-mobile-term .mobile-term-document-loan footer {
     padding-top: 5px;
     font-size: 7.75px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-responsibility {
+    font-size: 10.5px;
+    line-height: 1.35;
+  }
+
+  body.printing-mobile-term .mobile-term-document-responsibility h1 {
+    margin: 13px 0 12px;
+    font-size: 15px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-responsibility h2 {
+    margin: 10px 0 5px;
+    padding: 5px 7px;
+    font-size: 11px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-responsibility p {
+    margin: 6px 0;
+  }
+
+  body.printing-mobile-term .mobile-term-document-responsibility table {
+    margin: 6px 0 8px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-responsibility th,
+  body.printing-mobile-term .mobile-term-document-responsibility td {
+    padding: 5px 6px;
+  }
+
+  body.printing-mobile-term .mobile-term-document-responsibility .mobile-term-signatures {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+    margin-top: 38px;
   }
 }
 
