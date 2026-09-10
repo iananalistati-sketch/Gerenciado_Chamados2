@@ -56,6 +56,9 @@ export default async function handler(req: any, res: any) {
       returnCollaboratorRole,
       returnCondition,
       returnDetails,
+      occurrenceType,
+      misuseJustification,
+      sectorResponsibleName,
     } = req.body || {};
 
     const reserve = String(
@@ -108,6 +111,41 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({
         error: "Detalhe o defeito ou as peças/acessórios faltantes.",
       });
+    }
+
+    const hasDamage = normalizedConditions.some((item) => item !== "PERFEITO_ESTADO");
+    const normalizedOccurrenceType = normalizedConditions.includes("FALTANDO_PECAS_ACESSORIOS")
+      ? "PECA_ACESSORIO_FALTANTE"
+      : String(occurrenceType || "").trim().toUpperCase();
+    const allowedOccurrenceTypes = new Set([
+      "FALHA_TECNICA",
+      "DESGASTE_NATURAL",
+      "AVARIA_FISICA",
+      "INDICIO_MAU_USO",
+      "PECA_ACESSORIO_FALTANTE",
+      "EM_ANALISE",
+    ]);
+    const responsibilityOccurrenceTypes = new Set([
+      "AVARIA_FISICA",
+      "INDICIO_MAU_USO",
+      "PECA_ACESSORIO_FALTANTE",
+    ]);
+
+    if (hasDamage && !allowedOccurrenceTypes.has(normalizedOccurrenceType)) {
+      return res.status(400).json({ error: "Informe uma classificação válida para a ocorrência." });
+    }
+
+    if (!hasDamage && normalizedOccurrenceType) {
+      return res.status(400).json({ error: "A classificação de ocorrência só pode ser informada quando houver falha ou item faltante." });
+    }
+
+    const issueResponsibilityTerm = hasDamage && responsibilityOccurrenceTypes.has(normalizedOccurrenceType);
+    if (issueResponsibilityTerm && !String(misuseJustification || "").trim()) {
+      return res.status(400).json({ error: "Informe a justificativa do mau uso ou da responsabilidade." });
+    }
+
+    if (issueResponsibilityTerm && !String(sectorResponsibleName || "").trim()) {
+      return res.status(400).json({ error: "Informe o nome da coordenação ou responsável pelo setor." });
     }
 
     if (updateLocation && !requestedReturnSector) {
@@ -179,6 +217,10 @@ export default async function handler(req: any, res: any) {
       "CONDICAO_DEVOLUCAO",
       "DETALHES_DEVOLUCAO",
       "OBS_DEVOLUCAO",
+      "TIPO_OCORRENCIA_DEVOLUCAO",
+      "JUSTIFICATIVA_MAU_USO",
+      "RESPONSAVEL_SETOR_NOME",
+      "TERMO_RESPONSABILIDADE_EMITIDO",
     ];
     const missingReturnHeaders = requiredReturnHeaders.filter(
       (header) => findHeaderIndex(loanHeaders, header) === -1
@@ -241,6 +283,10 @@ export default async function handler(req: any, res: any) {
     const returnConditionIdx = findHeaderIndex(loanHeaders, "CONDICAO_DEVOLUCAO");
     const returnDetailsIdx = findHeaderIndex(loanHeaders, "DETALHES_DEVOLUCAO");
     const returnObservationIdx = findHeaderIndex(loanHeaders, "OBS_DEVOLUCAO");
+    const occurrenceTypeIdx = findHeaderIndex(loanHeaders, "TIPO_OCORRENCIA_DEVOLUCAO");
+    const misuseJustificationIdx = findHeaderIndex(loanHeaders, "JUSTIFICATIVA_MAU_USO");
+    const sectorResponsibleNameIdx = findHeaderIndex(loanHeaders, "RESPONSAVEL_SETOR_NOME");
+    const responsibilityTermIssuedIdx = findHeaderIndex(loanHeaders, "TERMO_RESPONSABILIDADE_EMITIDO");
 
     if (
       coletorIdx === -1 ||
@@ -348,11 +394,12 @@ export default async function handler(req: any, res: any) {
       loanUpdated.push("");
     }
 
-    reserveUpdated[statusIdx] = "A";
+    reserveUpdated[statusIdx] = hasDamage ? "M" : "A";
     originalUpdated[statusIdx] = "A";
 
+    reserveUpdated[setorLocalizadoIdx] = hasDamage ? "MANUTENÇÃO" : "TI-SUPORTE";
+
     if (updateLocation) {
-      reserveUpdated[setorLocalizadoIdx] = "TI-SUPORTE";
       originalUpdated[setorLocalizadoIdx] = effectiveReturnSector;
     }
 
@@ -366,6 +413,14 @@ export default async function handler(req: any, res: any) {
     loanUpdated[returnRoleIdx] = String(returnCollaboratorRole).trim();
     loanUpdated[returnConditionIdx] = normalizedConditions.join(" | ");
     loanUpdated[returnDetailsIdx] = String(returnDetails || "").trim();
+    loanUpdated[occurrenceTypeIdx] = hasDamage ? normalizedOccurrenceType : "";
+    loanUpdated[misuseJustificationIdx] = issueResponsibilityTerm
+      ? String(misuseJustification || "").trim()
+      : "";
+    loanUpdated[sectorResponsibleNameIdx] = issueResponsibilityTerm
+      ? String(sectorResponsibleName || "").trim()
+      : "";
+    loanUpdated[responsibilityTermIssuedIdx] = issueResponsibilityTerm ? "SIM" : "NAO";
     const notes: string[] = [];
 
     if (String(observation || "").trim()) {
@@ -411,6 +466,9 @@ export default async function handler(req: any, res: any) {
       returnSector:
         updateLocation ? effectiveReturnSector : "",
       locationUpdated: Boolean(updateLocation),
+      reserveStatus: hasDamage ? "M" : "A",
+      reserveLocation: hasDamage ? "MANUTENÇÃO" : "TI-SUPORTE",
+      responsibilityTermIssued: issueResponsibilityTerm,
       termData: {
         loanId: loanIdIdx !== -1 ? String(loan.row[loanIdIdx] || "").trim() : "",
         status: "FINALIZADO",
@@ -439,6 +497,10 @@ export default async function handler(req: any, res: any) {
         returnCondition: normalizedConditions.join(" | "),
         returnDetails: String(returnDetails || "").trim(),
         returnObservation,
+        returnOccurrenceType: hasDamage ? normalizedOccurrenceType : "",
+        misuseJustification: issueResponsibilityTerm ? String(misuseJustification || "").trim() : "",
+        sectorResponsibleName: issueResponsibilityTerm ? String(sectorResponsibleName || "").trim() : "",
+        responsibilityTermIssued: issueResponsibilityTerm ? "SIM" : "NAO",
       },
     });
   } catch (error: any) {
