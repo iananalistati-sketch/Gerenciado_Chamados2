@@ -97,7 +97,7 @@ const analystPermissions: Permissions = {
   canConclude: true,
   canCharge: true,
   canDelete: false,
-  canManageUsers: false,
+  canManageUsers: true,
 
   canViewMobiles: true,
   canCreateMobile: true,
