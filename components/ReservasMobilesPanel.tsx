@@ -34,7 +34,7 @@ export default function ReservasMobilesPanel({
   const [loadingLoans, setLoadingLoans] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [returnCollector, setReturnCollector] = useState("");
-  const [termPreview, setTermPreview] = useState<{ type: "loan" | "return"; data: MobileLoanTermData } | null>(null);
+  const [termPreview, setTermPreview] = useState<{ type: "loan" | "return" | "responsibility"; data: MobileLoanTermData } | null>(null);
   const [activePanel, setActivePanel] = useState<PanelView>(mode === "history" ? "history" : "openLoans");
   const [reserveSort, setReserveSort] = useState<{ key: ReserveSortKey; direction: "asc" | "desc" }>({ key: "collector", direction: "asc" });
 
