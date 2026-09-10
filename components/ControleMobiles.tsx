@@ -4,7 +4,6 @@ import NovoMobileModal from "./NovoMobileModal";
 import AtualizacaoLoteMobilesModal from "./AtualizacaoLoteMobilesModal";
 import DetalhesAppsMobileModal from "./DetalhesAppsMobileModal";
 import ReservasMobilesPanel from "./ReservasMobilesPanel";
-import MobileMaintenancePanel from "./MobileMaintenancePanel";
 
 interface ControleMobilesProps {
   data: string[][];
@@ -48,7 +47,7 @@ const normalize = (value: string) =>
 const normalizeValue = (value: string) =>
   normalize(String(value || ""));
 
-type MobileSection = "overview" | "equipment" | "loans" | "history" | "maintenance";
+type MobileSection = "overview" | "equipment" | "loans" | "history";
 
 export default function ControleMobiles({
   data,
@@ -455,9 +454,8 @@ export default function ControleMobiles({
   const navigationItems: Array<{ key: MobileSection; label: string; description: string }> = [
     { key: "overview", label: "Visão geral", description: "Indicadores e atalhos" },
     { key: "equipment", label: "Equipamentos", description: "Inventário e atualizações" },
-    { key: "maintenance", label: "Manutenção", description: "Retorno de equipamentos reparados" },
     { key: "loans", label: "Empréstimos", description: "Reservas e devoluções" },
-    { key: "history", label: "Histórico", description: "Consultas e exportação" },
+    { key: "history", label: "Histórico de manutenções", description: "Consultas e exportação" },
   ];
 
   return (
@@ -567,7 +565,6 @@ export default function ControleMobiles({
         })}
       </div>}
 
-      {activeSection === "maintenance" && <MobileMaintenancePanel data={data} canEdit={canEdit} onSaveRow={onSaveRow} onRefresh={onRefresh} />}
       {activeSection === "loans" && <ReservasMobilesPanel mode="operations" data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />}
       {activeSection === "history" && <ReservasMobilesPanel mode="history" data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />}
 
