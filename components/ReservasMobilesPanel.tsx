@@ -31,8 +31,6 @@ export default function ReservasMobilesPanel({
   canEdit,
   onRefresh,
 }: ReservasMobilesPanelProps) {
-  if (!canEdit) return null;
-
   const [loans, setLoans] = useState<string[][]>([]);
   const [loadingLoans, setLoadingLoans] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -279,6 +277,8 @@ export default function ReservasMobilesPanel({
     if (status === "M") return { color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)", backgroundColor: "rgba(245, 158, 11, 0.10)" };
     return { color: "var(--text-muted)", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)" };
   };
+
+  if (!canEdit) return null;
 
   return (
     <div className="mobile-reserves-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
