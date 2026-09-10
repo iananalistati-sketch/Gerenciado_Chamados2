@@ -4,6 +4,8 @@ import { useAppDialog } from "../contexts/AppDialogContext";
 import MobileLoanTermModal from "./MobileLoanTermModal";
 import type { MobileLoanTermData } from "./mobileLoanTermData";
 
+const RESERVED_TEST_COLLECTOR = "BKP-10";
+
 interface SubstituirMobileModalProps {
   isOpen: boolean;
   equipment: string[] | null;
@@ -106,7 +108,8 @@ export default function SubstituirMobileModal({
           normalize(setor) === normalize("TI-SUPORTE") &&
           status === "A" &&
           collector !== "" &&
-          normalize(collector) !== normalize(currentCollector)
+          normalize(collector) !== normalize(currentCollector) &&
+          normalize(collector) !== normalize(RESERVED_TEST_COLLECTOR)
         );
       })
       .sort((a, b) =>
