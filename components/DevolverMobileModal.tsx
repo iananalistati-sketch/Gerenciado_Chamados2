@@ -21,6 +21,21 @@ const conditionOptions = [
   { value: "FALTANDO_PECAS_ACESSORIOS", label: "Faltando peças/acessórios" },
 ];
 
+const occurrenceOptions = [
+  { value: "FALHA_TECNICA", label: "Falha técnica" },
+  { value: "DESGASTE_NATURAL", label: "Desgaste natural" },
+  { value: "AVARIA_FISICA", label: "Avaria física" },
+  { value: "INDICIO_MAU_USO", label: "Indício de mau uso" },
+  { value: "PECA_ACESSORIO_FALTANTE", label: "Peça ou acessório faltante" },
+  { value: "EM_ANALISE", label: "Em análise" },
+];
+
+const responsibilityOccurrences = new Set([
+  "AVARIA_FISICA",
+  "INDICIO_MAU_USO",
+  "PECA_ACESSORIO_FALTANTE",
+]);
+
 export default function DevolverMobileModal({
   isOpen,
   reserveCollector,
@@ -41,7 +56,11 @@ export default function DevolverMobileModal({
   const [observation, setObservation] = useState("");
   const [updateLocation, setUpdateLocation] = useState(true);
   const [returnSector, setReturnSector] = useState("");
+  const [occurrenceType, setOccurrenceType] = useState("");
+  const [misuseJustification, setMisuseJustification] = useState("");
+  const [sectorResponsibleName, setSectorResponsibleName] = useState("");
   const [termData, setTermData] = useState<MobileLoanTermData | null>(null);
+  const [termType, setTermType] = useState<"return" | "responsibility" | null>(null);
 
   useEffect(() => {
     if (!isOpen || !reserveCollector) return;
@@ -54,6 +73,10 @@ export default function DevolverMobileModal({
       setConditions([]);
       setDetails("");
       setObservation("");
+      setOccurrenceType("");
+      setMisuseJustification("");
+      setSectorResponsibleName("");
+      setTermType(null);
       setSameCollaborator(true);
 
       try {
@@ -118,13 +141,29 @@ export default function DevolverMobileModal({
 
   const toggleCondition = (value: string) => {
     setConditions((current) => {
-      if (value === "PERFEITO_ESTADO") return current.includes(value) ? [] : [value];
+      if (value === "PERFEITO_ESTADO") {
+        setOccurrenceType("");
+        setMisuseJustification("");
+        setSectorResponsibleName("");
+        return current.includes(value) ? [] : [value];
+      }
       const withoutPerfect = current.filter((item) => item !== "PERFEITO_ESTADO");
+      if (value === "FALTANDO_PECAS_ACESSORIOS" && !withoutPerfect.includes(value)) {
+        setOccurrenceType("PECA_ACESSORIO_FALTANTE");
+      }
+      if (value === "FALTANDO_PECAS_ACESSORIOS" && withoutPerfect.includes(value)) {
+        setOccurrenceType("");
+        setMisuseJustification("");
+        setSectorResponsibleName("");
+      }
       return withoutPerfect.includes(value)
         ? withoutPerfect.filter((item) => item !== value)
         : [...withoutPerfect, value];
     });
   };
+
+  const hasDamage = conditions.some((item) => item !== "PERFEITO_ESTADO");
+  const requiresResponsibilityTerm = hasDamage && responsibilityOccurrences.has(occurrenceType);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -139,6 +178,18 @@ export default function DevolverMobileModal({
     }
     if (conditions.some((item) => item !== "PERFEITO_ESTADO") && !details.trim()) {
       await showAlert("Descreva o defeito ou as peças/acessórios faltantes.", { variant: "warning" });
+      return;
+    }
+    if (hasDamage && !occurrenceType) {
+      await showAlert("Classifique a ocorrência encontrada no equipamento reserva.", { variant: "warning" });
+      return;
+    }
+    if (requiresResponsibilityTerm && !misuseJustification.trim()) {
+      await showAlert("Informe a justificativa do mau uso ou da responsabilidade.", { variant: "warning" });
+      return;
+    }
+    if (requiresResponsibilityTerm && !sectorResponsibleName.trim()) {
+      await showAlert("Informe o nome da coordenação ou responsável pelo setor.", { variant: "warning" });
       return;
     }
     if (updateLocation && !returnSector.trim()) {
@@ -161,11 +212,15 @@ export default function DevolverMobileModal({
           returnCollaboratorRole: role.trim(),
           returnCondition: conditions,
           returnDetails: details.trim(),
+          occurrenceType,
+          misuseJustification: misuseJustification.trim(),
+          sectorResponsibleName: sectorResponsibleName.trim(),
         }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result?.error || "Erro ao finalizar o empréstimo.");
       setTermData(result.termData as MobileLoanTermData);
+      setTermType("return");
     } catch (error: any) {
       await showAlert(error.message || "Erro ao finalizar o empréstimo.", { variant: "error" });
     } finally {
@@ -210,9 +265,35 @@ export default function DevolverMobileModal({
                 <label>Detalhamento{conditions.some((item) => item !== "PERFEITO_ESTADO") ? " *" : ""}<textarea rows={3} value={details} onChange={(event) => setDetails(event.target.value)} placeholder="Descreva defeitos ou acessórios faltantes" style={{ ...inputStyle, resize: "vertical" }} /></label>
               </section>
 
+              {hasDamage && <section className="mobile-loan-form-section mobile-return-occurrence-section">
+                <div className="mobile-loan-form-section-title">
+                  <strong>Tratamento da ocorrência</strong>
+                  <span>A reserva será transferida automaticamente para manutenção.</span>
+                </div>
+                <label>Classificação da ocorrência *
+                  <select value={occurrenceType} disabled={conditions.includes("FALTANDO_PECAS_ACESSORIOS")} onChange={(event) => setOccurrenceType(event.target.value)} style={{ ...inputStyle, opacity: conditions.includes("FALTANDO_PECAS_ACESSORIOS") ? 0.75 : 1 }}>
+                    <option value="">Selecione a classificação</option>
+                    {occurrenceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                {requiresResponsibilityTerm ? <>
+                  <div className="mobile-return-responsibility-notice">
+                    Esta classificação emitirá um termo de mau uso/responsabilidade para ciência do setor e encaminhamento da cobrança do reparo, após confirmação interna.
+                  </div>
+                  <label>Justificativa do mau uso/responsabilidade *
+                    <textarea rows={4} value={misuseJustification} onChange={(event) => setMisuseJustification(event.target.value)} placeholder="Descreva os fatos constatados de forma objetiva" style={{ ...inputStyle, resize: "vertical" }} />
+                  </label>
+                  <label>Coordenação ou responsável pelo setor *
+                    <input type="text" value={sectorResponsibleName} onChange={(event) => setSectorResponsibleName(event.target.value)} placeholder="Nome completo" style={inputStyle} />
+                  </label>
+                </> : <div className="mobile-return-technical-notice">
+                  Para falha técnica, desgaste natural ou item em análise, o equipamento seguirá para manutenção sem emissão de termo de cobrança.
+                </div>}
+              </section>}
+
               <section className="mobile-loan-form-section">
                 <label style={{ display: "flex", alignItems: "center", gap: "9px", fontSize: "13px", fontWeight: 700 }}><input type="checkbox" checked={updateLocation} onChange={(event) => setUpdateLocation(event.target.checked)} />Atualizar setor de localização na devolução</label>
-                <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "11px" }}>A reserva retornará para TI-SUPORTE e o equipamento original ficará no setor informado abaixo.</p>
+                <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "11px" }}>{hasDamage ? "A reserva seguirá para MANUTENÇÃO;" : "A reserva retornará para TI-SUPORTE;"} o equipamento original ficará no setor informado abaixo.</p>
                 <label>Setor onde o equipamento original ficará localizado{updateLocation ? " *" : ""}<input type="text" value={returnSector} disabled={!updateLocation} onChange={(event) => setReturnSector(event.target.value)} style={{ ...inputStyle, opacity: updateLocation ? 1 : 0.6 }} /></label>
               </section>
 
@@ -222,12 +303,17 @@ export default function DevolverMobileModal({
 
           <div className="mobile-modal-footer" style={{ display: "flex", justifyContent: "flex-end", gap: "12px", padding: "16px 22px", borderTop: "1px solid var(--border-primary)" }}>
             <button type="button" onClick={onClose} disabled={saving} style={{ padding: "10px 18px", color: "var(--text-primary)", background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", fontWeight: 600 }}>Cancelar</button>
-            <button type="submit" disabled={saving || loading || !loan} style={{ padding: "10px 18px", color: "#fff", background: "#059669", border: 0, borderRadius: "8px", fontWeight: 700, opacity: saving || loading || !loan ? 0.65 : 1 }}>{saving ? "Finalizando..." : "Finalizar e gerar termo"}</button>
+            <button type="submit" disabled={saving || loading || !loan} style={{ padding: "10px 18px", color: "#fff", background: hasDamage ? "#d97706" : "#059669", border: 0, borderRadius: "8px", fontWeight: 700, opacity: saving || loading || !loan ? 0.65 : 1 }}>{saving ? "Finalizando..." : requiresResponsibilityTerm ? "Finalizar e gerar termos" : hasDamage ? "Finalizar e enviar à manutenção" : "Finalizar e gerar termo"}</button>
           </div>
         </form>
       </div>
 
-      <MobileLoanTermModal isOpen={termData !== null} type="return" data={termData} onClose={async () => {
+      <MobileLoanTermModal isOpen={termData !== null && termType !== null} type={termType || "return"} data={termData} onClose={async () => {
+        if (termType === "return" && termData?.responsibilityTermIssued === "SIM") {
+          setTermType("responsibility");
+          return;
+        }
+        setTermType(null);
         setTermData(null);
         onClose();
         await onSuccess();
