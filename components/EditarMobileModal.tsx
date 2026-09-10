@@ -49,7 +49,6 @@ export default function EditarMobileModal({
   const finalHeader = getHeader("FINAL");
   const macHeader = getHeader("MAC");
   const patrimonioRepromaqHeader = getHeader("PATRIMONIO_REPROMAQ", "Patrimônio Repromaq", "Patrimonio Repromaq");
-  const ipHeader = getHeader("IP");
   const entregueHeader = getHeader("Entregue");
   const obsHeader = getHeader("Obs");
   const dataAtualizacaoHeader = getHeader("Data atualização", "Data atualizacao");
@@ -387,7 +386,6 @@ export default function EditarMobileModal({
             {textField(finalHeader, "FINAL", true, true)}
             {textField(macHeader, "MAC", true)}
             {textField(patrimonioRepromaqHeader, "Patrimônio Repromaq", false)}
-            {textField(ipHeader, "IP", false)}
             {selectField(appHeader, "App de uso", [...configuredApps, "TODOS"], true)}
             {entregueHeader && <label style={labelStyle}>{requiredLabel("Entregue", false)}<input type="date" value={formData[entregueHeader] || ""} onChange={(event) => handleChange(entregueHeader, event.target.value)} style={inputStyle} /></label>}
             {versaoHeader && <label style={labelStyle}>{requiredLabel("Versão", !isTodos)}<input type="text" required={!isTodos} disabled={isTodos} value={isTodos ? "" : formData[versaoHeader] || ""} onChange={(event) => handleChange(versaoHeader, event.target.value)} style={{ ...inputStyle, opacity: isTodos ? 0.6 : 1, cursor: isTodos ? "not-allowed" : "text" }} /></label>}
