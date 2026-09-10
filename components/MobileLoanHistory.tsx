@@ -7,7 +7,7 @@ interface MobileLoanHistoryProps {
   rows: string[][];
   loading: boolean;
   getCurrentLocation: (collector: string) => string;
-  onOpenTerm: (type: "loan" | "return", data: MobileLoanTermData) => void;
+  onOpenTerm: (type: "loan" | "return" | "responsibility", data: MobileLoanTermData) => void;
 }
 
 type HistoryItem = { row: string[]; data: MobileLoanTermData; currentLocation: string };
@@ -38,6 +38,15 @@ const formatDate = (value: string) => {
   return `${day}/${month}/${year}`;
 };
 
+const occurrenceLabel = (value: string) => ({
+  FALHA_TECNICA: "Falha técnica",
+  DESGASTE_NATURAL: "Desgaste natural",
+  AVARIA_FISICA: "Avaria física",
+  INDICIO_MAU_USO: "Indício de mau uso",
+  PECA_ACESSORIO_FALTANTE: "Peça ou acessório faltante",
+  EM_ANALISE: "Em análise",
+}[String(value || "").trim().toUpperCase()] || value);
+
 const columns: HistoryColumn[] = [
   { key: "loanId", label: "ID do empréstimo", width: 22, value: ({ data }) => data.loanId },
   { key: "status", label: "Status", width: 14, value: ({ data }) => data.status },
@@ -63,6 +72,10 @@ const columns: HistoryColumn[] = [
   { key: "returnCondition", label: "Condição da devolução", width: 26, value: ({ data }) => data.returnCondition },
   { key: "returnDetails", label: "Defeitos/peças faltantes", width: 34, value: ({ data }) => data.returnDetails },
   { key: "returnObservation", label: "Observação da devolução", width: 34, value: ({ data }) => data.returnObservation },
+  { key: "returnOccurrenceType", label: "Tipo da ocorrência", width: 25, value: ({ data }) => occurrenceLabel(data.returnOccurrenceType) },
+  { key: "misuseJustification", label: "Justificativa de responsabilidade", width: 38, value: ({ data }) => data.misuseJustification },
+  { key: "sectorResponsibleName", label: "Responsável pelo setor", width: 28, value: ({ data }) => data.sectorResponsibleName },
+  { key: "responsibilityTermIssued", label: "Termo de responsabilidade", width: 24, value: ({ data }) => data.responsibilityTermIssued },
 ];
 
 const defaultColumns = [
@@ -215,6 +228,7 @@ export default function MobileLoanHistory({
                 <td><div className="mobile-history-term-actions">
                   <button type="button" onClick={() => onOpenTerm("loan", item.data)}>Empréstimo</button>
                   {finalized && item.data.returnDate && <button type="button" onClick={() => onOpenTerm("return", item.data)}>Devolução</button>}
+                  {finalized && normalize(item.data.responsibilityTermIssued) === "sim" && <button type="button" onClick={() => onOpenTerm("responsibility", item.data)}>Responsabilidade</button>}
                 </div></td>
               </tr>;
             })}
