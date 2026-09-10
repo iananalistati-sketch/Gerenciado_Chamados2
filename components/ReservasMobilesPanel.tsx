@@ -3,6 +3,7 @@ import { apiFetch } from "../auth/api";
 import DevolverMobileModal from "./DevolverMobileModal";
 import MobileLoanHistory from "./MobileLoanHistory";
 import MobileLoanTermModal from "./MobileLoanTermModal";
+import MobileMaintenancePanel from "./MobileMaintenancePanel";
 import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData";
 
 interface ReservasMobilesPanelProps {
@@ -13,7 +14,7 @@ interface ReservasMobilesPanelProps {
   onRefresh: () => void | Promise<void>;
 }
 
-type PanelView = "all" | "available" | "loaned" | "openLoans" | "history" | "divergent";
+type PanelView = "all" | "available" | "loaned" | "openLoans" | "history" | "maintenance" | "divergent";
 type ReserveSortKey = "collector" | "serial" | "status" | "currentLocation" | "expectedLocation" | "locationStatus";
 
 const normalize = (value: string) =>
@@ -71,6 +72,12 @@ export default function ReservasMobilesPanel({
       statusIdx !== -1 &&
       String(row[statusIdx] || "").trim().toUpperCase() === "E"
   );
+
+  const reservasManutencao = reservas.filter((row) => {
+    const status = statusIdx !== -1 ? String(row[statusIdx] || "").trim().toUpperCase() : "";
+    const local = localizadoIdx !== -1 ? String(row[localizadoIdx] || "").trim() : "";
+    return status === "M" && (!local || normalize(local) === normalize("MANUTENÇÃO"));
+  });
 
   const fetchLoans = useCallback(async () => {
     setLoadingLoans(true);
@@ -299,6 +306,10 @@ export default function ReservasMobilesPanel({
           <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Empréstimos abertos</div>
           <strong style={{ color: "#F59E0B", fontSize: "24px" }}>{openLoans.length}</strong>
         </button>
+        <button type="button" onClick={() => setActivePanel("maintenance")} style={panelStyle("maintenance", "#F59E0B")} title="Mostrar reservas aguardando manutenção ou reparo">
+          <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Manutenção</div>
+          <strong style={{ color: "#F59E0B", fontSize: "24px" }}>{reservasManutencao.length}</strong>
+        </button>
         <button type="button" onClick={() => setActivePanel("divergent")} style={panelStyle("divergent", "#DC2626")} title="Mostrar reservas cuja localização atual difere da localização esperada">
           <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>Localização divergente</div>
           <strong style={{ color: "#DC2626", fontSize: "24px" }}>{reservasLocalizacaoDivergente.length}</strong>
@@ -316,7 +327,9 @@ export default function ReservasMobilesPanel({
 
       {error && <div style={{ color: "#DC2626", fontSize: "12px", marginBottom: "12px" }}>{error}</div>}
 
-      {!showingLoans ? (
+      {activePanel === "maintenance" ? (
+        <MobileMaintenancePanel data={data} canEdit={canEdit} onRefresh={onRefresh} />
+      ) : !showingLoans ? (
         <div>
           <div style={{ marginBottom: "10px", color: "var(--text-muted)", fontSize: "12px" }}>
             {activePanel === "available"
