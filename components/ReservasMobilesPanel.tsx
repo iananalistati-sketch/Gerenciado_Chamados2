@@ -31,6 +31,8 @@ export default function ReservasMobilesPanel({
   canEdit,
   onRefresh,
 }: ReservasMobilesPanelProps) {
+  if (!canEdit) return null;
+
   const [loans, setLoans] = useState<string[][]>([]);
   const [loadingLoans, setLoadingLoans] = useState(false);
   const [error, setError] = useState<string | null>(null);
