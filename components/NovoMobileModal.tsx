@@ -36,7 +36,6 @@ export default function NovoMobileModal({
   const finalHeader = getHeader("FINAL");
   const macHeader = getHeader("MAC");
   const patrimonioRepromaqHeader = getHeader("PATRIMONIO_REPROMAQ", "Patrimônio Repromaq", "Patrimonio Repromaq");
-  const ipHeader = getHeader("IP");
   const entregueHeader = getHeader("Entregue");
   const obsHeader = getHeader("Obs");
   const dataAtualizacaoHeader = getHeader("Data atualização", "Data atualizacao");
@@ -311,7 +310,6 @@ export default function NovoMobileModal({
             {renderField(finalHeader, "FINAL", { required: true, numericOnly: true })}
             {renderField(macHeader, "MAC", { required: true })}
             {renderField(patrimonioRepromaqHeader, "Patrimônio Repromaq")}
-            {renderField(ipHeader, "IP")}
             {renderField(appHeader, "App de uso", { type: "select", required: true, choices: appOptions.map((item) => ({ value: item, label: item })) })}
             {renderField(entregueHeader, "Entregue", { type: "date" })}
             {renderField(versaoHeader, "Versão", { required: Boolean(appValue) && !isTodos, disabled: isTodos, helper: isTodos ? "Para TODOS, as versões são controladas individualmente na opção Apps." : "Obrigatória quando o equipamento utiliza um App específico." })}
