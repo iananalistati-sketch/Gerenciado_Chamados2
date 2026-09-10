@@ -169,72 +169,29 @@ export default function MobileMaintenancePanel({
             {search ? "Nenhum equipamento em manutenção encontrado para a pesquisa." : "Nenhum equipamento reserva está aguardando retorno do reparo."}
           </div>
         ) : (
-          <>
-            <div style={{ display: "none" }} className="mobile-maintenance-cards">
-              {maintenanceRows.map((row, index) => {
-                const rowIndex = getOriginalIndex(row);
-                const collector = coletorIdx !== -1 ? String(row[coletorIdx] || "-").trim() : "-";
-                const serial = snIdx !== -1 ? String(row[snIdx] || "-").trim() : "-";
-                const sector = setorIdx !== -1 ? String(row[setorIdx] || "-").trim() : "-";
-                const isReturning = rowIndex !== null && returningRow === rowIndex;
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+            {maintenanceRows.map((row, index) => {
+              const rowIndex = getOriginalIndex(row);
+              const collector = coletorIdx !== -1 ? String(row[coletorIdx] || "-").trim() : "-";
+              const serial = snIdx !== -1 ? String(row[snIdx] || "-").trim() : "-";
+              const sector = setorIdx !== -1 ? String(row[setorIdx] || "-").trim() : "-";
+              const isReturning = rowIndex !== null && returningRow === rowIndex;
 
-                return (
-                  <article key={`${collector}-${serial}-${index}`} style={{ padding: "15px", borderBottom: "1px solid var(--border-primary)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start" }}>
-                      <div style={{ display: "grid", gap: "3px" }}><strong>{collector}</strong><span style={{ color: "var(--text-muted)", fontSize: "11px" }}>SN: {serial}</span></div>
-                      <span style={{ color: "#F59E0B", fontSize: "10px", fontWeight: 700 }}>MANUTENÇÃO</span>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px", marginTop: "12px" }}>
-                      <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>Setor de referência</span><strong style={{ fontSize: "12px" }}>{sector}</strong></div>
-                      <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>Localização atual</span><strong style={{ color: "#F59E0B", fontSize: "12px" }}>MANUTENÇÃO</strong></div>
-                    </div>
-                    <button type="button" onClick={() => handleReturnToSupport(row)} disabled={!canEdit || returningRow !== null} style={{ width: "100%", marginTop: "12px", minHeight: "40px", padding: "8px 10px", color: "#3B82F6", backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: canEdit && returningRow === null ? "pointer" : "not-allowed", fontSize: "11px", fontWeight: 700, opacity: canEdit && returningRow === null ? 1 : 0.6 }}>{isReturning ? "Retornando..." : "↩ Retornar para TI-SUPORTE"}</button>
-                  </article>
-                );
-              })}
-            </div>
-
-            <div style={{ width: "100%", overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "760px" }}>
-                <thead>
-                  <tr style={{ backgroundColor: "var(--bg-primary)" }}>
-                    {[
-                      "Coletor",
-                      "SN",
-                      "Setor de referência",
-                      "Localização atual",
-                      "Status",
-                      "Ação",
-                    ].map((title) => (
-                      <th key={title} style={{ padding: "12px 14px", textAlign: "left", color: "var(--text-muted)", fontSize: "12px", fontWeight: 700, borderBottom: "1px solid var(--border-primary)", whiteSpace: "nowrap" }}>{title}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {maintenanceRows.map((row, index) => {
-                    const rowIndex = getOriginalIndex(row);
-                    const collector = coletorIdx !== -1 ? String(row[coletorIdx] || "-").trim() : "-";
-                    const serial = snIdx !== -1 ? String(row[snIdx] || "-").trim() : "-";
-                    const sector = setorIdx !== -1 ? String(row[setorIdx] || "-").trim() : "-";
-                    const isReturning = rowIndex !== null && returningRow === rowIndex;
-
-                    return (
-                      <tr key={`${collector}-${serial}-${index}`} style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                        <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontWeight: 700, fontSize: "13px", whiteSpace: "nowrap" }}>{collector}</td>
-                        <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{serial}</td>
-                        <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px" }}>{sector}</td>
-                        <td style={{ padding: "12px 14px", color: "#F59E0B", fontSize: "13px", fontWeight: 700 }}>MANUTENÇÃO</td>
-                        <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", padding: "5px 9px", borderRadius: "999px", backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)", fontSize: "11px", fontWeight: 700 }}>Manutenção</span></td>
-                        <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
-                          <button type="button" onClick={() => handleReturnToSupport(row)} disabled={!canEdit || returningRow !== null} style={{ padding: "7px 10px", color: "#3B82F6", backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: canEdit && returningRow === null ? "pointer" : "not-allowed", fontSize: "11px", fontWeight: 700, opacity: canEdit && returningRow === null ? 1 : 0.6 }}>{isReturning ? "Retornando..." : "↩ Retornar para TI-SUPORTE"}</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
+              return (
+                <article key={`${collector}-${serial}-${index}`} style={{ padding: "15px", borderBottom: "1px solid var(--border-primary)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start" }}>
+                    <div style={{ display: "grid", gap: "3px" }}><strong style={{ color: "var(--text-primary)" }}>{collector}</strong><span style={{ color: "var(--text-muted)", fontSize: "11px" }}>SN: {serial}</span></div>
+                    <span style={{ color: "#F59E0B", fontSize: "10px", fontWeight: 700 }}>MANUTENÇÃO</span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px", marginTop: "12px" }}>
+                    <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>Setor de referência</span><strong style={{ fontSize: "12px" }}>{sector}</strong></div>
+                    <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>Localização atual</span><strong style={{ color: "#F59E0B", fontSize: "12px" }}>MANUTENÇÃO</strong></div>
+                  </div>
+                  <button type="button" onClick={() => handleReturnToSupport(row)} disabled={!canEdit || returningRow !== null} style={{ width: "100%", marginTop: "12px", minHeight: "40px", padding: "8px 10px", color: "#3B82F6", backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: canEdit && returningRow === null ? "pointer" : "not-allowed", fontSize: "11px", fontWeight: 700, opacity: canEdit && returningRow === null ? 1 : 0.6 }}>{isReturning ? "Retornando..." : "↩ Retornar para TI-SUPORTE"}</button>
+                </article>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
