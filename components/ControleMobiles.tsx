@@ -4,6 +4,7 @@ import NovoMobileModal from "./NovoMobileModal";
 import AtualizacaoLoteMobilesModal from "./AtualizacaoLoteMobilesModal";
 import DetalhesAppsMobileModal from "./DetalhesAppsMobileModal";
 import ReservasMobilesPanel from "./ReservasMobilesPanel";
+import MobileMaintenancePanel from "./MobileMaintenancePanel";
 
 interface ControleMobilesProps {
   data: string[][];
@@ -47,7 +48,7 @@ const normalize = (value: string) =>
 const normalizeValue = (value: string) =>
   normalize(String(value || ""));
 
-type MobileSection = "overview" | "equipment" | "loans" | "history";
+type MobileSection = "overview" | "equipment" | "loans" | "history" | "maintenance";
 
 export default function ControleMobiles({
   data,
@@ -98,7 +99,6 @@ export default function ControleMobiles({
   const snIdx = getColumnIndex("SN");
   const finalIdx = getColumnIndex("FINAL");
   const macIdx = getColumnIndex("MAC");
-  const ipIdx = getColumnIndex("IP");
   const appIdx = getColumnIndex("App de uso", "Aplicativo", "App");
   const setorLocalizadoIdx = getColumnIndex("Setor localizado");
   const statusIdx = getColumnIndex("Status");
@@ -244,7 +244,7 @@ export default function ControleMobiles({
     const appRowsMatchingApp = appFilter && mobileAppAppIdx !== -1 ? appRows.filter((appRow) => normalizeValue(appRow[mobileAppAppIdx] || "") === normalizeValue(appFilter)) : appRows;
     const searchValue = normalizeValue(search);
     if (searchValue) {
-      const physicalSearchValues = [setorIdx, coletorIdx, snIdx, finalIdx, macIdx, ipIdx, setorLocalizadoIdx].filter((index) => index !== -1).map((index) => normalizeValue(row[index] || ""));
+      const physicalSearchValues = [setorIdx, coletorIdx, snIdx, finalIdx, macIdx, setorLocalizadoIdx].filter((index) => index !== -1).map((index) => normalizeValue(row[index] || ""));
       const appSearchValues = appRows.flatMap((appRow) => [mobileAppAppIdx !== -1 ? normalizeValue(appRow[mobileAppAppIdx] || "") : "", mobileAppVersaoIdx !== -1 ? normalizeValue(appRow[mobileAppVersaoIdx] || "") : ""]);
       if (![...physicalSearchValues, ...appSearchValues].some((value) => value.includes(searchValue))) return false;
     }
@@ -263,7 +263,7 @@ export default function ControleMobiles({
     }
     if (locationDivergenceOnly && !isLocationDivergent(row)) return false;
     return true;
-  }), [rows, search, setorFilter, setorLocalizadoFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, ipIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
+  }), [rows, search, setorFilter, setorLocalizadoFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
 
   useEffect(() => setCurrentPage(1), [search, setorFilter, setorLocalizadoFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly]);
 
@@ -288,8 +288,8 @@ export default function ControleMobiles({
         return coletorIdx !== -1 ? String(row[coletorIdx] || "") : "";
       case "sn":
         return snIdx !== -1 ? String(row[snIdx] || "") : "";
-      case "ip":
-        return ipIdx !== -1 ? String(row[ipIdx] || "") : "";
+      case "mac":
+        return macIdx !== -1 ? String(row[macIdx] || "") : "";
       case "app":
         return appIdx !== -1 ? String(row[appIdx] || "") : "";
       case "appsAtualizados": {
@@ -327,7 +327,7 @@ export default function ControleMobiles({
 
       return sortConfig.direction === "asc" ? comparison : -comparison;
     });
-  }, [filteredRows, sortConfig, setorIdx, setorLocalizadoIdx, coletorIdx, snIdx, ipIdx, appIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
+  }, [filteredRows, sortConfig, setorIdx, setorLocalizadoIdx, coletorIdx, snIdx, macIdx, appIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
 
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / itemsPerPage));
   const paginatedRows = sortedRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -444,7 +444,7 @@ export default function ControleMobiles({
     { title: "Setor localizado", key: "setorLocalizado" },
     { title: "Coletor", key: "coletor" },
     { title: "SN", key: "sn" },
-    { title: "IP", key: "ip" },
+    { title: "MAC", key: "mac" },
     { title: "App de uso", key: "app" },
     { title: "Apps atualizados", key: "appsAtualizados" },
     { title: "Status atualização", key: "statusAtualizacao" },
@@ -455,6 +455,7 @@ export default function ControleMobiles({
   const navigationItems: Array<{ key: MobileSection; label: string; description: string }> = [
     { key: "overview", label: "Visão geral", description: "Indicadores e atalhos" },
     { key: "equipment", label: "Equipamentos", description: "Inventário e atualizações" },
+    { key: "maintenance", label: "Manutenção", description: "Retorno de equipamentos reparados" },
     { key: "loans", label: "Empréstimos", description: "Reservas e devoluções" },
     { key: "history", label: "Histórico", description: "Consultas e exportação" },
   ];
@@ -566,6 +567,7 @@ export default function ControleMobiles({
         })}
       </div>}
 
+      {activeSection === "maintenance" && <MobileMaintenancePanel data={data} canEdit={canEdit} onSaveRow={onSaveRow} onRefresh={onRefresh} />}
       {activeSection === "loans" && <ReservasMobilesPanel mode="operations" data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />}
       {activeSection === "history" && <ReservasMobilesPanel mode="history" data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />}
 
@@ -575,7 +577,7 @@ export default function ControleMobiles({
 
       {activeSection === "equipment" && <div className="mobile-filter-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
         <div className="mobile-filter-primary">
-          <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar Coletor, SN, IP, MAC, App ou versão..." style={inputStyle} />
+          <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar Coletor, SN, MAC, App ou versão..." style={inputStyle} />
           <select value={setorFilter} onChange={(event) => setSetorFilter(event.target.value)} style={inputStyle}><option value="">Todos os setores</option>{setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}</select>
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={inputStyle}><option value="">Todos os status</option>{statusOptions.map((status) => <option key={status} value={status}>{getStatusLabel(status)}</option>)}</select>
           <button type="button" className={showAdvancedFilters || advancedFilterCount > 0 ? "mobile-advanced-filter-button is-active" : "mobile-advanced-filter-button"} onClick={() => setShowAdvancedFilters((current) => !current)} aria-expanded={showAdvancedFilters}>
@@ -635,7 +637,7 @@ export default function ControleMobiles({
                 <div className="mobile-equipment-card-grid">
                   <div><span>Localização</span><strong>{locatedSector || "-"}</strong>{locationDivergent && <small>⚠ Fora do setor</small>}</div>
                   <div><span>SN</span><strong>{snIdx !== -1 ? row[snIdx] || "-" : "-"}</strong></div>
-                  <div><span>IP</span><strong>{ipIdx !== -1 ? row[ipIdx] || "-" : "-"}</strong></div>
+                  <div><span>MAC</span><strong>{macIdx !== -1 ? row[macIdx] || "-" : "-"}</strong></div>
                   <div><span>App de uso</span><strong>{appIdx !== -1 ? row[appIdx] || "-" : "-"}</strong></div>
                   <div><span>Apps atualizados</span><strong>{summary.totalApps > 0 ? `${summary.updatedApps} / ${summary.totalApps}` : "Nenhum App"}</strong></div>
                   <div><span>Atualização</span><strong style={{ ...getUpdateStatusStyle(summary.status), padding: "4px 7px", borderRadius: "999px", fontSize: "10px" }}>{summary.status}</strong></div>
@@ -718,7 +720,7 @@ export default function ControleMobiles({
               </td>
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", fontWeight: 700, whiteSpace: "nowrap" }}>{coletorIdx !== -1 ? row[coletorIdx] || "-" : "-"}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{snIdx !== -1 ? row[snIdx] || "-" : "-"}</td>
-              <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{ipIdx !== -1 ? row[ipIdx] || "-" : "-"}</td>
+              <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{macIdx !== -1 ? row[macIdx] || "-" : "-"}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", whiteSpace: "nowrap" }}>{appIdx !== -1 ? row[appIdx] || "-" : "-"}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", whiteSpace: "nowrap" }}>{mobileUpdateSummary.totalApps > 0 ? <><strong>{mobileUpdateSummary.updatedApps}</strong>{" / "}{mobileUpdateSummary.totalApps}</> : <span style={{ color: "var(--text-muted)" }}>Nenhum App</span>}</td>
               <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", alignItems: "center", padding: "5px 9px", borderRadius: "999px", fontSize: "11px", fontWeight: 700, ...getUpdateStatusStyle(mobileUpdateSummary.status) }}>{mobileUpdateSummary.status}</span></td>
