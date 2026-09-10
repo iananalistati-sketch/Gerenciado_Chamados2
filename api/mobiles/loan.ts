@@ -3,6 +3,7 @@ import { authErrorResponse, requireRole } from "../_requireAuth.js";
 
 const CONTROL_SHEET = "tbControleMobiles";
 const LOAN_SHEET = "tbEmprestimosMobiles";
+const RESERVED_TEST_COLLECTOR = "BKP-10";
 
 const normalize = (value: string) =>
   String(value || "")
@@ -78,6 +79,18 @@ export default async function handler(req: any, res: any) {
     if (!String(reserveCollector || "").trim()) {
       return res.status(400).json({
         error: "Coletor reserva não informado.",
+      });
+    }
+
+    if (normalize(originalCollector) === normalize(RESERVED_TEST_COLLECTOR)) {
+      return res.status(400).json({
+        error: `O equipamento "${RESERVED_TEST_COLLECTOR}" é exclusivo para testes da TI-SUPORTE e não pode participar de empréstimos.`,
+      });
+    }
+
+    if (normalize(reserveCollector) === normalize(RESERVED_TEST_COLLECTOR)) {
+      return res.status(400).json({
+        error: `O equipamento "${RESERVED_TEST_COLLECTOR}" é exclusivo para testes da TI-SUPORTE e não pode ser utilizado como reserva.`,
       });
     }
 
