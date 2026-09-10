@@ -98,6 +98,7 @@ export default function ControleMobiles({
   const snIdx = getColumnIndex("SN");
   const finalIdx = getColumnIndex("FINAL");
   const macIdx = getColumnIndex("MAC");
+  const patrimonioRepromaqIdx = getColumnIndex("PATRIMONIO_REPROMAQ", "Patrimônio Repromaq", "Patrimonio Repromaq");
   const appIdx = getColumnIndex("App de uso", "Aplicativo", "App");
   const setorLocalizadoIdx = getColumnIndex("Setor localizado");
   const statusIdx = getColumnIndex("Status");
@@ -243,7 +244,7 @@ export default function ControleMobiles({
     const appRowsMatchingApp = appFilter && mobileAppAppIdx !== -1 ? appRows.filter((appRow) => normalizeValue(appRow[mobileAppAppIdx] || "") === normalizeValue(appFilter)) : appRows;
     const searchValue = normalizeValue(search);
     if (searchValue) {
-      const physicalSearchValues = [setorIdx, coletorIdx, snIdx, finalIdx, macIdx, setorLocalizadoIdx].filter((index) => index !== -1).map((index) => normalizeValue(row[index] || ""));
+      const physicalSearchValues = [setorIdx, coletorIdx, snIdx, finalIdx, macIdx, patrimonioRepromaqIdx, setorLocalizadoIdx].filter((index) => index !== -1).map((index) => normalizeValue(row[index] || ""));
       const appSearchValues = appRows.flatMap((appRow) => [mobileAppAppIdx !== -1 ? normalizeValue(appRow[mobileAppAppIdx] || "") : "", mobileAppVersaoIdx !== -1 ? normalizeValue(appRow[mobileAppVersaoIdx] || "") : ""]);
       if (![...physicalSearchValues, ...appSearchValues].some((value) => value.includes(searchValue))) return false;
     }
@@ -262,7 +263,7 @@ export default function ControleMobiles({
     }
     if (locationDivergenceOnly && !isLocationDivergent(row)) return false;
     return true;
-  }), [rows, search, setorFilter, setorLocalizadoFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
+  }), [rows, search, setorFilter, setorLocalizadoFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, patrimonioRepromaqIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
 
   useEffect(() => setCurrentPage(1), [search, setorFilter, setorLocalizadoFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly]);
 
@@ -289,6 +290,8 @@ export default function ControleMobiles({
         return snIdx !== -1 ? String(row[snIdx] || "") : "";
       case "mac":
         return macIdx !== -1 ? String(row[macIdx] || "") : "";
+      case "patrimonio":
+        return patrimonioRepromaqIdx !== -1 ? String(row[patrimonioRepromaqIdx] || "") : "";
       case "app":
         return appIdx !== -1 ? String(row[appIdx] || "") : "";
       case "appsAtualizados": {
@@ -326,7 +329,7 @@ export default function ControleMobiles({
 
       return sortConfig.direction === "asc" ? comparison : -comparison;
     });
-  }, [filteredRows, sortConfig, setorIdx, setorLocalizadoIdx, coletorIdx, snIdx, macIdx, appIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
+  }, [filteredRows, sortConfig, setorIdx, setorLocalizadoIdx, coletorIdx, snIdx, macIdx, patrimonioRepromaqIdx, appIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
 
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / itemsPerPage));
   const paginatedRows = sortedRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -444,6 +447,7 @@ export default function ControleMobiles({
     { title: "Coletor", key: "coletor" },
     { title: "SN", key: "sn" },
     { title: "MAC", key: "mac" },
+    ...(patrimonioRepromaqIdx !== -1 ? [{ title: "Patrimônio Repromaq", key: "patrimonio" }] : []),
     { title: "App de uso", key: "app" },
     { title: "Apps atualizados", key: "appsAtualizados" },
     { title: "Status atualização", key: "statusAtualizacao" },
@@ -574,7 +578,7 @@ export default function ControleMobiles({
 
       {activeSection === "equipment" && <div className="mobile-filter-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
         <div className="mobile-filter-primary">
-          <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar Coletor, SN, MAC, App ou versão..." style={inputStyle} />
+          <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar Coletor, SN, MAC, Patrimônio, App ou versão..." style={inputStyle} />
           <select value={setorFilter} onChange={(event) => setSetorFilter(event.target.value)} style={inputStyle}><option value="">Todos os setores</option>{setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}</select>
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={inputStyle}><option value="">Todos os status</option>{statusOptions.map((status) => <option key={status} value={status}>{getStatusLabel(status)}</option>)}</select>
           <button type="button" className={showAdvancedFilters || advancedFilterCount > 0 ? "mobile-advanced-filter-button is-active" : "mobile-advanced-filter-button"} onClick={() => setShowAdvancedFilters((current) => !current)} aria-expanded={showAdvancedFilters}>
@@ -635,6 +639,7 @@ export default function ControleMobiles({
                   <div><span>Localização</span><strong>{locatedSector || "-"}</strong>{locationDivergent && <small>⚠ Fora do setor</small>}</div>
                   <div><span>SN</span><strong>{snIdx !== -1 ? row[snIdx] || "-" : "-"}</strong></div>
                   <div><span>MAC</span><strong>{macIdx !== -1 ? row[macIdx] || "-" : "-"}</strong></div>
+                  {patrimonioRepromaqIdx !== -1 && <div><span>Patrimônio Repromaq</span><strong>{row[patrimonioRepromaqIdx] || "-"}</strong></div>}
                   <div><span>App de uso</span><strong>{appIdx !== -1 ? row[appIdx] || "-" : "-"}</strong></div>
                   <div><span>Apps atualizados</span><strong>{summary.totalApps > 0 ? `${summary.updatedApps} / ${summary.totalApps}` : "Nenhum App"}</strong></div>
                   <div><span>Atualização</span><strong style={{ ...getUpdateStatusStyle(summary.status), padding: "4px 7px", borderRadius: "999px", fontSize: "10px" }}>{summary.status}</strong></div>
@@ -647,7 +652,7 @@ export default function ControleMobiles({
             );
           })}
         </div>
-        <div className="mobile-equipment-desktop" style={{ width: "100%", overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1320px" }}>
+        <div className="mobile-equipment-desktop" style={{ width: "100%", overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: patrimonioRepromaqIdx !== -1 ? "1450px" : "1320px" }}>
           <thead>
             <tr style={{ backgroundColor: "var(--bg-primary)" }}>
               <th style={{ width: "42px", padding: "12px 10px", textAlign: "center", borderBottom: "1px solid var(--border-primary)" }}>{canEdit && <input type="checkbox" checked={allCurrentPageSelected} onChange={handleToggleCurrentPage} title="Selecionar página atual" style={{ cursor: "pointer" }} />}</th>
@@ -684,7 +689,7 @@ export default function ControleMobiles({
               })}
             </tr>
           </thead>
-          <tbody>{paginatedRows.length === 0 ? <tr><td colSpan={11} style={{ padding: "28px", textAlign: "center", color: "var(--text-muted)" }}>Nenhum equipamento encontrado com os filtros selecionados.</td></tr> : paginatedRows.map((row, index) => {
+          <tbody>{paginatedRows.length === 0 ? <tr><td colSpan={tableColumns.length + 1} style={{ padding: "28px", textAlign: "center", color: "var(--text-muted)" }}>Nenhum equipamento encontrado com os filtros selecionados.</td></tr> : paginatedRows.map((row, index) => {
             const globalIndex = (currentPage - 1) * itemsPerPage + index;
             const mobileUpdateSummary = getMobileUpdateSummary(row);
             const locationDivergent = isLocationDivergent(row);
@@ -718,6 +723,7 @@ export default function ControleMobiles({
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", fontWeight: 700, whiteSpace: "nowrap" }}>{coletorIdx !== -1 ? row[coletorIdx] || "-" : "-"}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{snIdx !== -1 ? row[snIdx] || "-" : "-"}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{macIdx !== -1 ? row[macIdx] || "-" : "-"}</td>
+              {patrimonioRepromaqIdx !== -1 && <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{row[patrimonioRepromaqIdx] || "-"}</td>}
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", whiteSpace: "nowrap" }}>{appIdx !== -1 ? row[appIdx] || "-" : "-"}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", whiteSpace: "nowrap" }}>{mobileUpdateSummary.totalApps > 0 ? <><strong>{mobileUpdateSummary.updatedApps}</strong>{" / "}{mobileUpdateSummary.totalApps}</> : <span style={{ color: "var(--text-muted)" }}>Nenhum App</span>}</td>
               <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", alignItems: "center", padding: "5px 9px", borderRadius: "999px", fontSize: "11px", fontWeight: 700, ...getUpdateStatusStyle(mobileUpdateSummary.status) }}>{mobileUpdateSummary.status}</span></td>
