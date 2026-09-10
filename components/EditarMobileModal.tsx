@@ -48,6 +48,7 @@ export default function EditarMobileModal({
   const snHeader = getHeader("SN");
   const finalHeader = getHeader("FINAL");
   const macHeader = getHeader("MAC");
+  const patrimonioRepromaqHeader = getHeader("PATRIMONIO_REPROMAQ", "Patrimônio Repromaq", "Patrimonio Repromaq");
   const ipHeader = getHeader("IP");
   const entregueHeader = getHeader("Entregue");
   const obsHeader = getHeader("Obs");
@@ -385,6 +386,7 @@ export default function EditarMobileModal({
             {textField(snHeader, "SN", true, true)}
             {textField(finalHeader, "FINAL", true, true)}
             {textField(macHeader, "MAC", true)}
+            {textField(patrimonioRepromaqHeader, "Patrimônio Repromaq", false)}
             {textField(ipHeader, "IP", false)}
             {selectField(appHeader, "App de uso", [...configuredApps, "TODOS"], true)}
             {entregueHeader && <label style={labelStyle}>{requiredLabel("Entregue", false)}<input type="date" value={formData[entregueHeader] || ""} onChange={(event) => handleChange(entregueHeader, event.target.value)} style={inputStyle} /></label>}
