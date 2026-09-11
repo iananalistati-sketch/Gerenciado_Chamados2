@@ -47,6 +47,8 @@ const normalize = (value: string) =>
 const normalizeValue = (value: string) =>
   normalize(String(value || ""));
 
+type MobileSection = "overview" | "equipment" | "loans" | "history";
+
 export default function ControleMobiles({
   data,
   mobileConfig,
@@ -63,6 +65,7 @@ export default function ControleMobiles({
 }: ControleMobilesProps) {
   const [search, setSearch] = useState("");
   const [setorFilter, setSetorFilter] = useState("");
+  const [setorLocalizadoFilter, setSetorLocalizadoFilter] = useState("");
   const [appFilter, setAppFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [statusAtualizacaoFilter, setStatusAtualizacaoFilter] = useState("");
@@ -78,6 +81,8 @@ export default function ControleMobiles({
     key: string;
     direction: "asc" | "desc";
   }>({ key: "", direction: "asc" });
+  const [activeSection, setActiveSection] = useState<MobileSection>("equipment");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const itemsPerPage = 20;
   const headers = data[0] || [];
@@ -93,7 +98,7 @@ export default function ControleMobiles({
   const snIdx = getColumnIndex("SN");
   const finalIdx = getColumnIndex("FINAL");
   const macIdx = getColumnIndex("MAC");
-  const ipIdx = getColumnIndex("IP");
+  const patrimonioRepromaqIdx = getColumnIndex("PATRIMONIO_REPROMAQ", "Patrimônio Repromaq", "Patrimonio Repromaq");
   const appIdx = getColumnIndex("App de uso", "Aplicativo", "App");
   const setorLocalizadoIdx = getColumnIndex("Setor localizado");
   const statusIdx = getColumnIndex("Status");
@@ -199,6 +204,7 @@ export default function ControleMobiles({
   };
 
   const setores = useMemo(() => uniqueValues(setorIdx), [data, setorIdx]);
+  const setoresLocalizados = useMemo(() => uniqueValues(setorLocalizadoIdx), [data, setorLocalizadoIdx]);
   const apps = useMemo(() => {
     if (mobileAppAppIdx === -1) return [];
     return Array.from(new Set(mobileApps.slice(1).map((row) => String(row[mobileAppAppIdx] || "").trim()).filter((value) => value && normalize(value) !== "todos"))).sort((a, b) =>
@@ -228,18 +234,22 @@ export default function ControleMobiles({
   const totalPendentes = rows.filter((row) => normalizeValue(getMobileUpdateSummary(row).status) === "pendente").length;
   const totalNaoLocalizados = statusAtualizacaoIdx !== -1 ? rows.filter((row) => normalizeValue(row[statusAtualizacaoIdx] || "") === "nao localizado").length : 0;
   const totalLocationDivergences = rows.filter(isLocationDivergent).length;
-  const progressoAtualizacao = totalEquipamentos > 0 ? Math.round((totalAtualizados / totalEquipamentos) * 100) : 0;
+  const percentualAtualizacao = totalEquipamentos > 0 ? (totalAtualizados / totalEquipamentos) * 100 : 0;
+  const progressoAtualizacao = percentualAtualizacao > 0 && percentualAtualizacao < 1
+    ? percentualAtualizacao.toFixed(1).replace(".", ",")
+    : String(Math.round(percentualAtualizacao));
 
   const filteredRows = useMemo(() => rows.filter((row) => {
     const appRows = getAppRowsForEquipment(row);
     const appRowsMatchingApp = appFilter && mobileAppAppIdx !== -1 ? appRows.filter((appRow) => normalizeValue(appRow[mobileAppAppIdx] || "") === normalizeValue(appFilter)) : appRows;
     const searchValue = normalizeValue(search);
     if (searchValue) {
-      const physicalSearchValues = [setorIdx, coletorIdx, snIdx, finalIdx, macIdx, ipIdx, setorLocalizadoIdx].filter((index) => index !== -1).map((index) => normalizeValue(row[index] || ""));
+      const physicalSearchValues = [setorIdx, coletorIdx, snIdx, finalIdx, macIdx, patrimonioRepromaqIdx, setorLocalizadoIdx].filter((index) => index !== -1).map((index) => normalizeValue(row[index] || ""));
       const appSearchValues = appRows.flatMap((appRow) => [mobileAppAppIdx !== -1 ? normalizeValue(appRow[mobileAppAppIdx] || "") : "", mobileAppVersaoIdx !== -1 ? normalizeValue(appRow[mobileAppVersaoIdx] || "") : ""]);
       if (![...physicalSearchValues, ...appSearchValues].some((value) => value.includes(searchValue))) return false;
     }
     if (setorFilter && normalizeValue(row[setorIdx] || "") !== normalizeValue(setorFilter)) return false;
+    if (setorLocalizadoFilter && normalizeValue(row[setorLocalizadoIdx] || "") !== normalizeValue(setorLocalizadoFilter)) return false;
     if (appFilter && appRowsMatchingApp.length === 0) return false;
     if (statusFilter && normalizeValue(row[statusIdx] || "") !== normalizeValue(statusFilter)) return false;
     if (statusAtualizacaoFilter) {
@@ -253,9 +263,9 @@ export default function ControleMobiles({
     }
     if (locationDivergenceOnly && !isLocationDivergent(row)) return false;
     return true;
-  }), [rows, search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, ipIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
+  }), [rows, search, setorFilter, setorLocalizadoFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly, setorIdx, coletorIdx, snIdx, finalIdx, macIdx, patrimonioRepromaqIdx, setorLocalizadoIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
 
-  useEffect(() => setCurrentPage(1), [search, setorFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly]);
+  useEffect(() => setCurrentPage(1), [search, setorFilter, setorLocalizadoFilter, appFilter, statusFilter, statusAtualizacaoFilter, versaoFilter, locationDivergenceOnly]);
 
   const handleSort = (key: string) => {
     setSortConfig((previous) => ({
@@ -278,8 +288,10 @@ export default function ControleMobiles({
         return coletorIdx !== -1 ? String(row[coletorIdx] || "") : "";
       case "sn":
         return snIdx !== -1 ? String(row[snIdx] || "") : "";
-      case "ip":
-        return ipIdx !== -1 ? String(row[ipIdx] || "") : "";
+      case "mac":
+        return macIdx !== -1 ? String(row[macIdx] || "") : "";
+      case "patrimonio":
+        return patrimonioRepromaqIdx !== -1 ? String(row[patrimonioRepromaqIdx] || "") : "";
       case "app":
         return appIdx !== -1 ? String(row[appIdx] || "") : "";
       case "appsAtualizados": {
@@ -317,7 +329,7 @@ export default function ControleMobiles({
 
       return sortConfig.direction === "asc" ? comparison : -comparison;
     });
-  }, [filteredRows, sortConfig, setorIdx, setorLocalizadoIdx, coletorIdx, snIdx, ipIdx, appIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
+  }, [filteredRows, sortConfig, setorIdx, setorLocalizadoIdx, coletorIdx, snIdx, macIdx, patrimonioRepromaqIdx, appIdx, statusIdx, mobileAppsByColetor, mobileAppAppIdx, mobileAppVersaoIdx, targetVersions]);
 
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / itemsPerPage));
   const paginatedRows = sortedRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -325,6 +337,7 @@ export default function ControleMobiles({
   const clearFilters = () => {
     setSearch("");
     setSetorFilter("");
+    setSetorLocalizadoFilter("");
     setAppFilter("");
     setStatusFilter("");
     setStatusAtualizacaoFilter("");
@@ -386,7 +399,8 @@ export default function ControleMobiles({
     await onBulkUpdate(preparedUpdates); clearSelection();
   };
 
-  const hasActiveFilters = search || setorFilter || appFilter || statusFilter || statusAtualizacaoFilter || versaoFilter || locationDivergenceOnly;
+  const hasActiveFilters = search || setorFilter || setorLocalizadoFilter || appFilter || statusFilter || statusAtualizacaoFilter || versaoFilter || locationDivergenceOnly;
+  const advancedFilterCount = [setorLocalizadoFilter, appFilter, statusAtualizacaoFilter, versaoFilter].filter(Boolean).length;
   const getStatusLabel = (value: string) => {
     switch (String(value || "").trim().toUpperCase()) {
       case "A": return "Ativo";
@@ -432,7 +446,8 @@ export default function ControleMobiles({
     { title: "Setor localizado", key: "setorLocalizado" },
     { title: "Coletor", key: "coletor" },
     { title: "SN", key: "sn" },
-    { title: "IP", key: "ip" },
+    { title: "MAC", key: "mac" },
+    ...(patrimonioRepromaqIdx !== -1 ? [{ title: "Patrimônio Repromaq", key: "patrimonio" }] : []),
     { title: "App de uso", key: "app" },
     { title: "Apps atualizados", key: "appsAtualizados" },
     { title: "Status atualização", key: "statusAtualizacao" },
@@ -440,20 +455,46 @@ export default function ControleMobiles({
     { title: "Ações", key: "" },
   ];
 
+  const navigationItems: Array<{ key: MobileSection; label: string; description: string }> = [
+    { key: "overview", label: "Visão geral", description: "Indicadores e atalhos" },
+    { key: "equipment", label: "Equipamentos", description: "Inventário e atualizações" },
+    { key: "loans", label: "Empréstimos", description: "Reservas e devoluções" },
+    { key: "history", label: "Histórico de manutenções", description: "Consultas e exportação" },
+  ];
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+    <div className="mobile-control" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      <div className="mobile-control-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
         <div>
           <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: "24px" }}>Controle de Mobiles</h2>
           <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: "13px" }}>Controle de equipamentos, versões e atualizações.</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <div className="mobile-control-actions" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <button type="button" onClick={onRefresh} disabled={loading} style={{ padding: "10px 16px", backgroundColor: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: loading ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: 600 }}>↻ Atualizar</button>
           {canEdit && <button type="button" onClick={() => setShowCreateModal(true)} style={{ padding: "10px 16px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 700, boxShadow: "0 4px 6px -1px rgba(59, 130, 246, 0.2)" }}>+ Novo Equipamento</button>}
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
+      <nav className="mobile-control-navigation" aria-label="Áreas do Controle de Mobiles">
+        {navigationItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={activeSection === item.key ? "is-active" : ""}
+            aria-current={activeSection === item.key ? "page" : undefined}
+            onClick={() => setActiveSection(item.key)}
+          >
+            <strong>{item.label}</strong>
+            <span>{item.description}</span>
+          </button>
+        ))}
+      </nav>
+
+      {activeSection === "overview" && <div className="mobile-section-intro">
+        <div><strong>Visão geral do parque</strong><span>Selecione um indicador para abrir o inventário já filtrado.</span></div>
+      </div>}
+
+      {activeSection === "overview" && <div className="mobile-summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
         {cards.map((card) => {
           const isLocationCard = card.filter === "LOCATION";
           const isActive = card.filter === "TOTAL"
@@ -471,6 +512,7 @@ export default function ControleMobiles({
                 if (card.filter === "TOTAL") clearFilters();
                 else if (isLocationCard) toggleLocationDivergenceFilter();
                 else if (card.filter) toggleUpdateStatusFilter(card.filter);
+                if (clickable) setActiveSection("equipment");
               }}
               onKeyDown={(event) => {
                 if (!clickable || (event.key !== "Enter" && event.key !== " ")) return;
@@ -478,6 +520,7 @@ export default function ControleMobiles({
                 if (card.filter === "TOTAL") clearFilters();
                 else if (isLocationCard) toggleLocationDivergenceFilter();
                 else toggleUpdateStatusFilter(card.filter);
+                setActiveSection("equipment");
               }}
               style={{
                 padding: "20px",
@@ -495,16 +538,19 @@ export default function ControleMobiles({
             </div>
           );
         })}
-      </div>
+      </div>}
 
-      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+      {(activeSection === "overview" || activeSection === "equipment") && <div className="mobile-status-filters" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
         {statusCards.map((item) => {
           const isActive = normalizeValue(statusFilter) === normalizeValue(item.filter);
           return (
             <button
               key={item.label}
               type="button"
-              onClick={() => toggleStatusFilter(item.filter)}
+              onClick={() => {
+                toggleStatusFilter(item.filter);
+                setActiveSection("equipment");
+              }}
               style={{
                 padding: "8px 12px",
                 backgroundColor: "var(--bg-secondary)",
@@ -521,33 +567,92 @@ export default function ControleMobiles({
             </button>
           );
         })}
-      </div>
+      </div>}
 
-      <ReservasMobilesPanel data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />
+      {activeSection === "loans" && <ReservasMobilesPanel mode="operations" data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />}
+      {activeSection === "history" && <ReservasMobilesPanel mode="history" data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />}
 
-      <div style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 2fr) repeat(5, minmax(140px, 1fr))", gap: "12px" }}>
-          <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar Coletor, SN, IP, MAC, App ou versão..." style={inputStyle} />
+      {activeSection === "equipment" && <div className="mobile-section-intro">
+        <div><strong>Inventário de equipamentos</strong><span>Use a pesquisa e os filtros rápidos; abra os filtros avançados somente quando necessário.</span></div>
+      </div>}
+
+      {activeSection === "equipment" && <div className="mobile-filter-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
+        <div className="mobile-filter-primary">
+          <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar Coletor, SN, MAC, Patrimônio, App ou versão..." style={inputStyle} />
           <select value={setorFilter} onChange={(event) => setSetorFilter(event.target.value)} style={inputStyle}><option value="">Todos os setores</option>{setores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}</select>
-          <select value={appFilter} onChange={(event) => setAppFilter(event.target.value)} style={inputStyle}><option value="">Todos os apps</option>{apps.map((app) => <option key={app} value={app}>{app}</option>)}</select>
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={inputStyle}><option value="">Todos os status</option>{statusOptions.map((status) => <option key={status} value={status}>{getStatusLabel(status)}</option>)}</select>
+          <button type="button" className={showAdvancedFilters || advancedFilterCount > 0 ? "mobile-advanced-filter-button is-active" : "mobile-advanced-filter-button"} onClick={() => setShowAdvancedFilters((current) => !current)} aria-expanded={showAdvancedFilters}>
+            {showAdvancedFilters ? "Ocultar filtros" : "Mais filtros"}{advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ""}
+          </button>
+        </div>
+        {showAdvancedFilters && <div className="mobile-filter-advanced">
+          <select value={setorLocalizadoFilter} onChange={(event) => setSetorLocalizadoFilter(event.target.value)} style={inputStyle}><option value="">Todos os setores localizados</option>{setoresLocalizados.map((setor) => <option key={setor} value={setor}>{setor}</option>)}</select>
+          <select value={appFilter} onChange={(event) => setAppFilter(event.target.value)} style={inputStyle}><option value="">Todos os apps</option>{apps.map((app) => <option key={app} value={app}>{app}</option>)}</select>
           <select value={statusAtualizacaoFilter} onChange={(event) => setStatusAtualizacaoFilter(event.target.value)} style={inputStyle}><option value="">Todos os status de atualização</option>{statusAtualizacaoOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select>
           <select value={versaoFilter} onChange={(event) => setVersaoFilter(event.target.value)} style={inputStyle}><option value="">{appFilter ? `Todas as versões de ${appFilter}` : "Todas as versões"}</option>{versoes.map((versao) => <option key={versao} value={versao}>{versao}</option>)}</select>
-        </div>
+        </div>}
         {appFilter && <div style={{ marginTop: "10px", color: "var(--text-muted)", fontSize: "11px" }}>Os filtros de versão e status de atualização estão sendo aplicados ao App <strong style={{ color: "var(--text-primary)" }}>{appFilter}</strong>.</div>}
         {locationDivergenceOnly && <div style={{ marginTop: "10px", color: "#F59E0B", fontSize: "11px", fontWeight: 600 }}>Filtro rápido ativo: exibindo somente equipamentos Ativos cujo Setor localizado é diferente do Setor de referência.</div>}
-        {hasActiveFilters && <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}><button type="button" onClick={clearFilters} style={{ padding: "8px 14px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar filtros</button></div>}
-      </div>
+        {hasActiveFilters && <div className="mobile-active-filters">
+          <span>Filtros ativos:</span>
+          {search && <button type="button" onClick={() => setSearch("")}>Pesquisa: {search} ×</button>}
+          {setorFilter && <button type="button" onClick={() => setSetorFilter("")}>Setor: {setorFilter} ×</button>}
+          {statusFilter && <button type="button" onClick={() => setStatusFilter("")}>Status: {getStatusLabel(statusFilter)} ×</button>}
+          {setorLocalizadoFilter && <button type="button" onClick={() => setSetorLocalizadoFilter("")}>Localizado: {setorLocalizadoFilter} ×</button>}
+          {appFilter && <button type="button" onClick={() => { setAppFilter(""); setVersaoFilter(""); }}>App: {appFilter} ×</button>}
+          {statusAtualizacaoFilter && <button type="button" onClick={() => setStatusAtualizacaoFilter("")}>Atualização: {statusAtualizacaoFilter} ×</button>}
+          {versaoFilter && <button type="button" onClick={() => setVersaoFilter("")}>Versão: {versaoFilter} ×</button>}
+          {locationDivergenceOnly && <button type="button" onClick={() => setLocationDivergenceOnly(false)}>Fora do setor ×</button>}
+          <button type="button" className="mobile-clear-all-filters" onClick={clearFilters}>Limpar todos</button>
+        </div>}
+      </div>}
 
-      {canEdit && selectedRows.length > 0 && <div style={{ padding: "14px 16px", backgroundColor: "var(--bg-secondary)", border: "1px solid #3B82F6", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div style={{ color: "var(--text-primary)", fontSize: "13px", fontWeight: 600 }}>{selectedRows.length} equipamento{selectedRows.length !== 1 ? "s" : ""} selecionado{selectedRows.length !== 1 ? "s" : ""}</div><div style={{ display: "flex", gap: "10px" }}><button type="button" onClick={clearSelection} style={{ padding: "8px 12px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar seleção</button><button type="button" onClick={() => setShowBulkUpdateModal(true)} style={{ padding: "8px 14px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>Atualizar selecionados</button></div></div>}
+      {activeSection === "equipment" && canEdit && selectedRows.length > 0 && <div className="mobile-selection-bar" style={{ padding: "14px 16px", backgroundColor: "var(--bg-secondary)", border: "1px solid #3B82F6", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div style={{ color: "var(--text-primary)", fontSize: "13px", fontWeight: 600 }}>{selectedRows.length} equipamento{selectedRows.length !== 1 ? "s" : ""} selecionado{selectedRows.length !== 1 ? "s" : ""}</div><div style={{ display: "flex", gap: "10px" }}><button type="button" onClick={clearSelection} style={{ padding: "8px 12px", backgroundColor: "var(--bg-primary)", color: "var(--text-muted)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }}>Limpar seleção</button><button type="button" onClick={() => setShowBulkUpdateModal(true)} style={{ padding: "8px 14px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>Atualizar selecionados</button></div></div>}
 
-      {loading && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Carregando equipamentos...</div>}
-      {!loading && error && <div style={{ padding: "16px", borderRadius: "10px", backgroundColor: "rgba(220, 38, 38, 0.12)", border: "1px solid #DC2626", color: "#DC2626" }}>{error}</div>}
-      {!loading && !error && data.length <= 1 && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Nenhum equipamento encontrado na aba tbControleMobiles.</div>}
+      {activeSection === "equipment" && loading && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Carregando equipamentos...</div>}
+      {activeSection === "equipment" && !loading && error && <div style={{ padding: "16px", borderRadius: "10px", backgroundColor: "rgba(220, 38, 38, 0.12)", border: "1px solid #DC2626", color: "#DC2626" }}>{error}</div>}
+      {activeSection === "equipment" && !loading && !error && data.length <= 1 && <div style={{ padding: "24px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", color: "var(--text-muted)", textAlign: "center" }}>Nenhum equipamento encontrado na aba tbControleMobiles.</div>}
 
-      {!loading && !error && data.length > 1 && <div style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div><strong style={{ color: "var(--text-primary)" }}>Equipamentos cadastrados</strong><span style={{ marginLeft: "10px", color: "var(--text-muted)", fontSize: "12px" }}>{filteredRows.length} de {totalEquipamentos} registros</span></div></div>
-        <div style={{ width: "100%", overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1320px" }}>
+      {activeSection === "equipment" && !loading && !error && data.length > 1 && <div className="mobile-equipment-section" style={{ backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px", overflow: "hidden" }}>
+        <div className="mobile-equipment-heading" style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}><div><strong style={{ color: "var(--text-primary)" }}>Equipamentos cadastrados</strong><span style={{ marginLeft: "10px", color: "var(--text-muted)", fontSize: "12px" }}>{filteredRows.length} de {totalEquipamentos} registros</span></div></div>
+        <div className="mobile-equipment-cards">
+          {paginatedRows.length === 0 ? (
+            <div className="mobile-empty-state">Nenhum equipamento encontrado com os filtros selecionados.</div>
+          ) : paginatedRows.map((row, index) => {
+            const globalIndex = (currentPage - 1) * itemsPerPage + index;
+            const rowIndex = getOriginalIndex(row);
+            const summary = getMobileUpdateSummary(row);
+            const locatedSector = setorLocalizadoIdx !== -1 ? String(row[setorLocalizadoIdx] || "").trim() : "";
+            const referenceSector = setorIdx !== -1 ? String(row[setorIdx] || "").trim() : "";
+            const locationDivergent = isLocationDivergent(row);
+            return (
+              <article className="mobile-equipment-card" key={`card-${row[coletorIdx] || "mobile"}-${row[snIdx] || globalIndex}-${globalIndex}`}>
+                <div className="mobile-equipment-card-top">
+                  {canEdit && <input aria-label={`Selecionar ${coletorIdx !== -1 ? row[coletorIdx] || "equipamento" : "equipamento"}`} type="checkbox" checked={rowIndex !== null && selectedRows.includes(rowIndex)} onChange={() => handleToggleRow(row)} />}
+                  <div className="mobile-equipment-card-title">
+                    <strong>{coletorIdx !== -1 ? row[coletorIdx] || "-" : "-"}</strong>
+                    <span>{referenceSector || "Setor não informado"}</span>
+                  </div>
+                  <span style={{ ...getStatusStyle(statusIdx !== -1 ? row[statusIdx] || "" : ""), padding: "5px 8px", borderRadius: "999px", fontSize: "10px", fontWeight: 700 }}>{statusIdx !== -1 ? getStatusLabel(row[statusIdx] || "") : "Não informado"}</span>
+                </div>
+                <div className="mobile-equipment-card-grid">
+                  <div><span>Localização</span><strong>{locatedSector || "-"}</strong>{locationDivergent && <small>⚠ Fora do setor</small>}</div>
+                  <div><span>SN</span><strong>{snIdx !== -1 ? row[snIdx] || "-" : "-"}</strong></div>
+                  <div><span>MAC</span><strong>{macIdx !== -1 ? row[macIdx] || "-" : "-"}</strong></div>
+                  {patrimonioRepromaqIdx !== -1 && <div><span>Patrimônio Repromaq</span><strong>{row[patrimonioRepromaqIdx] || "-"}</strong></div>}
+                  <div><span>App de uso</span><strong>{appIdx !== -1 ? row[appIdx] || "-" : "-"}</strong></div>
+                  <div><span>Apps atualizados</span><strong>{summary.totalApps > 0 ? `${summary.updatedApps} / ${summary.totalApps}` : "Nenhum App"}</strong></div>
+                  <div><span>Atualização</span><strong style={{ ...getUpdateStatusStyle(summary.status), padding: "4px 7px", borderRadius: "999px", fontSize: "10px" }}>{summary.status}</strong></div>
+                </div>
+                <div className="mobile-equipment-card-actions">
+                  <button type="button" onClick={() => setViewingAppsRow(row)}>Ver Apps</button>
+                  {canEdit && <button type="button" onClick={() => handleEdit(row)}>Editar equipamento</button>}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <div className="mobile-equipment-desktop" style={{ width: "100%", overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: patrimonioRepromaqIdx !== -1 ? "1450px" : "1320px" }}>
           <thead>
             <tr style={{ backgroundColor: "var(--bg-primary)" }}>
               <th style={{ width: "42px", padding: "12px 10px", textAlign: "center", borderBottom: "1px solid var(--border-primary)" }}>{canEdit && <input type="checkbox" checked={allCurrentPageSelected} onChange={handleToggleCurrentPage} title="Selecionar página atual" style={{ cursor: "pointer" }} />}</th>
@@ -584,7 +689,7 @@ export default function ControleMobiles({
               })}
             </tr>
           </thead>
-          <tbody>{paginatedRows.length === 0 ? <tr><td colSpan={11} style={{ padding: "28px", textAlign: "center", color: "var(--text-muted)" }}>Nenhum equipamento encontrado com os filtros selecionados.</td></tr> : paginatedRows.map((row, index) => {
+          <tbody>{paginatedRows.length === 0 ? <tr><td colSpan={tableColumns.length + 1} style={{ padding: "28px", textAlign: "center", color: "var(--text-muted)" }}>Nenhum equipamento encontrado com os filtros selecionados.</td></tr> : paginatedRows.map((row, index) => {
             const globalIndex = (currentPage - 1) * itemsPerPage + index;
             const mobileUpdateSummary = getMobileUpdateSummary(row);
             const locationDivergent = isLocationDivergent(row);
@@ -617,7 +722,8 @@ export default function ControleMobiles({
               </td>
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", fontWeight: 700, whiteSpace: "nowrap" }}>{coletorIdx !== -1 ? row[coletorIdx] || "-" : "-"}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{snIdx !== -1 ? row[snIdx] || "-" : "-"}</td>
-              <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{ipIdx !== -1 ? row[ipIdx] || "-" : "-"}</td>
+              <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{macIdx !== -1 ? row[macIdx] || "-" : "-"}</td>
+              {patrimonioRepromaqIdx !== -1 && <td style={{ padding: "12px 14px", color: "var(--text-secondary)", fontSize: "12px", whiteSpace: "nowrap" }}>{row[patrimonioRepromaqIdx] || "-"}</td>}
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", whiteSpace: "nowrap" }}>{appIdx !== -1 ? row[appIdx] || "-" : "-"}</td>
               <td style={{ padding: "12px 14px", color: "var(--text-primary)", fontSize: "13px", whiteSpace: "nowrap" }}>{mobileUpdateSummary.totalApps > 0 ? <><strong>{mobileUpdateSummary.updatedApps}</strong>{" / "}{mobileUpdateSummary.totalApps}</> : <span style={{ color: "var(--text-muted)" }}>Nenhum App</span>}</td>
               <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", alignItems: "center", padding: "5px 9px", borderRadius: "999px", fontSize: "11px", fontWeight: 700, ...getUpdateStatusStyle(mobileUpdateSummary.status) }}>{mobileUpdateSummary.status}</span></td>

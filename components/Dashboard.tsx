@@ -57,6 +57,7 @@ export default function Dashboard({
 
   return (
     <div
+      className="dashboard"
       style={{
         marginBottom: "32px",
         display: "flex",
@@ -66,6 +67,7 @@ export default function Dashboard({
     >
       {/* Indicadores */}
       <div
+        className="dashboard-metrics"
         style={{
           display: "grid",
           gridTemplateColumns:
@@ -202,6 +204,7 @@ export default function Dashboard({
 
       {/* Gráficos */}
       <div
+        className="dashboard-charts"
         style={{
           display: "grid",
           gridTemplateColumns:

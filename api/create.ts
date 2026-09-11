@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { authErrorResponse, CREATABLE_SHEETS, requireRole } from "./_requireAuth.js";
 
 const MOBILE_CONTROL_SHEET = "tbControleMobiles";
 const MOBILE_APPS_SHEET = "tbMobileApps";
@@ -25,11 +26,21 @@ const getToday = () =>
   new Date().toISOString().split("T")[0];
 
 export default async function handler(req: any, res: any) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Método não permitido." });
+  }
+
   try {
     const { rowData, sheet } = req.body;
 
-    if (!sheet) {
-      return res.status(400).json({ error: "Sheet não informada" });
+    const actor = await requireRole(req.headers.authorization, ["admin", "analyst"]);
+
+    if (typeof sheet !== "string" || !CREATABLE_SHEETS.has(sheet)) {
+      return res.status(400).json({ error: "Aba inválida ou não permitida." });
+    }
+
+    if (sheet === MOBILE_CONFIG_SHEET && actor.role !== "admin") {
+      return res.status(403).json({ error: "Somente administradores podem alterar versões alvo." });
     }
 
     if (!Array.isArray(rowData)) {
@@ -437,6 +448,7 @@ export default async function handler(req: any, res: any) {
       apps: appsToCreate,
     });
   } catch (error: any) {
+    if (authErrorResponse(error, res)) return;
     console.error("ERRO CREATE:", error);
     return res.status(500).json({
       error: error.message || "Erro interno ao criar registro.",

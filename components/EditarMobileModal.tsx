@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SubstituirMobileModal from "./SubstituirMobileModal";
+import DevolverMobileModal from "./DevolverMobileModal";
+import { useAppDialog } from "../contexts/AppDialogContext";
 
 interface EditarMobileModalProps {
   isOpen: boolean;
@@ -30,10 +32,11 @@ export default function EditarMobileModal({
   onSaveMobileApp,
   onRefresh,
 }: EditarMobileModalProps) {
+  const { alert: showAlert } = useAppDialog();
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [returning, setReturning] = useState(false);
   const [showSubstitute, setShowSubstitute] = useState(false);
+  const [showReturn, setShowReturn] = useState(false);
 
   const getHeader = (...names: string[]) =>
     headers.find((header) =>
@@ -45,7 +48,7 @@ export default function EditarMobileModal({
   const snHeader = getHeader("SN");
   const finalHeader = getHeader("FINAL");
   const macHeader = getHeader("MAC");
-  const ipHeader = getHeader("IP");
+  const patrimonioRepromaqHeader = getHeader("PATRIMONIO_REPROMAQ", "Patrimônio Repromaq", "Patrimonio Repromaq");
   const entregueHeader = getHeader("Entregue");
   const obsHeader = getHeader("Obs");
   const dataAtualizacaoHeader = getHeader("Data atualização", "Data atualizacao");
@@ -108,6 +111,7 @@ export default function EditarMobileModal({
     });
     setFormData(values);
     setShowSubstitute(false);
+    setShowReturn(false);
   }, [isOpen, row, headers]);
 
   if (!isOpen || !row) return null;
@@ -160,49 +164,10 @@ export default function EditarMobileModal({
     return localDate.toISOString().split("T")[0];
   };
 
-  const handleFinalizeLoan = async () => {
-    if (!canFinalizeLoan || !currentCollector) return;
-    const confirmed = window.confirm(`Finalizar o empréstimo do equipamento reserva "${currentCollector}"?\n\nO equipamento original voltará para Ativo e a reserva ficará disponível novamente.`);
-    if (!confirmed) return;
-
-    const updateLocation = window.confirm("Deseja atualizar o setor de localização na devolução?\n\nSe confirmar, a reserva retornará para TI-SUPORTE e você poderá informar o setor onde o equipamento original será devolvido.");
-    let returnSector = "";
-    if (updateLocation) {
-      const informedSector = window.prompt("Informe o setor de localização para devolução do equipamento original:", currentLocation || currentSector || "");
-      if (informedSector === null) return;
-      returnSector = informedSector.trim();
-      if (!returnSector) {
-        alert("Informe o setor de localização da devolução.");
-        return;
-      }
-    }
-
-    const observation = window.prompt("Observação da devolução (opcional):", "");
-    if (observation === null) return;
-    setReturning(true);
-
-    try {
-      const response = await fetch("/api/mobiles/loan-return", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reserveCollector: currentCollector, responsible: currentUserName, observation: observation.trim(), updateLocation, returnSector }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Erro ao finalizar empréstimo temporário.");
-      await Promise.resolve(onRefresh());
-      alert(`Empréstimo ${result.loanId || ""} finalizado com sucesso. O equipamento reserva voltou a ficar disponível.`.trim());
-      onClose();
-    } catch (error: any) {
-      alert("Erro ao finalizar empréstimo: " + (error.message || "Erro desconhecido"));
-    } finally {
-      setReturning(false);
-    }
-  };
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!setorHeader || !setorLocalizadoHeader || !coletorHeader || !snHeader || !finalHeader || !macHeader || !appHeader || !statusHeader) {
-      alert("Não foi possível identificar todos os campos obrigatórios do equipamento.");
+      await showAlert("Não foi possível identificar todos os campos obrigatórios do equipamento.", { variant: "error" });
       return;
     }
 
@@ -217,36 +182,36 @@ export default function EditarMobileModal({
     const version = versaoHeader ? String(formData[versaoHeader] || "").trim() : "";
 
     if (!setor || !localizado || !coletor || !sn || !finalValue || !mac || !app || !status) {
-      alert("Preencha todos os campos obrigatórios: Setor, Setor localizado, Coletor, SN, FINAL, MAC, App de uso e Status.");
+      await showAlert("Preencha todos os campos obrigatórios: Setor, Setor localizado, Coletor, SN, FINAL, MAC, App de uso e Status.", { variant: "warning" });
       return;
     }
     if (!/^\d+$/.test(sn)) {
-      alert("SN deve conter apenas números.");
+      await showAlert("SN deve conter apenas números.", { variant: "warning" });
       return;
     }
     if (!/^\d+$/.test(finalValue)) {
-      alert("FINAL deve conter apenas números.");
+      await showAlert("FINAL deve conter apenas números.", { variant: "warning" });
       return;
     }
     if (!isTodos && !version) {
-      alert("Informe a Versão para equipamentos vinculados a um App específico.");
+      await showAlert("Informe a Versão para equipamentos vinculados a um App específico.", { variant: "warning" });
       return;
     }
     if (normalize(originalApp) !== normalize(app)) {
-      alert("A alteração entre TODOS e um App específico ainda não é permitida pela edição simples. Essa mudança exige reorganizar os registros de tbMobileApps.");
+      await showAlert("A alteração entre TODOS e um App específico ainda não é permitida pela edição simples. Essa mudança exige reorganizar os registros de tbMobileApps.", { variant: "warning" });
       return;
     }
 
     const originalStatusIdx = headers.findIndex((header) => normalize(header) === normalize("Status"));
     const originalStatus = originalStatusIdx !== -1 ? String(row[originalStatusIdx] || "").trim().toUpperCase() : "";
     if ((status === "M" || status === "E") && status !== originalStatus) {
-      alert("Os status Manutenção e Emprestado são controlados automaticamente pela rotina de empréstimo e não podem ser definidos manualmente.");
+      await showAlert("Os status Manutenção e Emprestado são controlados automaticamente pela rotina de empréstimo e não podem ser definidos manualmente.", { variant: "warning" });
       return;
     }
 
     const currentRowIndex = (row as any)._originalIndex;
     if (currentRowIndex === undefined || currentRowIndex === null) {
-      alert("Não foi possível identificar a linha original do equipamento.");
+      await showAlert("Não foi possível identificar a linha original do equipamento.", { variant: "error" });
       return;
     }
 
@@ -261,7 +226,7 @@ export default function EditarMobileModal({
       return otherSn !== "" && normalize(otherSn) === normalize(sn);
     });
     if (duplicateSn) {
-      alert(`Já existe outro equipamento cadastrado com o SN "${sn}".`);
+      await showAlert(`Já existe outro equipamento cadastrado com o SN "${sn}".`, { variant: "warning" });
       return;
     }
 
@@ -274,7 +239,7 @@ export default function EditarMobileModal({
         return normalize(otherCollector) === normalize(coletor) && otherStatus === "A";
       });
       if (activeCollectorExists) {
-        alert(`Já existe outro equipamento ATIVO utilizando o Coletor "${coletor}".`);
+        await showAlert(`Já existe outro equipamento ATIVO utilizando o Coletor "${coletor}".`, { variant: "warning" });
         return;
       }
     }
@@ -345,7 +310,7 @@ export default function EditarMobileModal({
       await Promise.resolve(onRefresh());
       onClose();
     } catch (error: any) {
-      alert("Erro ao salvar equipamento: " + error.message);
+      await showAlert("Erro ao salvar equipamento: " + error.message, { variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -402,32 +367,46 @@ export default function EditarMobileModal({
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(8px)", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", zIndex: 1100 }}>
-      <div style={{ width: "100%", maxWidth: "900px", maxHeight: "90vh", overflowY: "auto", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "14px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
+    <div className="mobile-modal-overlay" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(8px)", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", zIndex: 1100 }}>
+      <div className="mobile-modal-card" style={{ width: "100%", maxWidth: "900px", maxHeight: "90vh", overflowY: "auto", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "14px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
         <form onSubmit={handleSubmit}>
-          <div style={{ padding: "20px 22px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
+          <div className="mobile-modal-header" style={{ padding: "20px 22px", borderBottom: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
             <div>
               <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: "20px" }}>Editar Equipamento</h2>
               <p style={{ margin: "5px 0 0", color: "var(--text-muted)", fontSize: "12px" }}>{coletorHeader ? formData[coletorHeader] || "Equipamento" : "Equipamento"}</p>
             </div>
-            <button type="button" onClick={onClose} disabled={saving || returning} style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", cursor: "pointer", fontSize: "18px" }}>×</button>
+            <button type="button" onClick={onClose} disabled={saving} style={{ width: "34px", height: "34px", borderRadius: "8px", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", cursor: "pointer", fontSize: "18px" }}>×</button>
           </div>
 
-          <div style={{ padding: "22px", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "18px" }}>
+          <div className="mobile-modal-grid" style={{ padding: "22px", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "18px" }}>
             {selectField(setorHeader, "Setor", sectors, true, handleSectorChange)}
             {selectField(setorLocalizadoHeader, "Setor localizado", sectors, true)}
             {textField(coletorHeader, "Coletor", true)}
             {textField(snHeader, "SN", true, true)}
             {textField(finalHeader, "FINAL", true, true)}
             {textField(macHeader, "MAC", true)}
-            {textField(ipHeader, "IP", false)}
+            {textField(patrimonioRepromaqHeader, "Patrimônio Repromaq", false)}
             {selectField(appHeader, "App de uso", [...configuredApps, "TODOS"], true)}
             {entregueHeader && <label style={labelStyle}>{requiredLabel("Entregue", false)}<input type="date" value={formData[entregueHeader] || ""} onChange={(event) => handleChange(entregueHeader, event.target.value)} style={inputStyle} /></label>}
             {versaoHeader && <label style={labelStyle}>{requiredLabel("Versão", !isTodos)}<input type="text" required={!isTodos} disabled={isTodos} value={isTodos ? "" : formData[versaoHeader] || ""} onChange={(event) => handleChange(versaoHeader, event.target.value)} style={{ ...inputStyle, opacity: isTodos ? 0.6 : 1, cursor: isTodos ? "not-allowed" : "text" }} /></label>}
 
             {statusHeader && (isOperationalStatus ? (
               <label style={labelStyle}>Status *<input type="text" value={getStatusLabel(currentStatus)} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.75 }} /><span style={{ color: "var(--text-muted)", fontSize: "10px", fontWeight: 500 }}>Status controlado automaticamente pela rotina de empréstimo.</span></label>
-            ) : selectField(statusHeader, "Status", ["A", "I"], true))}
+            ) : (
+              <label style={labelStyle}>
+                {requiredLabel("Status", true)}
+                <select
+                  required
+                  value={formData[statusHeader] || ""}
+                  onChange={(event) => handleChange(statusHeader, event.target.value)}
+                  style={inputStyle}
+                >
+                  <option value="">Selecione</option>
+                  <option value="A">Ativo</option>
+                  <option value="I">Inativo</option>
+                </select>
+              </label>
+            ))}
 
             {statusAtualizacaoHeader && <label style={labelStyle}>Status atualização<input type="text" value={automaticStatus} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }} /></label>}
             {dataAtualizacaoHeader && <label style={labelStyle}>Data atualização<input type="text" value={formData[dataAtualizacaoHeader] || ""} readOnly style={{ ...inputStyle, cursor: "not-allowed", opacity: 0.7 }} /></label>}
@@ -437,14 +416,14 @@ export default function EditarMobileModal({
             {obsHeader && <label style={{ ...labelStyle, gridColumn: "1 / -1" }}>{requiredLabel("Observação", false)}<textarea value={formData[obsHeader] || ""} onChange={(event) => handleChange(obsHeader, event.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical" }} /></label>}
           </div>
 
-          <div style={{ padding: "16px 22px", borderTop: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+          <div className="mobile-modal-footer" style={{ padding: "16px 22px", borderTop: "1px solid var(--border-primary)", display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              {canTemporarilyReplace && <button type="button" onClick={() => setShowSubstitute(true)} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 700 }}>Substituir temporariamente</button>}
-              {canFinalizeLoan && <button type="button" onClick={handleFinalizeLoan} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "rgba(16, 185, 129, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 700 }}>{returning ? "Finalizando..." : "Finalizar empréstimo"}</button>}
+              {canTemporarilyReplace && <button type="button" onClick={() => setShowSubstitute(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Substituir temporariamente</button>}
+              {canFinalizeLoan && <button type="button" onClick={() => setShowReturn(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(16, 185, 129, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Finalizar empréstimo</button>}
             </div>
             <div style={{ display: "flex", gap: "12px" }}>
-              <button type="button" onClick={onClose} disabled={saving || returning} style={{ padding: "10px 18px", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 600 }}>Cancelar</button>
-              <button type="submit" disabled={saving || returning} style={{ padding: "10px 20px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "8px", cursor: saving || returning ? "not-allowed" : "pointer", fontWeight: 600 }}>{saving ? "Salvando..." : "Salvar alterações"}</button>
+              <button type="button" onClick={onClose} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 600 }}>Cancelar</button>
+              <button type="submit" disabled={saving} style={{ padding: "10px 20px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 600 }}>{saving ? "Salvando..." : "Salvar alterações"}</button>
             </div>
           </div>
         </form>
@@ -461,6 +440,17 @@ export default function EditarMobileModal({
         onSuccess={async () => {
           await Promise.resolve(onRefresh());
           setShowSubstitute(false);
+          onClose();
+        }}
+      />
+      <DevolverMobileModal
+        isOpen={showReturn}
+        reserveCollector={currentCollector}
+        currentUserName={currentUserName}
+        onClose={() => setShowReturn(false)}
+        onSuccess={async () => {
+          await Promise.resolve(onRefresh());
+          setShowReturn(false);
           onClose();
         }}
       />

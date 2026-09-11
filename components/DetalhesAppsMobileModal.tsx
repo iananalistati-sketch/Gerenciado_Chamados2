@@ -3,6 +3,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { apiFetch } from "../auth/api";
 
 interface DetalhesAppsMobileModalProps {
   isOpen: boolean;
@@ -80,7 +81,7 @@ export default function DetalhesAppsMobileModal({
     setLoadError("");
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/data?sheet=tbMobileApps&_=${Date.now()}`,
         {
           cache: "no-store",
@@ -473,6 +474,7 @@ export default function DetalhesAppsMobileModal({
 
   return (
     <div
+      className="mobile-modal-overlay"
       style={{
         position: "fixed",
         inset: 0,
@@ -495,6 +497,7 @@ export default function DetalhesAppsMobileModal({
       }}
     >
       <div
+        className="mobile-modal-card"
         style={{
           width: "100%",
           maxWidth: "980px",

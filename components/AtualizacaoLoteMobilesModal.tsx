@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useAppDialog } from "../contexts/AppDialogContext";
 
 interface AtualizacaoLoteMobilesModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export default function AtualizacaoLoteMobilesModal({
   onClose,
   onApply,
 }: AtualizacaoLoteMobilesModalProps) {
+  const { alert: showAlert } = useAppDialog();
   const [appUso, setAppUso] =
     useState("");
   const [versao, setVersao] =
@@ -63,16 +65,12 @@ export default function AtualizacaoLoteMobilesModal({
     event.preventDefault();
 
     if (!appUso) {
-      alert(
-        "Selecione o aplicativo que será atualizado."
-      );
+      await showAlert("Selecione o aplicativo que será atualizado.", { variant: "warning" });
       return;
     }
 
     if (!versao.trim()) {
-      alert(
-        "Informe a nova versão do aplicativo."
-      );
+      await showAlert("Informe a nova versão do aplicativo.", { variant: "warning" });
       return;
     }
 
@@ -89,9 +87,10 @@ export default function AtualizacaoLoteMobilesModal({
 
       onClose();
     } catch (error: any) {
-      alert(
+      await showAlert(
         "Erro ao atualizar aplicativos: " +
-          error.message
+          error.message,
+        { variant: "error" }
       );
     } finally {
       setSaving(false);
@@ -122,6 +121,7 @@ export default function AtualizacaoLoteMobilesModal({
 
   return (
     <div
+      className="mobile-modal-overlay"
       style={{
         position: "fixed",
         inset: 0,
@@ -136,6 +136,7 @@ export default function AtualizacaoLoteMobilesModal({
       }}
     >
       <div
+        className="mobile-modal-card"
         style={{
           width: "100%",
           maxWidth: "650px",
@@ -150,6 +151,7 @@ export default function AtualizacaoLoteMobilesModal({
       >
         <form onSubmit={handleSubmit}>
           <div
+            className="mobile-modal-header"
             style={{
               padding: "20px 22px",
               borderBottom:
@@ -216,6 +218,7 @@ export default function AtualizacaoLoteMobilesModal({
           </div>
 
           <div
+            className="mobile-modal-grid"
             style={{
               padding: "22px",
               display: "grid",
