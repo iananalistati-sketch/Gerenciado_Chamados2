@@ -29,8 +29,9 @@ export default async function handler(
 
   try {
     const adminAuth = getAdminAuth();
-    await requireAdmin(
-      req.headers.authorization
+    const actor = await requireAdmin(
+      req.headers.authorization,
+      "users.create"
     );
 
     const {
@@ -56,6 +57,10 @@ export default async function handler(
       return res.status(400).json({
         error: "Perfil inválido.",
       });
+    }
+
+    if (role === "admin" && actor.role !== "admin") {
+      return res.status(403).json({ error: "Somente administradores podem criar outro administrador." });
     }
 
     if (password.length < 6) {

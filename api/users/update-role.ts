@@ -30,8 +30,9 @@ export default async function handler(
   try {
     const adminAuth = getAdminAuth();
 
-    await requireAdmin(
-      req.headers.authorization
+    const actor = await requireAdmin(
+      req.headers.authorization,
+      "users.change_role"
     );
 
     const {
@@ -52,8 +53,17 @@ export default async function handler(
       });
     }
 
+
+    if (role === "admin" && actor.role !== "admin") {
+      return res.status(403).json({ error: "Somente administradores podem conceder o perfil Administrador." });
+    }
+
     const user =
       await adminAuth.getUser(uid);
+
+    if (user.customClaims?.role === "admin" && actor.role !== "admin") {
+      return res.status(403).json({ error: "Somente administradores podem alterar outro Administrador." });
+    }
 
     const currentClaims =
       user.customClaims || {};

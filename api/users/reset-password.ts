@@ -24,8 +24,9 @@ export default async function handler(
   try {
     const adminAuth = getAdminAuth();
 
-    await requireAdmin(
-      req.headers.authorization
+    const actor = await requireAdmin(
+      req.headers.authorization,
+      "users.reset_other_password"
     );
 
     const {
@@ -38,6 +39,11 @@ export default async function handler(
         error:
           "Usuário e nova senha são obrigatórios.",
       });
+    }
+
+    const targetUser = await adminAuth.getUser(uid);
+    if (targetUser.customClaims?.role === "admin" && actor.role !== "admin") {
+      return res.status(403).json({ error: "Somente administradores podem redefinir a senha de outro Administrador." });
     }
 
     if (password.length < 6) {

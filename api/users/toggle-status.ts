@@ -26,7 +26,8 @@ export default async function handler(
 
     const decodedToken =
       await requireAdmin(
-        req.headers.authorization
+        req.headers.authorization,
+        "users.toggle_status"
       );
 
     const {
@@ -49,6 +50,11 @@ export default async function handler(
         error:
           "Você não pode desativar sua própria conta.",
       });
+    }
+
+    const targetUser = await adminAuth.getUser(uid);
+    if (targetUser.customClaims?.role === "admin" && decodedToken.role !== "admin") {
+      return res.status(403).json({ error: "Somente administradores podem alterar outro Administrador." });
     }
 
     await adminAuth.updateUser(

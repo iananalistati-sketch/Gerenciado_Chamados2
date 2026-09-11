@@ -1,5 +1,6 @@
 import { google } from "googleapis";
-import { authErrorResponse, READABLE_SHEETS, requireRole } from "./_requireAuth.js";
+import { authErrorResponse, READABLE_SHEETS } from "./_requireAuth.js";
+import { requirePermission } from "./_rolePermissions.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -9,11 +10,11 @@ export default async function handler(req, res) {
   try {
     const { sheet } = req.query;
 
-    await requireRole(req.headers.authorization, ["admin", "analyst", "viewer"]);
-
     if (typeof sheet !== "string" || !READABLE_SHEETS.has(sheet)) {
       return res.status(400).json({ error: "Aba inválida ou não permitida." });
     }
+    const permission = sheet === "tbEmprestimosMobiles" ? "loans.view" : ["tbControleMobiles", "tbConfigMobiles", "tbMobileApps"].includes(sheet) ? "mobiles.view" : "tickets.view";
+    await requirePermission(req.headers.authorization, permission);
 
     res.setHeader(
       "Cache-Control",

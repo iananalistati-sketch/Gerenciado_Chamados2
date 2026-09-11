@@ -12,6 +12,7 @@ import FiltroModal from "./components/FiltroModal";
 import Login from "./components/Login";
 import { useAuth } from "./contexts/AuthContext";
 import UserManagement from "./components/UserManagement";
+import PermissionManagement from "./components/PermissionManagement";
 import ChangePassword from "./components/ChangePassword";
 import { useTheme } from "./contexts/ThemeContext";
 import ControleMobiles from "./components/ControleMobiles";
@@ -70,6 +71,7 @@ function AppContent() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showConcluirModal, setShowConcluirModal] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
+  const [showPermissionManagement, setShowPermissionManagement] = useState(false);
   const [
     showChangePassword,
     setShowChangePassword,
@@ -236,6 +238,13 @@ function AppContent() {
       fetchMobileApps();
     }
   }, [selectedSheet]);
+
+  useEffect(() => {
+    if (!permissions) return;
+    const viewingMobiles = selectedSheet === "tbControleMobiles";
+    if (viewingMobiles && !permissions.canViewMobiles && permissions.canView) handleSheetChange("tbChamadosMV");
+    if (!viewingMobiles && !permissions.canView && permissions.canViewMobiles) handleSheetChange("tbControleMobiles");
+  }, [permissions, selectedSheet]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1583,7 +1592,13 @@ function AppContent() {
               </button>
             )}
 
-            <button
+            {role === "admin" && (
+              <button type="button" onClick={() => setShowPermissionManagement(true)} style={{ padding: '8px 14px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+                Permissões
+              </button>
+            )}
+
+            {permissions?.canResetOwnPassword && <button
               type="button"
               onClick={() =>
                 setShowChangePassword(true)
@@ -1600,7 +1615,7 @@ function AppContent() {
               }}
             >
               Alterar senha
-            </button>
+            </button>}
 
             <button
               type="button"
@@ -1679,9 +1694,9 @@ function AppContent() {
               cursor: 'pointer'
             }}
           >
-            <option value="tbChamadosMV">MV</option>
-            <option value="tbChamadosForhealth">ForHealth</option>
-            <option value="tbControleMobiles">Controle de Mobiles</option>
+            {permissions?.canView && <option value="tbChamadosMV">MV</option>}
+            {permissions?.canView && <option value="tbChamadosForhealth">ForHealth</option>}
+            {permissions?.canViewMobiles && <option value="tbControleMobiles">Controle de Mobiles</option>}
           </select>
           <div className="app-sheet-divider" style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-primary)', margin: '0 10px' }}></div>
           <span className="app-sheet-help" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -1701,11 +1716,7 @@ function AppContent() {
               user?.email ||
               "Usuário não identificado"
             }
-            canEdit={
-              isSheetReady &&
-              (role === "admin" ||
-              role === "analyst")
-            }
+            permissions={permissions!}
             onRefresh={fetchData}
             onSaveRow={handleSaveRow}
             onSaveMobileApp={
@@ -1854,7 +1865,7 @@ function AppContent() {
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button 
+              {permissions?.canChargeTicket && <button
                 onClick={() => setShowCobrarModal(true)}
                 disabled={!isSheetReady}
                 style={{
@@ -1886,9 +1897,9 @@ function AppContent() {
                     {currentSheetCount}
                   </span>
                 )}
-              </button>
+              </button>}
 
-              <button 
+              {permissions?.canCreateTicket && <button
                 onClick={handleOpenForm}
                 disabled={!isSheetReady}
                 style={{ 
@@ -1908,7 +1919,7 @@ function AppContent() {
                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3B82F6'}
               >
                 + Adicionar Chamado
-              </button>
+              </button>}
             </div>
           </div>
 
@@ -1925,6 +1936,9 @@ function AppContent() {
             onEdit={handleEdit}
             onToggleCobranca={handleSaveRow}
             onConcluir={handleOpenConcluirModal}
+            canEdit={permissions?.canEditTicket}
+            canCharge={permissions?.canChargeTicket}
+            canConclude={permissions?.canConcludeTicket}
           />
 
           {/* Controles de Paginação */}
@@ -2035,6 +2049,7 @@ function AppContent() {
           isOpen={showUserManagement}
           onClose={() => setShowUserManagement(false)}
         />
+        <PermissionManagement isOpen={showPermissionManagement} onClose={() => setShowPermissionManagement(false)} />
 
         <ChangePassword
           isOpen={showChangePassword}

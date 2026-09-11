@@ -25,7 +25,8 @@ export default async function handler(
     const adminAuth = getAdminAuth();
 
     await requireAdmin(
-      req.headers.authorization
+      req.headers.authorization,
+      "users.view"
     );
 
     const result =

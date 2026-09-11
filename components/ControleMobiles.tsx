@@ -4,6 +4,7 @@ import NovoMobileModal from "./NovoMobileModal";
 import AtualizacaoLoteMobilesModal from "./AtualizacaoLoteMobilesModal";
 import DetalhesAppsMobileModal from "./DetalhesAppsMobileModal";
 import ReservasMobilesPanel from "./ReservasMobilesPanel";
+import type { Permissions } from "../auth/permissions";
 
 interface ControleMobilesProps {
   data: string[][];
@@ -12,7 +13,7 @@ interface ControleMobilesProps {
   loading: boolean;
   error: string | null;
   currentUserName: string;
-  canEdit: boolean;
+  permissions: Permissions;
   onRefresh: () => void;
 
   onSaveRow: (
@@ -56,13 +57,16 @@ export default function ControleMobiles({
   loading,
   error,
   currentUserName,
-  canEdit,
+  permissions,
   onRefresh,
   onSaveRow,
   onSaveMobileApp,
   onCreateRow,
   onBulkUpdate,
 }: ControleMobilesProps) {
+  const canEdit = permissions.canEditMobile;
+  const canCreate = permissions.canCreateMobile;
+  const canBulkUpdate = permissions.canBulkUpdateMobiles;
   const [search, setSearch] = useState("");
   const [setorFilter, setSetorFilter] = useState("");
   const [setorLocalizadoFilter, setSetorLocalizadoFilter] = useState("");
@@ -377,6 +381,7 @@ export default function ControleMobiles({
   const clearSelection = () => setSelectedRows([]);
 
   const handleBulkUpdate = async (values: { versao: string; dataAtualizacao: string; status: string; statusAtualizacao: string; observacao: string; }) => {
+    if (!canBulkUpdate) return;
     const versaoHeader = headers.find((header) => normalize(header) === normalize("Versão") || normalize(header) === normalize("Versao"));
     const dataAtualizacaoHeader = headers.find((header) => normalize(header) === normalize("Data atualização") || normalize(header) === normalize("Data atualizacao"));
     const statusHeader = headers.find((header) => normalize(header) === normalize("Status"));
@@ -460,7 +465,7 @@ export default function ControleMobiles({
     { key: "equipment", label: "Equipamentos", description: "Inventário e atualizações" },
     { key: "loans", label: "Empréstimos", description: "Reservas e devoluções" },
     { key: "history", label: "Histórico de manutenções", description: "Consultas e exportação" },
-  ];
+  ].filter((item) => !["loans", "history"].includes(item.key) || permissions.canViewLoans) as Array<{ key: MobileSection; label: string; description: string }>;
 
   return (
     <div className="mobile-control" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -471,7 +476,7 @@ export default function ControleMobiles({
         </div>
         <div className="mobile-control-actions" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <button type="button" onClick={onRefresh} disabled={loading} style={{ padding: "10px 16px", backgroundColor: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: loading ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: 600 }}>↻ Atualizar</button>
-          {canEdit && <button type="button" onClick={() => setShowCreateModal(true)} style={{ padding: "10px 16px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 700, boxShadow: "0 4px 6px -1px rgba(59, 130, 246, 0.2)" }}>+ Novo Equipamento</button>}
+          {canCreate && <button type="button" onClick={() => setShowCreateModal(true)} style={{ padding: "10px 16px", backgroundColor: "#3B82F6", color: "#FFFFFF", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 700, boxShadow: "0 4px 6px -1px rgba(59, 130, 246, 0.2)" }}>+ Novo Equipamento</button>}
         </div>
       </div>
 
@@ -569,8 +574,8 @@ export default function ControleMobiles({
         })}
       </div>}
 
-      {activeSection === "loans" && <ReservasMobilesPanel mode="operations" data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />}
-      {activeSection === "history" && <ReservasMobilesPanel mode="history" data={data} currentUserName={currentUserName} canEdit={canEdit} onRefresh={onRefresh} />}
+      {activeSection === "loans" && permissions.canViewLoans && <ReservasMobilesPanel mode="operations" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnLoan} onRefresh={onRefresh} />}
+      {activeSection === "history" && permissions.canViewLoans && <ReservasMobilesPanel mode="history" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnLoan} onRefresh={onRefresh} />}
 
       {activeSection === "equipment" && <div className="mobile-section-intro">
         <div><strong>Inventário de equipamentos</strong><span>Use a pesquisa e os filtros rápidos; abra os filtros avançados somente quando necessário.</span></div>

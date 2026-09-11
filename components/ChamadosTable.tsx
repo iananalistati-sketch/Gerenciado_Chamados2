@@ -26,6 +26,9 @@ interface ChamadosTableProps {
     rowIndex: number
   ) => void;
   onConcluir: (row: string[]) => void;
+  canEdit?: boolean;
+  canCharge?: boolean;
+  canConclude?: boolean;
 }
 
 const formatDateBR = (dateString: string) => {
@@ -162,7 +165,10 @@ export default function ChamadosTable({
   onSort,
   onEdit,
   onToggleCobranca,
-  onConcluir
+  onConcluir,
+  canEdit = true,
+  canCharge = true,
+  canConclude = true
 }: ChamadosTableProps) {
 
   const { theme } = useTheme();
@@ -589,7 +595,8 @@ export default function ChamadosTable({
                   >
                     <button
                       type="button"
-                      onClick={() => onEdit(row)}
+                      onClick={() => canEdit && onEdit(row)}
+                      disabled={!canEdit}
                       style={{
                         background: "none",
                         border: "none",
@@ -654,7 +661,7 @@ export default function ChamadosTable({
                             ? "NAO"
                             : "SIM";
 
-                        onToggleCobranca(
+                        canCharge && onToggleCobranca(
                           nextRow,
                           originalRowIndex
                         );
@@ -676,7 +683,8 @@ export default function ChamadosTable({
                   >
                     <button
                       type="button"
-                      onClick={() => onConcluir(row)}
+                      onClick={() => canConclude && onConcluir(row)}
+                      disabled={!canConclude}
                       style={{
                         backgroundColor: "#10B981",
                         color: "#FFF",

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { google } from "googleapis";
-import { authErrorResponse, requireRole } from "../_requireAuth.js";
+import { authErrorResponse } from "../_requireAuth.js";
+import { requirePermission } from "../_rolePermissions.js";
 
 const CONTROLE_SHEET = "tbControleMobiles";
 const APPS_SHEET = "tbMobileApps";
@@ -34,7 +35,7 @@ export default async function handler(
   }
 
   try {
-    await requireRole(req.headers.authorization, ["admin", "analyst"]);
+    await requirePermission(req.headers.authorization, "mobiles.bulk_update");
     const { updates } = req.body;
 
     if (!Array.isArray(updates)) {

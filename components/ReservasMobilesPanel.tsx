@@ -278,8 +278,6 @@ export default function ReservasMobilesPanel({
     return { color: "var(--text-muted)", border: "1px solid var(--border-primary)", backgroundColor: "var(--bg-primary)" };
   };
 
-  if (!canEdit) return null;
-
   return (
     <div className="mobile-reserves-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
       {mode === "operations" && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>

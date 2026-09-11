@@ -1,5 +1,6 @@
 import { google } from "googleapis";
-import { authErrorResponse, CREATABLE_SHEETS, requireRole } from "./_requireAuth.js";
+import { authErrorResponse, CREATABLE_SHEETS } from "./_requireAuth.js";
+import { requirePermission } from "./_rolePermissions.js";
 
 const MOBILE_CONTROL_SHEET = "tbControleMobiles";
 const MOBILE_APPS_SHEET = "tbMobileApps";
@@ -33,11 +34,11 @@ export default async function handler(req: any, res: any) {
   try {
     const { rowData, sheet } = req.body;
 
-    const actor = await requireRole(req.headers.authorization, ["admin", "analyst"]);
-
     if (typeof sheet !== "string" || !CREATABLE_SHEETS.has(sheet)) {
       return res.status(400).json({ error: "Aba inválida ou não permitida." });
     }
+    const permission = sheet === "tbControleMobiles" ? "mobiles.create" : sheet === "tbConfigMobiles" ? "mobile_config.manage" : "tickets.create";
+    const actor = await requirePermission(req.headers.authorization, permission);
 
     if (sheet === MOBILE_CONFIG_SHEET && actor.role !== "admin") {
       return res.status(403).json({ error: "Somente administradores podem alterar versões alvo." });

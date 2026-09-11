@@ -18,6 +18,7 @@ import { auth } from "../firebase";
 import {
   Permissions,
   ROLE_PERMISSIONS,
+  permissionMapToLegacy,
   UserRole,
 } from "../auth/permissions";
 
@@ -81,11 +82,11 @@ export function AuthProvider({
 
       setRole(resolvedRole);
 
-      setPermissions(
-        ROLE_PERMISSIONS[
-          resolvedRole
-        ]
-      );
+      const token = await authenticatedUser.getIdToken();
+      const response = await fetch("/api/permissions", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      if (!response.ok) throw new Error("Não foi possível carregar as permissões configuradas.");
+      const result = await response.json();
+      setPermissions(permissionMapToLegacy(result.permissions));
     } catch (error) {
       console.error(
         "Erro ao carregar permissões do usuário:",

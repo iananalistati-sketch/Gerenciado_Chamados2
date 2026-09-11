@@ -1,7 +1,6 @@
-export type UserRole =
-  | "admin"
-  | "analyst"
-  | "viewer";
+import { DEFAULT_ROLE_PERMISSIONS, type PermissionMap, type UserRole } from "../shared/permissions";
+export type { PermissionKey, PermissionMap, UserRole } from "../shared/permissions";
+export { PERMISSION_CATALOG } from "../shared/permissions";
 
 export interface Permissions {
   // Permissões legadas usadas pelas rotinas gerais.
@@ -176,4 +175,47 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
   admin: adminPermissions,
   analyst: analystPermissions,
   viewer: viewerPermissions,
+};
+
+export const permissionMapToLegacy = (map: PermissionMap): Permissions => ({
+  canView: map["tickets.view"],
+  canCreate: map["tickets.create"],
+  canEdit: map["tickets.edit"],
+  canConclude: map["tickets.conclude"],
+  canCharge: map["tickets.charge"],
+  canDelete: map["tickets.delete"],
+  canManageUsers: map["users.view"] || map["users.create"] || map["users.change_role"] || map["users.toggle_status"] || map["users.reset_other_password"] || map["permissions.manage"],
+  canViewMobiles: map["mobiles.view"],
+  canCreateMobile: map["mobiles.create"],
+  canEditMobile: map["mobiles.edit"],
+  canDeleteMobile: map["mobiles.delete"],
+  canBulkUpdateMobiles: map["mobiles.bulk_update"],
+  canChangeMobileStatus: map["mobiles.change_status"],
+  canManageMobileMaintenance: map["maintenance.manage"],
+  canManageMobileConfig: map["mobile_config.manage"],
+  canViewLoans: map["loans.view"],
+  canCreateLoan: map["loans.create"],
+  canReturnLoan: map["loans.return"],
+  canClassifyLoanOccurrence: map["loans.classify_occurrence"],
+  canIssueResponsibilityTerm: map["loans.issue_responsibility_term"],
+  canEditOpenLoan: map["loans.edit_open"],
+  canCancelOpenLoan: map["loans.cancel_open"],
+  canCorrectClosedLoanOccurrence: map["loans.correct_occurrence"],
+  canCreateTicket: map["tickets.create"],
+  canEditTicket: map["tickets.edit"],
+  canConcludeTicket: map["tickets.conclude"],
+  canChargeTicket: map["tickets.charge"],
+  canDeleteTicket: map["tickets.delete"],
+  canCreateUser: map["users.create"],
+  canChangeUserRole: map["users.change_role"],
+  canToggleUserStatus: map["users.toggle_status"],
+  canResetOwnPassword: map["users.reset_own_password"],
+  canResetOtherUserPassword: map["users.reset_other_password"],
+  canListUsers: map["users.view"],
+});
+
+export const DEFAULT_LEGACY_ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
+  admin: permissionMapToLegacy(DEFAULT_ROLE_PERMISSIONS.admin),
+  analyst: permissionMapToLegacy(DEFAULT_ROLE_PERMISSIONS.analyst),
+  viewer: permissionMapToLegacy(DEFAULT_ROLE_PERMISSIONS.viewer),
 };

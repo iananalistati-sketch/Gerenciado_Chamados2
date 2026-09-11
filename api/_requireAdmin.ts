@@ -1,10 +1,15 @@
-import {
-  getAdminAuth,
-} from "./_firebaseAdmin.js";
+import type { PermissionKey } from "../shared/permissions.js";
+import { getAdminAuth } from "./_firebaseAdmin.js";
+import { requirePermission } from "./_rolePermissions.js";
 
 export async function requireAdmin(
-  authorizationHeader?: string
+  authorizationHeader?: string,
+  permission?: PermissionKey
 ) {
+  if (permission) {
+    const actor = await requirePermission(authorizationHeader, permission);
+    return actor.decodedToken;
+  }
   if (
     !authorizationHeader ||
     !authorizationHeader.startsWith(

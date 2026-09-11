@@ -1,5 +1,6 @@
 import { google } from "googleapis";
-import { authErrorResponse, requireRole } from "../_requireAuth.js";
+import { authErrorResponse } from "../_requireAuth.js";
+import { requirePermission } from "../_rolePermissions.js";
 
 const CONTROL_SHEET = "tbControleMobiles";
 const LOAN_SHEET = "tbEmprestimosMobiles";
@@ -50,7 +51,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { decodedToken } = await requireRole(req.headers.authorization, ["admin", "analyst"]);
+    const { decodedToken } = await requirePermission(req.headers.authorization, "loans.create");
     const {
       originalCollector,
       reserveCollector,
