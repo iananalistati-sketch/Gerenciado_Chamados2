@@ -44,7 +44,9 @@ function AppContent() {
   const [allData, setAllData] = useState<Record<string, string[][]>>({
     tbChamadosMV: [],
     tbChamadosForhealth: [],
-    tbControleMobiles: []
+    tbControleMobiles: [],
+    tbControleTablets: [],
+    tbTabletApps: []
   });
   const [mobileConfig, setMobileConfig] = useState<string[][]>([]);
   const [mobileApps, setMobileApps] = useState<string[][]>([]);
@@ -88,7 +90,9 @@ function AppContent() {
   const [sheetFilters, setSheetFilters] = useState<Record<string, Record<string, string>>>({
     tbChamadosMV: {},
     tbChamadosForhealth: {},
-    tbControleMobiles: {}
+    tbControleMobiles: {},
+    tbControleTablets: {},
+    tbTabletApps: {}
   });
   const [error, setError] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(false);
@@ -1697,6 +1701,12 @@ function AppContent() {
             {permissions?.canView && <option value="tbChamadosMV">MV</option>}
             {permissions?.canView && <option value="tbChamadosForhealth">ForHealth</option>}
             {permissions?.canViewMobiles && <option value="tbControleMobiles">Controle de Mobiles</option>}
+            {permissions?.canView && (
+              <optgroup label="Tablets">
+                <option value="tbControleTablets">Controle Tablets</option>
+                <option value="tbTabletApps">Tablets - Apps &amp; Versões</option>
+              </optgroup>
+            )}
           </select>
           <div className="app-sheet-divider" style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-primary)', margin: '0 10px' }}></div>
           <span className="app-sheet-help" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
