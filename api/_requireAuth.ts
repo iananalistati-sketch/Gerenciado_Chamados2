@@ -19,6 +19,7 @@ export const READABLE_SHEETS = new Set([
   "tbConfigMobiles",
   "tbMobileApps",
   "tbEmprestimosMobiles",
+  "tbManutencaoExternaMobiles",
 ]);
 
 export const CREATABLE_SHEETS = new Set([

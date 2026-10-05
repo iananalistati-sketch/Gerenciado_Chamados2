@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import { authErrorResponse } from "../_requireAuth.js";
 import { requirePermission } from "../_rolePermissions.js";
+import { handleExternalMaintenanceReturn } from "./_externalMaintenance.js";
 
 const CONTROL_SHEET = "tbControleMobiles";
 const LOAN_SHEET = "tbEmprestimosMobiles";
@@ -43,6 +44,10 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({
       error: "Método não permitido.",
     });
+  }
+
+  if (req.body?.flow === "external_maintenance") {
+    return handleExternalMaintenanceReturn(req, res);
   }
 
   try {

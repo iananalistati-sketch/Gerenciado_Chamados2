@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SubstituirMobileModal from "./SubstituirMobileModal";
 import DevolverMobileModal from "./DevolverMobileModal";
+import ManutencaoExternaModal from "./ManutencaoExternaModal";
+import RetornoManutencaoExternaModal from "./RetornoManutencaoExternaModal";
+import { isExternalMaintenanceLocation } from "./externalMaintenanceData";
 import { useAppDialog } from "../contexts/AppDialogContext";
 
 interface EditarMobileModalProps {
@@ -11,6 +14,7 @@ interface EditarMobileModalProps {
   mobileApps: string[][];
   mobileConfig: string[][];
   currentUserName: string;
+  canManageMaintenance?: boolean;
   normalize: (value: string) => string;
   onClose: () => void;
   onSave: (rowData: string[], rowIndex: number) => Promise<void>;
@@ -26,6 +30,7 @@ export default function EditarMobileModal({
   mobileApps,
   mobileConfig,
   currentUserName,
+  canManageMaintenance = false,
   normalize,
   onClose,
   onSave,
@@ -37,6 +42,8 @@ export default function EditarMobileModal({
   const [saving, setSaving] = useState(false);
   const [showSubstitute, setShowSubstitute] = useState(false);
   const [showReturn, setShowReturn] = useState(false);
+  const [showExternalSend, setShowExternalSend] = useState(false);
+  const [showExternalReturn, setShowExternalReturn] = useState(false);
 
   const getHeader = (...names: string[]) =>
     headers.find((header) =>
@@ -112,6 +119,8 @@ export default function EditarMobileModal({
     setFormData(values);
     setShowSubstitute(false);
     setShowReturn(false);
+    setShowExternalSend(false);
+    setShowExternalReturn(false);
   }, [isOpen, row, headers]);
 
   if (!isOpen || !row) return null;
@@ -137,6 +146,8 @@ export default function EditarMobileModal({
   const canTemporarilyReplace = currentStatus === "A" && normalize(currentSector) !== normalize("TI-SUPORTE");
   const canFinalizeLoan = currentStatus === "E" && normalize(currentSector) === normalize("TI-SUPORTE");
   const isOperationalStatus = currentStatus === "M" || currentStatus === "E";
+  const canSendToExternalMaintenance = canManageMaintenance && currentStatus === "A";
+  const canReturnFromExternalMaintenance = canManageMaintenance && currentStatus === "M" && isExternalMaintenanceLocation(currentLocation);
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -420,6 +431,8 @@ export default function EditarMobileModal({
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               {canTemporarilyReplace && <button type="button" onClick={() => setShowSubstitute(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Substituir temporariamente</button>}
               {canFinalizeLoan && <button type="button" onClick={() => setShowReturn(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(16, 185, 129, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Finalizar empréstimo</button>}
+              {canSendToExternalMaintenance && <button type="button" onClick={() => setShowExternalSend(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(139, 92, 246, 0.14)", color: "#8B5CF6", border: "1px solid rgba(139, 92, 246, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Enviar p/ manutenção externa</button>}
+              {canReturnFromExternalMaintenance && <button type="button" onClick={() => setShowExternalReturn(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(16, 185, 129, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Registrar retorno da manutenção</button>}
             </div>
             <div style={{ display: "flex", gap: "12px" }}>
               <button type="button" onClick={onClose} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border-primary)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 600 }}>Cancelar</button>
@@ -451,6 +464,30 @@ export default function EditarMobileModal({
         onSuccess={async () => {
           await Promise.resolve(onRefresh());
           setShowReturn(false);
+          onClose();
+        }}
+      />
+      <ManutencaoExternaModal
+        isOpen={showExternalSend}
+        equipment={row}
+        headers={headers}
+        currentUserName={currentUserName}
+        normalize={normalize}
+        onClose={() => setShowExternalSend(false)}
+        onSuccess={async () => {
+          await Promise.resolve(onRefresh());
+          setShowExternalSend(false);
+          onClose();
+        }}
+      />
+      <RetornoManutencaoExternaModal
+        isOpen={showExternalReturn}
+        collector={currentCollector}
+        currentUserName={currentUserName}
+        onClose={() => setShowExternalReturn(false)}
+        onSuccess={async () => {
+          await Promise.resolve(onRefresh());
+          setShowExternalReturn(false);
           onClose();
         }}
       />

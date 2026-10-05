@@ -4,6 +4,7 @@ import NovoMobileModal from "./NovoMobileModal";
 import AtualizacaoLoteMobilesModal from "./AtualizacaoLoteMobilesModal";
 import DetalhesAppsMobileModal from "./DetalhesAppsMobileModal";
 import ReservasMobilesPanel from "./ReservasMobilesPanel";
+import ManutencaoExternaPanel from "./ManutencaoExternaPanel";
 import type { Permissions } from "../auth/permissions";
 
 interface ControleMobilesProps {
@@ -48,7 +49,7 @@ const normalize = (value: string) =>
 const normalizeValue = (value: string) =>
   normalize(String(value || ""));
 
-type MobileSection = "overview" | "equipment" | "loans" | "history";
+type MobileSection = "overview" | "equipment" | "loans" | "external" | "history";
 
 export default function ControleMobiles({
   data,
@@ -464,6 +465,7 @@ export default function ControleMobiles({
     { key: "overview", label: "Visão geral", description: "Indicadores e atalhos" },
     { key: "equipment", label: "Equipamentos", description: "Inventário e atualizações" },
     { key: "loans", label: "Empréstimos", description: "Reservas e devoluções" },
+    { key: "external", label: "Manutenção externa", description: "Envios sem reserva" },
     { key: "history", label: "Histórico de manutenções", description: "Consultas e exportação" },
   ].filter((item) => !["loans", "history"].includes(item.key) || permissions.canViewLoans) as Array<{ key: MobileSection; label: string; description: string }>;
 
@@ -575,6 +577,7 @@ export default function ControleMobiles({
       </div>}
 
       {activeSection === "loans" && permissions.canViewLoans && <ReservasMobilesPanel mode="operations" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnLoan} onRefresh={onRefresh} />}
+      {activeSection === "external" && <ManutencaoExternaPanel data={data} currentUserName={currentUserName} canManage={permissions.canManageMobileMaintenance} onRefresh={onRefresh} />}
       {activeSection === "history" && permissions.canViewLoans && <ReservasMobilesPanel mode="history" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnLoan} onRefresh={onRefresh} />}
 
       {activeSection === "equipment" && <div className="mobile-section-intro">
@@ -741,7 +744,7 @@ export default function ControleMobiles({
       </div>}
 
       <DetalhesAppsMobileModal isOpen={viewingAppsRow !== null} coletor={viewingAppsColetor} appRows={viewingApps} mobileApps={mobileApps} mobileConfig={mobileConfig} currentUserName={currentUserName} canEdit={canEdit} onSave={onSaveMobileApp} onClose={() => setViewingAppsRow(null)} />
-      <EditarMobileModal isOpen={editingRow !== null} row={editingRow} headers={headers} allRows={rows} mobileApps={mobileApps} mobileConfig={mobileConfig} currentUserName={currentUserName} normalize={normalize} onClose={handleCloseEdit} onSave={onSaveRow} onSaveMobileApp={onSaveMobileApp} onRefresh={onRefresh} />
+      <EditarMobileModal isOpen={editingRow !== null} row={editingRow} headers={headers} allRows={rows} mobileApps={mobileApps} mobileConfig={mobileConfig} currentUserName={currentUserName} canManageMaintenance={permissions.canManageMobileMaintenance} normalize={normalize} onClose={handleCloseEdit} onSave={onSaveRow} onSaveMobileApp={onSaveMobileApp} onRefresh={onRefresh} />
       <NovoMobileModal isOpen={showCreateModal} headers={headers} allRows={rows} mobileConfig={mobileConfig} currentUserName={currentUserName} normalize={normalize} onClose={() => setShowCreateModal(false)} onCreate={onCreateRow} />
       <AtualizacaoLoteMobilesModal isOpen={showBulkUpdateModal} selectedCount={selectedRows.length} currentUserName={currentUserName} onClose={() => setShowBulkUpdateModal(false)} onApply={handleBulkUpdate} />
     </div>
