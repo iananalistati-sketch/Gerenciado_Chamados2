@@ -1560,3 +1560,40 @@ body,
     flex: 1;
   }
 }
+
+/* Termo de manutenção externa: verso com devolução para preenchimento manual */
+.mobile-term-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mobile-term-page-break {
+  margin-top: 18px;
+}
+
+.mobile-term-fill-table td {
+  height: 30px;
+}
+
+.mobile-term-lines > div {
+  height: 26px;
+  border-bottom: 1px solid #94a3b8;
+}
+
+.mobile-term-check-inline {
+  display: inline-block;
+  margin-right: 16px;
+}
+
+@media print {
+  body.printing-mobile-term .mobile-term-page-break {
+    margin-top: 0;
+    break-before: page;
+    page-break-before: always;
+  }
+}
