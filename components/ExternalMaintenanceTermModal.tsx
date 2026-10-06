@@ -187,16 +187,18 @@ export default function ExternalMaintenanceTermModal({
 
             <h1>Termo de Devolução de Equipamento — Retorno de Manutenção Externa</h1>
             <p>
-              Atesto que o equipamento abaixo, recebido pela Gerência de Tecnologia da Informação em <strong>{formatDate(data.sendDate)}</strong> para manutenção externa (protocolo <strong>{display(data.maintenanceId)}</strong>), retornou do reparo e foi devolvido ao setor responsável nas condições registradas neste Termo.
+              Atesto que o equipamento abaixo identificado, encaminhado pela Gerência de Tecnologia da Informação para manutenção externa, retornou da assistência técnica e foi devolvido ao setor responsável nas condições registradas neste Termo.
             </p>
 
-            <h2>Equipamento</h2>
-            <table>
+            {/* Preenchimento manual: o fornecedor pode devolver outro equipamento quando o reparo não é viável. */}
+            <h2>Equipamento devolvido</h2>
+            <table className="mobile-term-fill-table">
               <tbody>
-                <tr><td><b>Equipamento:</b> {display(data.collector)}</td><td><b>Número de série:</b> {display(data.serial)}</td></tr>
-                <tr><td><b>Marca:</b> {display(data.brand)}</td><td><b>Modelo:</b> {display(data.model)}</td></tr>
-                <tr><td><b>Setor de origem:</b> {display(data.originSector)}</td><td><b>Ordem de Serviço:</b> {display(data.serviceOrder)}</td></tr>
-                <tr><td colSpan={2}><b>Defeito relatado no envio:</b> {display(data.reportedDefect)}</td></tr>
+                <tr><td><b>Equipamento:</b></td><td><b>Número de série:</b></td></tr>
+                <tr><td><b>Marca:</b></td><td><b>Modelo:</b></td></tr>
+                <tr><td><b>Setor de origem:</b></td><td><b>Ordem de Serviço:</b></td></tr>
+                <tr><td><b>Protocolo:</b></td><td><b>Data do envio:</b> ____/____/________</td></tr>
+                <tr><td colSpan={2} style={{ height: "48px" }}><b>Defeito relatado no envio:</b></td></tr>
               </tbody>
             </table>
 
@@ -215,16 +217,14 @@ export default function ExternalMaintenanceTermModal({
             <h2>Condições na devolução</h2>
             <div className="mobile-term-checks">
               <div>☐ Equipamento em perfeito funcionamento</div>
+              <div>☐ Equipamento substituído pelo fornecedor (reparo inviável)</div>
               <div>☐ Equipamento com ressalvas: ________________________________________________</div>
               <div>
                 Acessórios devolvidos:{" "}
-                {accessoryItems.length === 0
-                  ? "nenhum acessório foi entregue no envio."
-                  : accessoryItems.map((item) => {
-                      const option = ACCESSORY_OPTIONS.find((candidate) => candidate.key === item.toUpperCase());
-                      const label = option ? option.label : item.replace(/^OUTROS:\s*/i, "");
-                      return <span key={item} className="mobile-term-check-inline">☐ {label}</span>;
-                    })}
+                {ACCESSORY_OPTIONS.map((option) => (
+                  <span key={option.key} className="mobile-term-check-inline">☐ {option.label}</span>
+                ))}
+                <span className="mobile-term-check-inline">☐ Outros: ____________________</span>
               </div>
             </div>
 
