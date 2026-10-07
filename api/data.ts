@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     if (typeof sheet !== "string" || !READABLE_SHEETS.has(sheet)) {
       return res.status(400).json({ error: "Aba inválida ou não permitida." });
     }
-    const permission = sheet === "tbEmprestimosMobiles" ? "loans.view" : ["tbControleMobiles", "tbConfigMobiles", "tbMobileApps", "tbManutencaoExternaMobiles"].includes(sheet) ? "mobiles.view" : "tickets.view";
+    const permission = sheet === "tbEmprestimosMobiles" ? "loans.view" : ["tbControleMobiles", "tbConfigMobiles", "tbMobileApps", "tbManutencaoExternaMobiles"].includes(sheet) ? "mobiles.view" : sheet === "tbEmprestimosTablets" ? "tablet_loans.view" : ["tbControleTablets", "tbTabletApps", "tbConfigTablets"].includes(sheet) ? "tablets.view" : "tickets.view";
     await requirePermission(req.headers.authorization, permission);
 
     res.setHeader(

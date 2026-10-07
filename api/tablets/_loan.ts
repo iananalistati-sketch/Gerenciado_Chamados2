@@ -1,11 +1,11 @@
+// Empréstimo de tablets: mesma regra do empréstimo de Mobiles, nas abas de tablets.
+// Roteado por /api/mobiles/loan e /api/mobiles/loan-return com device=tablet.
 import { google } from "googleapis";
 import { authErrorResponse } from "../_requireAuth.js";
 import { requirePermission } from "../_rolePermissions.js";
-import { handleExternalMaintenanceSend } from "./_externalMaintenance.js";
-import { handleTabletLoan } from "../tablets/_loan.js";
 
-const CONTROL_SHEET = "tbControleMobiles";
-const LOAN_SHEET = "tbEmprestimosMobiles";
+const CONTROL_SHEET = "tbControleTablets";
+const LOAN_SHEET = "tbEmprestimosTablets";
 const RESERVED_TEST_COLLECTOR = "BKP-10";
 
 const normalize = (value: string) =>
@@ -45,23 +45,16 @@ const makeLoanId = () => {
   return `EMP${stamp}${suffix}`;
 };
 
-export default async function handler(req: any, res: any) {
+export async function handleTabletLoan(req: any, res: any) {
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Método não permitido.",
     });
   }
 
-  if (req.body?.flow === "external_maintenance") {
-    return handleExternalMaintenanceSend(req, res);
-  }
-
-  if (req.body?.device === "tablet") {
-    return handleTabletLoan(req, res);
-  }
 
   try {
-    const { decodedToken } = await requirePermission(req.headers.authorization, "loans.create");
+    const { decodedToken } = await requirePermission(req.headers.authorization, "tablet_loans.create");
     const {
       originalCollector,
       reserveCollector,
@@ -83,13 +76,13 @@ export default async function handler(req: any, res: any) {
 
     if (!String(originalCollector || "").trim()) {
       return res.status(400).json({
-        error: "Coletor original não informado.",
+        error: "Tablet original não informado.",
       });
     }
 
     if (!String(reserveCollector || "").trim()) {
       return res.status(400).json({
-        error: "Coletor reserva não informado.",
+        error: "Tablet reserva não informado.",
       });
     }
 
@@ -205,14 +198,14 @@ export default async function handler(req: any, res: any) {
     if (controlValues.length === 0) {
       return res.status(400).json({
         error:
-          "A aba tbControleMobiles não possui cabeçalho.",
+          "A aba tbControleTablets não possui cabeçalho.",
       });
     }
 
     if (loanValues.length === 0) {
       return res.status(400).json({
         error:
-          "A aba tbEmprestimosMobiles não possui cabeçalho.",
+          "A aba tbEmprestimosTablets não possui cabeçalho.",
       });
     }
 
@@ -235,13 +228,13 @@ export default async function handler(req: any, res: any) {
 
     if (missingTermHeaders.length > 0) {
       return res.status(400).json({
-        error: `A aba tbEmprestimosMobiles não possui as colunas: ${missingTermHeaders.join(", ")}.`,
+        error: `A aba tbEmprestimosTablets não possui as colunas: ${missingTermHeaders.join(", ")}.`,
       });
     }
 
     const coletorIdx = findHeaderIndex(
       controlHeaders,
-      "Coletor"
+      "Coletor", "Tablet"
     );
     const snIdx = findHeaderIndex(
       controlHeaders,
@@ -269,7 +262,7 @@ export default async function handler(req: any, res: any) {
     ) {
       return res.status(400).json({
         error:
-          "A estrutura de tbControleMobiles está incompatível com o empréstimo temporário.",
+          "A estrutura de tbControleTablets está incompatível com o empréstimo temporário.",
       });
     }
 
@@ -309,8 +302,8 @@ export default async function handler(req: any, res: any) {
       return res.status(409).json({
         error:
           originalMatches.length === 0
-            ? `Não foi encontrado equipamento ATIVO para o Coletor "${originalCollector}".`
-            : `Existe mais de um equipamento ATIVO para o Coletor "${originalCollector}". Corrija o cadastro antes de prosseguir.`,
+            ? `Não foi encontrado equipamento ATIVO para o Tablet "${originalCollector}".`
+            : `Existe mais de um equipamento ATIVO para o Tablet "${originalCollector}". Corrija o cadastro antes de prosseguir.`,
       });
     }
 
@@ -318,8 +311,8 @@ export default async function handler(req: any, res: any) {
       return res.status(409).json({
         error:
           reserveMatches.length === 0
-            ? `Não foi encontrado equipamento reserva ATIVO para o Coletor "${reserveCollector}".`
-            : `Existe mais de um equipamento ATIVO para o Coletor reserva "${reserveCollector}".`,
+            ? `Não foi encontrado equipamento reserva ATIVO para o Tablet "${reserveCollector}".`
+            : `Existe mais de um equipamento ATIVO para o Tablet reserva "${reserveCollector}".`,
       });
     }
 
@@ -376,7 +369,7 @@ export default async function handler(req: any, res: any) {
     ) {
       return res.status(400).json({
         error:
-          "A estrutura de tbEmprestimosMobiles está incompatível. Verifique STATUS_EMPRESTIMO, COLETOR_RESERVA e COLETOR_SUBSTITUIDO.",
+          "A estrutura de tbEmprestimosTablets está incompatível. Verifique STATUS_EMPRESTIMO, COLETOR_RESERVA e COLETOR_SUBSTITUIDO.",
       });
     }
 
@@ -572,7 +565,7 @@ export default async function handler(req: any, res: any) {
     });
   } catch (error: any) {
     if (authErrorResponse(error, res)) return;
-    console.error("ERRO MOBILE LOAN:", error);
+    console.error("ERRO TABLET LOAN:", error);
 
     return res.status(500).json({
       error:

@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { apiFetch } from "../auth/api";
 import { useAppDialog } from "../contexts/AppDialogContext";
+import { DEVICE_CONFIG, type DeviceType } from "./deviceConfig";
 
 interface MobileMaintenancePanelProps {
+  device?: DeviceType;
   data: string[][];
   canEdit: boolean;
   onRefresh: () => void | Promise<void>;
@@ -16,6 +18,7 @@ const normalize = (value: string) =>
     .toLowerCase();
 
 export default function MobileMaintenancePanel({
+  device = "mobile",
   data,
   canEdit,
   onRefresh,
@@ -110,7 +113,7 @@ export default function MobileMaintenancePanel({
         body: JSON.stringify({
           rowData: updatedRow,
           rowIndex,
-          sheet: "tbControleMobiles",
+          sheet: DEVICE_CONFIG[device].controlSheet,
         }),
       });
 
@@ -158,7 +161,7 @@ export default function MobileMaintenancePanel({
           type="text"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Pesquisar Coletor ou SN..."
+          placeholder={`Pesquisar ${DEVICE_CONFIG[device].idLabel} ou SN...`}
           style={inputStyle}
           aria-label="Pesquisar equipamentos em manutenção"
         />

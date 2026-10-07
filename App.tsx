@@ -16,6 +16,7 @@ import PermissionManagement from "./components/PermissionManagement";
 import ChangePassword from "./components/ChangePassword";
 import { useTheme } from "./contexts/ThemeContext";
 import ControleMobiles from "./components/ControleMobiles";
+import ControleTablets from "./components/tablets/ControleTablets";
 import { apiFetch } from "./auth/api";
 import { useAppDialog } from "./contexts/AppDialogContext";
 
@@ -242,8 +243,17 @@ function AppContent() {
   useEffect(() => {
     if (!permissions) return;
     const viewingMobiles = selectedSheet === "tbControleMobiles";
+    const viewingTablets = selectedSheet === "tbControleTablets";
+    if (viewingTablets) {
+      if (!permissions.canViewTablets) {
+        if (permissions.canView) handleSheetChange("tbChamadosMV");
+        else if (permissions.canViewMobiles) handleSheetChange("tbControleMobiles");
+      }
+      return;
+    }
     if (viewingMobiles && !permissions.canViewMobiles && permissions.canView) handleSheetChange("tbChamadosMV");
     if (!viewingMobiles && !permissions.canView && permissions.canViewMobiles) handleSheetChange("tbControleMobiles");
+    else if (!viewingMobiles && !permissions.canView && !permissions.canViewMobiles && permissions.canViewTablets) handleSheetChange("tbControleTablets");
   }, [permissions, selectedSheet]);
 
   useEffect(() => {
@@ -1697,6 +1707,7 @@ function AppContent() {
             {permissions?.canView && <option value="tbChamadosMV">MV</option>}
             {permissions?.canView && <option value="tbChamadosForhealth">ForHealth</option>}
             {permissions?.canViewMobiles && <option value="tbControleMobiles">Controle de Mobiles</option>}
+            {permissions?.canViewTablets && <option value="tbControleTablets">Controle de Tablets</option>}
           </select>
           <div className="app-sheet-divider" style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-primary)', margin: '0 10px' }}></div>
           <span className="app-sheet-help" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -1726,6 +1737,19 @@ function AppContent() {
             onBulkUpdate={
               handleBulkUpdateMobiles
             }
+          />
+        ) : selectedSheet === "tbControleTablets" ? (
+          <ControleTablets
+            data={loadedSheet === "tbControleTablets" ? data : []}
+            loading={loading}
+            error={error}
+            currentUserName={
+              user?.displayName ||
+              user?.email ||
+              "Usuário não identificado"
+            }
+            permissions={permissions!}
+            onRefresh={fetchData}
           />
         ) : (
           <>

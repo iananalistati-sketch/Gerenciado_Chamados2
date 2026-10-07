@@ -3,10 +3,12 @@ import { apiFetch } from "../auth/api";
 import { useAppDialog } from "../contexts/AppDialogContext";
 import MobileLoanTermModal from "./MobileLoanTermModal";
 import type { MobileLoanTermData } from "./mobileLoanTermData";
+import { DEVICE_CONFIG, deviceRequestFields, type DeviceType } from "./deviceConfig";
 
 const RESERVED_TEST_COLLECTOR = "BKP-10";
 
 interface SubstituirMobileModalProps {
+  device?: DeviceType;
   isOpen: boolean;
   equipment: string[] | null;
   headers: string[];
@@ -18,6 +20,7 @@ interface SubstituirMobileModalProps {
 }
 
 export default function SubstituirMobileModal({
+  device = "mobile",
   isOpen,
   equipment,
   headers,
@@ -28,6 +31,9 @@ export default function SubstituirMobileModal({
   onSuccess,
 }: SubstituirMobileModalProps) {
   const { alert: showAlert } = useAppDialog();
+  // Sugestão de marca/modelo apenas para coletores; tablets são informados no formulário.
+  const defaultBrand = device === "tablet" ? "" : "Urovo";
+  const defaultModel = device === "tablet" ? "" : "DT50";
   const [reserveCollector, setReserveCollector] = useState("");
   const [reason, setReason] = useState("");
   const [observation, setObservation] = useState("");
@@ -37,10 +43,10 @@ export default function SubstituirMobileModal({
   const [loanCollaboratorRegistration, setLoanCollaboratorRegistration] = useState("");
   const [loanCollaboratorRole, setLoanCollaboratorRole] = useState("");
   const [serviceOrder, setServiceOrder] = useState("");
-  const [originalBrand, setOriginalBrand] = useState("Urovo");
-  const [originalModel, setOriginalModel] = useState("DT50");
-  const [reserveBrand, setReserveBrand] = useState("Urovo");
-  const [reserveModel, setReserveModel] = useState("DT50");
+  const [originalBrand, setOriginalBrand] = useState(defaultBrand);
+  const [originalModel, setOriginalModel] = useState(defaultModel);
+  const [reserveBrand, setReserveBrand] = useState(defaultBrand);
+  const [reserveModel, setReserveModel] = useState(defaultModel);
   const [termData, setTermData] = useState<MobileLoanTermData | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -79,12 +85,12 @@ export default function SubstituirMobileModal({
     setLoanCollaboratorRegistration("");
     setLoanCollaboratorRole("");
     setServiceOrder("");
-    setOriginalBrand("Urovo");
-    setOriginalModel("DT50");
-    setReserveBrand("Urovo");
-    setReserveModel("DT50");
+    setOriginalBrand(defaultBrand);
+    setOriginalModel(defaultModel);
+    setReserveBrand(defaultBrand);
+    setReserveModel(defaultModel);
     setTermData(null);
-  }, [isOpen, equipment, originalLocation, originalSector]);
+  }, [isOpen, equipment, originalLocation, originalSector, defaultBrand, defaultModel]);
 
   const reserves = useMemo(() => {
     if (
@@ -178,6 +184,7 @@ export default function SubstituirMobileModal({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          ...deviceRequestFields(device),
           originalCollector,
           reserveCollector,
           reason: reason.trim(),
@@ -323,7 +330,7 @@ export default function SubstituirMobileModal({
                 Equipamento substituído
               </strong>
               <br />
-              Coletor: {originalCollector || "-"} · SN: {originalSn || "-"}
+              {DEVICE_CONFIG[device].idLabel}: {originalCollector || "-"} · SN: {originalSn || "-"}
               <br />
               Setor de origem: {originalSector || "-"}
               <br />

@@ -3,6 +3,7 @@ import { exportRowsToXlsx } from "../utils/exportXlsx";
 import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData";
 
 interface MobileLoanHistoryProps {
+  idLabel?: string;
   headers: string[];
   rows: string[][];
   loading: boolean;
@@ -47,7 +48,7 @@ const occurrenceLabel = (value: string) => ({
   EM_ANALISE: "Em análise",
 }[String(value || "").trim().toUpperCase()] || value);
 
-const columns: HistoryColumn[] = [
+const baseColumns: HistoryColumn[] = [
   { key: "loanId", label: "ID do empréstimo", width: 22, value: ({ data }) => data.loanId },
   { key: "status", label: "Status", width: 14, value: ({ data }) => data.status },
   { key: "reserveCollector", label: "Coletor reserva", width: 20, value: ({ data }) => data.reserveCollector },
@@ -84,12 +85,17 @@ const defaultColumns = [
 ];
 
 export default function MobileLoanHistory({
+  idLabel = "Coletor",
   headers,
   rows,
   loading,
   getCurrentLocation,
   onOpenTerm,
 }: MobileLoanHistoryProps) {
+  const columns = useMemo(
+    () => (idLabel === "Coletor" ? baseColumns : baseColumns.map((column) => ({ ...column, label: column.label.replace("Coletor", idLabel) }))),
+    [idLabel]
+  );
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [sector, setSector] = useState("");

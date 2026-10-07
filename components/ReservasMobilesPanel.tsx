@@ -5,8 +5,10 @@ import MobileLoanHistory from "./MobileLoanHistory";
 import MobileLoanTermModal from "./MobileLoanTermModal";
 import MobileMaintenancePanel from "./MobileMaintenancePanel";
 import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData";
+import { DEVICE_CONFIG, type DeviceType } from "./deviceConfig";
 
 interface ReservasMobilesPanelProps {
+  device?: DeviceType;
   mode?: "operations" | "history";
   data: string[][];
   currentUserName: string;
@@ -25,6 +27,7 @@ const normalize = (value: string) =>
     .toLowerCase();
 
 export default function ReservasMobilesPanel({
+  device = "mobile",
   mode = "operations",
   data,
   currentUserName,
@@ -84,7 +87,7 @@ export default function ReservasMobilesPanel({
     setError(null);
 
     try {
-      const response = await apiFetch("/api/data?sheet=tbEmprestimosMobiles");
+      const response = await apiFetch(`/api/data?sheet=${DEVICE_CONFIG[device].loanSheet}`);
       const result = await response.json();
 
       if (!response.ok) {
@@ -93,13 +96,13 @@ export default function ReservasMobilesPanel({
 
       setLoans(Array.isArray(result) ? result.filter((row) => Array.isArray(row)) : []);
     } catch (err: any) {
-      console.error("Erro ao carregar tbEmprestimosMobiles:", err);
+      console.error(`Erro ao carregar ${DEVICE_CONFIG[device].loanSheet}:`, err);
       setError(err.message || "Erro ao carregar empréstimos.");
       setLoans([]);
     } finally {
       setLoadingLoans(false);
     }
-  }, []);
+  }, [device]);
 
   useEffect(() => {
     fetchLoans();
@@ -328,7 +331,7 @@ export default function ReservasMobilesPanel({
       {error && <div style={{ color: "#DC2626", fontSize: "12px", marginBottom: "12px" }}>{error}</div>}
 
       {activePanel === "maintenance" ? (
-        <MobileMaintenancePanel data={data} canEdit={canEdit} onRefresh={onRefresh} />
+        <MobileMaintenancePanel device={device} data={data} canEdit={canEdit} onRefresh={onRefresh} />
       ) : !showingLoans ? (
         <div>
           <div style={{ marginBottom: "10px", color: "var(--text-muted)", fontSize: "12px" }}>
@@ -410,6 +413,7 @@ export default function ReservasMobilesPanel({
         </div>
       ) : activePanel === "history" ? (
         <MobileLoanHistory
+          idLabel={DEVICE_CONFIG[device].idLabel}
           headers={loanHeaders}
           rows={loanRows}
           loading={loadingLoans}
@@ -490,6 +494,7 @@ export default function ReservasMobilesPanel({
         </div>
       )}
       <DevolverMobileModal
+        device={device}
         isOpen={Boolean(returnCollector)}
         reserveCollector={returnCollector}
         currentUserName={currentUserName}

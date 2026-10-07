@@ -3,8 +3,10 @@ import { apiFetch } from "../auth/api";
 import { useAppDialog } from "../contexts/AppDialogContext";
 import MobileLoanTermModal from "./MobileLoanTermModal";
 import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData";
+import { DEVICE_CONFIG, deviceRequestFields, type DeviceType } from "./deviceConfig";
 
 interface DevolverMobileModalProps {
+  device?: DeviceType;
   isOpen: boolean;
   reserveCollector: string;
   currentUserName: string;
@@ -37,6 +39,7 @@ const responsibilityOccurrences = new Set([
 ]);
 
 export default function DevolverMobileModal({
+  device = "mobile",
   isOpen,
   reserveCollector,
   currentUserName,
@@ -80,7 +83,7 @@ export default function DevolverMobileModal({
       setSameCollaborator(true);
 
       try {
-        const response = await apiFetch("/api/data?sheet=tbEmprestimosMobiles");
+        const response = await apiFetch(`/api/data?sheet=${DEVICE_CONFIG[device].loanSheet}`);
         const result = await response.json();
         if (!response.ok) throw new Error(result?.error || "Erro ao carregar o empréstimo.");
 
@@ -118,7 +121,7 @@ export default function DevolverMobileModal({
 
     void loadLoan();
     return () => { active = false; };
-  }, [isOpen, reserveCollector, showAlert]);
+  }, [isOpen, reserveCollector, showAlert, device]);
 
   useEffect(() => {
     if (!sameCollaborator || !loan) return;
@@ -203,6 +206,7 @@ export default function DevolverMobileModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...deviceRequestFields(device),
           reserveCollector,
           observation: observation.trim(),
           updateLocation,

@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import { authErrorResponse, UPDATABLE_SHEETS } from "./_requireAuth.js";
 import { requirePermission } from "./_rolePermissions.js";
+import { handleTabletUpdate, TABLET_CONTROL_SHEET } from "./tablets/_inventory.js";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "PUT") {
@@ -13,7 +14,10 @@ export default async function handler(req: any, res: any) {
     if (typeof sheet !== "string" || !UPDATABLE_SHEETS.has(sheet)) {
       return res.status(400).json({ error: "Aba inválida ou não permitida." });
     }
-    const permission = sheet === "tbConfigMobiles" ? "mobile_config.manage" : ["tbControleMobiles", "tbMobileApps"].includes(sheet) ? "mobiles.edit" : "tickets.edit";
+    if (sheet === TABLET_CONTROL_SHEET) {
+      return handleTabletUpdate(req, res);
+    }
+    const permission = sheet === "tbConfigMobiles" ? "mobile_config.manage" : ["tbControleMobiles", "tbMobileApps"].includes(sheet) ? "mobiles.edit" : sheet === "tbTabletApps" ? "tablet_apps.manage" : sheet === "tbConfigTablets" ? "tablet_config.manage" : "tickets.edit";
     const actor = await requirePermission(req.headers.authorization, permission);
 
     if (sheet === "tbConfigMobiles" && actor.role !== "admin") {
