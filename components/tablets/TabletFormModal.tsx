@@ -38,7 +38,7 @@ export default function TabletFormModal({
   onClose,
   onSaved,
 }: TabletFormModalProps) {
-  const { alert: showAlert } = useAppDialog();
+  const { alert: showAlert, confirm: showConfirm } = useAppDialog();
   const [values, setValues] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
   const [showLoan, setShowLoan] = useState(false);
@@ -57,6 +57,8 @@ export default function TabletFormModal({
     setorLocalizado: headerIndex(headers, "Setor localizado"),
     status: headerIndex(headers, "Status"),
     patrimonio: headerIndex(headers, "PATRIMONIO_REPROMAQ", "Patrimônio Repromaq", "Patrimonio Repromaq"),
+    imei: headerIndex(headers, "IMEI"),
+    ip: headerIndex(headers, "IP"),
   };
 
   const sectors = useMemo(
@@ -107,27 +109,32 @@ export default function TabletFormModal({
     event.preventDefault();
     if (!canSave || saving) return;
 
-    if (idx.tablet === -1 || idx.sn === -1 || idx.setor === -1 || idx.setorLocalizado === -1 || idx.status === -1) {
-      await showAlert("A aba tbControleTablets precisa das colunas Coletor, SN, Setor, Setor localizado e Status.", { variant: "error" });
+    if (idx.tablet === -1 || idx.setor === -1 || idx.setorLocalizado === -1 || idx.status === -1) {
+      await showAlert("A aba tbControleTablets precisa das colunas Coletor, Setor, Setor localizado e Status.", { variant: "error" });
       return;
     }
 
     const tablet = value(idx.tablet).trim();
     const sn = value(idx.sn).trim();
-    if (!tablet || !sn || !currentSector || !value(idx.setorLocalizado).trim() || !currentStatus) {
-      await showAlert("Preencha os campos obrigatórios: Setor, Setor localizado, Tablet, SN e Status.", { variant: "warning" });
+    if (!tablet || !currentSector || !value(idx.setorLocalizado).trim() || !currentStatus) {
+      await showAlert("Preencha os campos obrigatórios: Setor, Setor localizado, Tablet e Status.", { variant: "warning" });
       return;
     }
-    if (!/^\d+$/.test(sn)) {
-      await showAlert("SN deve conter apenas números.", { variant: "warning" });
+    if (sn && !/^[A-Za-z0-9-]+$/.test(sn)) {
+      await showAlert("SN deve conter apenas letras, números ou hífen.", { variant: "warning" });
       return;
     }
 
     const currentRowIndex = row ? originalIndexOf(row) : null;
     const others = allRows.filter((item) => item !== row);
-    if (others.some((item) => normalize(cell(item, idx.sn)) === normalize(sn))) {
-      await showAlert(`Já existe outro tablet cadastrado com o SN "${sn}".`, { variant: "warning" });
-      return;
+    // SN repetido não bloqueia: o inventário de origem tem casos a conferir na etiqueta.
+    const sameSn = sn ? others.filter((item) => normalize(cell(item, idx.sn)) === normalize(sn)).map((item) => cell(item, idx.tablet)) : [];
+    if (sameSn.length > 0) {
+      const proceed = await showConfirm(
+        `O SN "${sn}" já está cadastrado em: ${sameSn.join(", ")}.\n\nConfira a etiqueta do equipamento. Deseja salvar mesmo assim?`,
+        { title: "SN repetido", variant: "warning", confirmLabel: "Salvar mesmo assim", cancelLabel: "Revisar" }
+      );
+      if (!proceed) return;
     }
     if (currentStatus === "A" && others.some((item) => normalize(cell(item, idx.tablet)) === normalize(tablet) && cell(item, idx.status).toUpperCase() === "A")) {
       await showAlert(`Já existe outro tablet ATIVO com a identificação "${tablet}".`, { variant: "warning" });
@@ -210,10 +217,12 @@ export default function TabletFormModal({
             {sectorField(idx.setor, "Setor")}
             {sectorField(idx.setorLocalizado, "Setor localizado", isOperationalStatus)}
             {textField(idx.tablet, "Tablet", true)}
-            {textField(idx.sn, "SN", true, true)}
+            {textField(idx.sn, "SN")}
             {textField(idx.final, "Final", false, true)}
             {textField(idx.mac, "MAC")}
-            {textField(idx.patrimonio, "Patrimônio Repromaq")}
+            {textField(idx.patrimonio, "Patrimônio")}
+            {textField(idx.imei, "IMEI", false, true)}
+            {textField(idx.ip, "IP")}
             {idx.entregue !== -1 && (
               <label style={labelStyle}>
                 Entregue

@@ -53,6 +53,8 @@ export default function ControleTablets({ data, loading, error, currentUserName,
     mac: headerIndex(headers, "MAC"),
     patrimonio: headerIndex(headers, "PATRIMONIO_REPROMAQ", "Patrimônio Repromaq", "Patrimonio Repromaq"),
     status: headerIndex(headers, "Status"),
+    imei: headerIndex(headers, "IMEI"),
+    ip: headerIndex(headers, "IP"),
   };
 
   const loadApps = useCallback(async () => {
@@ -117,6 +119,17 @@ export default function ControleTablets({ data, loading, error, currentUserName,
 
   const sectors = useMemo(() => Array.from(new Set(rows.map((row) => cell(row, idx.setor)).filter(Boolean))).sort(sortText), [rows, idx.setor]);
 
+  // SN repetido é permitido (inventário importado), mas sinalizado para conferência da etiqueta.
+  const snCount = useMemo(() => {
+    const result: Record<string, number> = {};
+    rows.forEach((row) => {
+      const sn = normalize(cell(row, idx.sn));
+      if (sn) result[sn] = (result[sn] || 0) + 1;
+    });
+    return result;
+  }, [rows, idx.sn]);
+  const hasRepeatedSn = (row: string[]) => (snCount[normalize(cell(row, idx.sn))] || 0) > 1;
+
   const isOutOfSector = (row: string[]) =>
     cell(row, idx.status).toUpperCase() === "A" &&
     Boolean(cell(row, idx.setorLocalizado)) &&
@@ -127,9 +140,9 @@ export default function ControleTablets({ data, loading, error, currentUserName,
     return rows
       .filter((row) => !sectorFilter || normalize(cell(row, idx.setor)) === normalize(sectorFilter))
       .filter((row) => !statusFilter || cell(row, idx.status).toUpperCase() === statusFilter)
-      .filter((row) => !query || [idx.tablet, idx.sn, idx.mac, idx.patrimonio, idx.setor, idx.setorLocalizado].some((index) => normalize(cell(row, index)).includes(query)))
+      .filter((row) => !query || [idx.tablet, idx.sn, idx.mac, idx.patrimonio, idx.setor, idx.setorLocalizado, idx.imei, idx.ip].some((index) => normalize(cell(row, index)).includes(query)))
       .sort((a, b) => sortText(cell(a, idx.setor), cell(b, idx.setor)) || sortText(cell(a, idx.tablet), cell(b, idx.tablet)));
-  }, [rows, search, sectorFilter, statusFilter, idx.setor, idx.status, idx.tablet, idx.sn, idx.mac, idx.patrimonio, idx.setorLocalizado]);
+  }, [rows, search, sectorFilter, statusFilter, idx.setor, idx.status, idx.tablet, idx.sn, idx.mac, idx.patrimonio, idx.setorLocalizado, idx.imei, idx.ip]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -144,7 +157,9 @@ export default function ControleTablets({ data, loading, error, currentUserName,
         { header: "Tablet", width: 20, value: (row) => cell(row, idx.tablet) },
         { header: "SN", width: 18, value: (row) => cell(row, idx.sn) },
         { header: "MAC", width: 20, value: (row) => cell(row, idx.mac) },
-        { header: "Patrimônio Repromaq", width: 20, value: (row) => cell(row, idx.patrimonio) },
+        { header: "Patrimônio", width: 18, value: (row) => cell(row, idx.patrimonio) },
+        { header: "IMEI", width: 20, value: (row) => cell(row, idx.imei) },
+        { header: "IP", width: 16, value: (row) => cell(row, idx.ip) },
         { header: "Apps", width: 10, value: (row) => String(appsByTablet[normalize(cell(row, idx.tablet))]?.total || 0) },
         { header: "Apps pendentes", width: 14, value: (row) => String(appsByTablet[normalize(cell(row, idx.tablet))]?.pending || 0) },
         { header: "Status", width: 14, value: (row) => statusLabel(cell(row, idx.status)) },
@@ -221,7 +236,7 @@ export default function ControleTablets({ data, loading, error, currentUserName,
 
           <div className="mobile-filter-panel" style={{ padding: "18px", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: "12px" }}>
             <div className="mobile-filter-primary">
-              <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar tablet, SN, MAC, patrimônio ou setor..." style={inputStyle} />
+              <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar tablet, SN, MAC, IP, IMEI, patrimônio ou setor..." style={inputStyle} />
               <select value={sectorFilter} onChange={(event) => setSectorFilter(event.target.value)} style={inputStyle}>
                 <option value="">Todos os setores</option>
                 {sectors.map((sector) => <option key={sector} value={sector}>{sector}</option>)}
@@ -244,7 +259,7 @@ export default function ControleTablets({ data, loading, error, currentUserName,
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr>{["Tablet", "Setor", "Setor localizado", "MAC", "Patrimônio", "Apps", "Status", ""].map((title) => <th key={title} style={thStyle}>{title}</th>)}</tr>
+                  <tr>{["Tablet", "Setor", "Setor localizado", "MAC / IP", "Patrimônio", "Apps", "Status", ""].map((title) => <th key={title} style={thStyle}>{title}</th>)}</tr>
                 </thead>
                 <tbody>
                   {pageRows.map((row, index) => {
@@ -252,10 +267,15 @@ export default function ControleTablets({ data, loading, error, currentUserName,
                     const status = cell(row, idx.status).toUpperCase();
                     return (
                       <tr key={`${cell(row, idx.tablet)}-${cell(row, idx.sn)}-${index}`}>
-                        <td style={tdStyle}><strong>{cell(row, idx.tablet) || "-"}</strong><div style={{ color: "var(--text-muted)", fontSize: "10px" }}>SN {cell(row, idx.sn) || "-"}</div></td>
+                        <td style={tdStyle}>
+                          <strong>{cell(row, idx.tablet) || "-"}</strong>
+                          <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>SN {cell(row, idx.sn) || "-"}</div>
+                          {hasRepeatedSn(row) && <div style={{ color: "#F59E0B", fontSize: "10px", fontWeight: 700 }}>⚠ SN repetido</div>}
+                          {!cell(row, idx.sn) && <div style={{ color: "#F59E0B", fontSize: "10px", fontWeight: 700 }}>⚠ Sem SN</div>}
+                        </td>
                         <td style={tdStyle}>{cell(row, idx.setor) || "-"}</td>
                         <td style={tdStyle}>{cell(row, idx.setorLocalizado) || "-"}{isOutOfSector(row) && <div style={{ color: "#F59E0B", fontSize: "10px", fontWeight: 700 }}>⚠ Fora do setor</div>}</td>
-                        <td style={tdStyle}>{cell(row, idx.mac) || "-"}</td>
+                        <td style={tdStyle}>{cell(row, idx.mac) || "-"}<div style={{ color: "var(--text-muted)", fontSize: "10px" }}>{cell(row, idx.ip) ? `IP ${cell(row, idx.ip)}` : ""}</div></td>
                         <td style={tdStyle}>{cell(row, idx.patrimonio) || "-"}</td>
                         <td style={tdStyle}>{summary ? <>{summary.total}{summary.pending > 0 && <span style={{ color: "#F59E0B", fontWeight: 700 }}> · {summary.pending} pendente(s)</span>}</> : "-"}</td>
                         <td style={{ ...tdStyle, color: statusColor(status), fontWeight: 700 }}>{statusLabel(status)}</td>

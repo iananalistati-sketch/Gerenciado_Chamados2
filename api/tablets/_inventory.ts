@@ -63,19 +63,18 @@ function validateRow(
   const sn = text(row[idx.sn]);
   const status = text(row[idx.status]).toUpperCase();
 
-  if (!tablet || !sn || !text(row[idx.setor]) || !text(row[idx.setorLocalizado]) || !status) {
-    throw new ValidationError("Preencha os campos obrigatórios: Tablet, SN, Setor, Setor localizado e Status.");
+  // SN de tablet é alfanumérico e pode faltar ou se repetir no inventário importado;
+  // a tela avisa sobre SN repetido, mas não bloqueia.
+  if (!tablet || !text(row[idx.setor]) || !text(row[idx.setorLocalizado]) || !status) {
+    throw new ValidationError("Preencha os campos obrigatórios: Tablet, Setor, Setor localizado e Status.");
   }
-  if (!/^\d+$/.test(sn)) throw new ValidationError("SN deve conter apenas números.");
+  if (sn && !/^[A-Za-z0-9-]+$/.test(sn)) throw new ValidationError("SN deve conter apenas letras, números ou hífen.");
 
   const others = values
     .slice(1)
     .map((other, index) => ({ other, sheetRow: index + 2 }))
     .filter(({ sheetRow }) => sheetRow !== currentSheetRow);
 
-  if (others.some(({ other }) => normalize(other[idx.sn]) === normalize(sn))) {
-    throw new ValidationError(`Já existe outro tablet cadastrado com o SN "${sn}".`, 409);
-  }
   if (
     status === "A" &&
     others.some(({ other }) => normalize(other[idx.tablet]) === normalize(tablet) && text(other[idx.status]).toUpperCase() === "A")
