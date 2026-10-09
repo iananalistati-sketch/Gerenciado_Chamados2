@@ -20,6 +20,7 @@ export const READABLE_SHEETS = new Set([
   "tbMobileApps",
   "tbEmprestimosMobiles",
   "tbManutencaoExternaMobiles",
+  "tbSubstituicoesMobiles",
   "tbControleTablets",
   "tbTabletApps",
   "tbConfigTablets",

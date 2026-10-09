@@ -45,6 +45,12 @@ export default function RetornoManutencaoExternaModal({
   const [observation, setObservation] = useState("");
   const [termData, setTermData] = useState<ExternalMaintenanceTermData | null>(null);
   const [saving, setSaving] = useState(false);
+  const [replaced, setReplaced] = useState(false);
+  const [newSerial, setNewSerial] = useState("");
+  const [newMac, setNewMac] = useState("");
+  const [newFinal, setNewFinal] = useState("");
+  const [finalTouched, setFinalTouched] = useState(false);
+  const [replacementObservation, setReplacementObservation] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -55,6 +61,12 @@ export default function RetornoManutencaoExternaModal({
     setObservation("");
     setTermData(null);
     setLoadError(null);
+    setReplaced(false);
+    setNewSerial("");
+    setNewMac("");
+    setNewFinal("");
+    setFinalTouched(false);
+    setReplacementObservation("");
 
     if (record) {
       setOpenRecord(record);
@@ -112,6 +124,20 @@ export default function RetornoManutencaoExternaModal({
       await showAlert("Informe o setor que receberá o equipamento.", { variant: "warning" });
       return;
     }
+    if (replaced) {
+      if (!newSerial.trim() || !/^\d+$/.test(newSerial.trim())) {
+        await showAlert("Informe o SN do equipamento recebido em substituição (apenas números).", { variant: "warning" });
+        return;
+      }
+      if (newSerial.trim() === openRecord.serial) {
+        await showAlert("O SN informado é igual ao do equipamento enviado. Confira a etiqueta do novo equipamento.", { variant: "warning" });
+        return;
+      }
+      if (newFinal.trim() && !/^\d+$/.test(newFinal.trim())) {
+        await showAlert("O Final deve conter apenas números.", { variant: "warning" });
+        return;
+      }
+    }
 
     setSaving(true);
     try {
@@ -127,6 +153,16 @@ export default function RetornoManutencaoExternaModal({
           returnSector: returnSector.trim(),
           serviceDone: serviceDone.trim(),
           observation: observation.trim(),
+          ...(replaced
+            ? {
+                replacement: {
+                  newSerial: newSerial.trim(),
+                  newMac: newMac.trim(),
+                  newFinal: newFinal.trim(),
+                  observation: replacementObservation.trim(),
+                },
+              }
+            : {}),
         }),
       });
       const result = await response.json();
@@ -192,6 +228,51 @@ export default function RetornoManutencaoExternaModal({
                     <label style={labelStyle}>Cargo *<input type="text" value={receiverRole} onChange={(event) => setReceiverRole(event.target.value)} style={inputStyle} /></label>
                     <label style={labelStyle}>Setor que receberá *<input type="text" value={returnSector} onChange={(event) => setReturnSector(event.target.value)} style={inputStyle} /></label>
                   </div>
+                </section>
+
+                <section className="mobile-loan-form-section">
+                  <label style={{ display: "flex", alignItems: "center", gap: "9px", color: "var(--text-primary)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+                    <input type="checkbox" checked={replaced} onChange={(event) => setReplaced(event.target.checked)} />
+                    O fornecedor substituiu o equipamento (reparo inviável)
+                  </label>
+                  {replaced && (
+                    <>
+                      <span style={{ color: "var(--text-muted)", fontSize: "11px", lineHeight: 1.5 }}>
+                        O coletor <strong>{openRecord.collector}</strong> mantém o nome, o setor e os apps, e passa a usar os dados do novo aparelho. O SN anterior ({openRecord.serial || "-"}) fica registrado no histórico de substituições.
+                      </span>
+                      <div className="mobile-loan-form-grid">
+                        <label style={labelStyle}>
+                          SN do novo equipamento *
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={newSerial}
+                            onChange={(event) => {
+                              const digits = event.target.value.replace(/\D/g, "");
+                              setNewSerial(digits);
+                              if (!finalTouched) setNewFinal(digits.slice(-4));
+                            }}
+                            style={inputStyle}
+                          />
+                        </label>
+                        <label style={labelStyle}>
+                          Final
+                          <input type="text" inputMode="numeric" value={newFinal} onChange={(event) => { setFinalTouched(true); setNewFinal(event.target.value.replace(/\D/g, "")); }} style={inputStyle} />
+                        </label>
+                        <label style={labelStyle}>
+                          MAC do novo equipamento
+                          <input type="text" value={newMac} onChange={(event) => setNewMac(event.target.value)} placeholder="Ex.: b4:29:3d:70:8f:65" style={inputStyle} />
+                        </label>
+                        <label style={labelStyle}>
+                          Observação da substituição
+                          <input type="text" value={replacementObservation} onChange={(event) => setReplacementObservation(event.target.value)} placeholder="Opcional" style={inputStyle} />
+                        </label>
+                      </div>
+                      {!newMac.trim() && (
+                        <span style={{ color: "#F59E0B", fontSize: "11px" }}>Sem o MAC, o campo ficará vazio no cadastro e deverá ser preenchido depois na edição do coletor.</span>
+                      )}
+                    </>
+                  )}
                 </section>
 
                 <label style={labelStyle}>

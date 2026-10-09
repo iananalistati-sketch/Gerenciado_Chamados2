@@ -38,7 +38,25 @@ export const EXTERNAL_MAINTENANCE_HEADERS = [
   "OBS_RETORNO",
 ];
 
-const ALLOWED_ACCESSORIES = new Set(["BATERIA", "CARREGADOR_BASE", "ALCA_CAPA", "CABO_USB"]);
+const APPS_SHEET = "tbMobileApps";
+export const REPLACEMENT_SHEET = "tbSubstituicoesMobiles";
+export const REPLACEMENT_HEADERS = [
+  "ID_SUBSTITUICAO",
+  "DATA_SUBSTITUICAO",
+  "COLETOR",
+  "SN_ANTERIOR",
+  "SN_NOVO",
+  "MAC_ANTERIOR",
+  "MAC_NOVO",
+  "FINAL_ANTERIOR",
+  "FINAL_NOVO",
+  "SETOR",
+  "ID_MANUTENCAO",
+  "RESPONSAVEL",
+  "OBS",
+];
+
+const ALLOWED_ACCESSORIES =new Set(["BATERIA", "CARREGADOR_BASE", "ALCA_CAPA", "CABO_USB"]);
 
 const normalize = (value: unknown) =>
   String(value || "")
@@ -318,6 +336,91 @@ export async function handleExternalMaintenanceReturn(req: any, res: any) {
     controlUpdated[idx.status] = "A";
     controlUpdated[idx.setorLocalizado] = returnSector;
 
+    // Substituição pelo fornecedor (reparo inviável): o coletor mantém nome, setor e apps,
+    // recebe SN/MAC/Final do novo aparelho e a troca fica registrada no histórico.
+    const replacementWrites: Array<{ range: string; values: string[][] }> = [];
+    let serviceDone = text(body.serviceDone);
+    let replacementInfo: Record<string, string> | null = null;
+    if (body.replacement && typeof body.replacement === "object") {
+      const newSerial = text(body.replacement.newSerial);
+      const newMac = text(body.replacement.newMac);
+      const newFinal = text(body.replacement.newFinal);
+      const oldSerial = text(equipment.row[idx.sn]);
+      const macIdx = findHeaderIndex(ctx.controlHeaders, "MAC");
+      const finalIdx = findHeaderIndex(ctx.controlHeaders, "Final", "FINAL");
+
+      if (!newSerial) throw new ValidationError("Informe o SN do equipamento recebido em substituição.");
+      if (!/^\d+$/.test(newSerial)) throw new ValidationError("O SN do novo equipamento deve conter apenas números.");
+      if (newFinal && !/^\d+$/.test(newFinal)) throw new ValidationError("O Final do novo equipamento deve conter apenas números.");
+      if (normalize(newSerial) === normalize(oldSerial)) throw new ValidationError("O SN informado é igual ao do equipamento enviado.");
+      const snInUse = ctx.controlValues
+        .slice(1)
+        .some((row, index) => index + 2 !== equipment.sheetRow && normalize(row[idx.sn]) === normalize(newSerial));
+      if (snInUse) throw new ValidationError(`O SN "${newSerial}" já está cadastrado em outro equipamento.`, 409);
+
+      const [replacementResponse, appsResponse] = await Promise.all([
+        ctx.sheets.spreadsheets.values
+          .get({ spreadsheetId: ctx.spreadsheetId, range: `${REPLACEMENT_SHEET}!A:Z` })
+          .catch((error: any) => {
+            if (/parse range/i.test(String(error?.message || ""))) return null;
+            throw error;
+          }),
+        ctx.sheets.spreadsheets.values.get({ spreadsheetId: ctx.spreadsheetId, range: `${APPS_SHEET}!A:Z` }),
+      ]);
+      if (!replacementResponse) {
+        throw new ValidationError(`A aba ${REPLACEMENT_SHEET} não existe na planilha. Crie a aba com os cabeçalhos: ${REPLACEMENT_HEADERS.join(", ")}.`);
+      }
+      const replacementValues = (replacementResponse.data.values || []) as string[][];
+      const replacementHeaders = replacementValues[0] || [];
+      const missingReplacement = REPLACEMENT_HEADERS.filter((header) => findHeaderIndex(replacementHeaders, header) === -1);
+      if (missingReplacement.length > 0) {
+        throw new ValidationError(`A aba ${REPLACEMENT_SHEET} não possui as colunas: ${missingReplacement.join(", ")}.`);
+      }
+
+      replacementInfo = {
+        ID_SUBSTITUICAO: makeMaintenanceId().replace(/^MEX/, "SUB"),
+        DATA_SUBSTITUICAO: toLocalIsoDateTime(),
+        COLETOR: text(equipment.row[idx.coletor]),
+        SN_ANTERIOR: oldSerial,
+        SN_NOVO: newSerial,
+        MAC_ANTERIOR: macIdx === -1 ? "" : text(equipment.row[macIdx]),
+        MAC_NOVO: newMac,
+        FINAL_ANTERIOR: finalIdx === -1 ? "" : text(equipment.row[finalIdx]),
+        FINAL_NOVO: newFinal,
+        SETOR: text(equipment.row[idx.setor]),
+        ID_MANUTENCAO: maintenanceId,
+        RESPONSAVEL: responsible,
+        OBS: text(body.replacement.observation),
+      };
+      const historyRow = replacementHeaders.map((header) => {
+        const key = REPLACEMENT_HEADERS.find((name) => normalize(name) === normalize(header));
+        return key ? replacementInfo![key] || "" : "";
+      });
+      replacementWrites.push({ range: `${REPLACEMENT_SHEET}!A${replacementValues.length + 1}`, values: [historyRow] });
+
+      controlUpdated[idx.sn] = newSerial;
+      if (macIdx !== -1) controlUpdated[macIdx] = newMac;
+      if (finalIdx !== -1) controlUpdated[finalIdx] = newFinal;
+
+      // Os registros de apps do coletor passam a apontar para o SN do novo aparelho.
+      const appsValues = (appsResponse.data.values || []) as string[][];
+      const appsHeaders = appsValues[0] || [];
+      const appColetorIdx = findHeaderIndex(appsHeaders, "COLETOR");
+      const appSnIdx = findHeaderIndex(appsHeaders, "SN");
+      if (appColetorIdx !== -1 && appSnIdx !== -1) {
+        appsValues.slice(1).forEach((row, index) => {
+          if (normalize(row[appColetorIdx]) !== normalize(collector)) return;
+          const updated = padRow(row, appsHeaders.length);
+          updated[appSnIdx] = newSerial;
+          replacementWrites.push({ range: `${APPS_SHEET}!A${index + 2}`, values: [updated] });
+        });
+      }
+
+      serviceDone = [serviceDone, `Equipamento substituído pelo fornecedor (reparo inviável): SN anterior ${oldSerial || "-"} → SN novo ${newSerial}.`]
+        .filter(Boolean)
+        .join(" | ");
+    }
+
     const recordUpdated = padRow(record.row, headers.length);
     const setField = (name: string, value: string) => {
       const index = findHeaderIndex(headers, name);
@@ -330,7 +433,7 @@ export async function handleExternalMaintenanceReturn(req: any, res: any) {
     setField("COLABORADOR_RETORNO_MATRICULA", text(body.receiverRegistration));
     setField("COLABORADOR_RETORNO_CARGO", text(body.receiverRole));
     setField("SETOR_RETORNO", returnSector);
-    setField("SERVICO_REALIZADO", text(body.serviceDone));
+    setField("SERVICO_REALIZADO", serviceDone);
     setField("OBS_RETORNO", text(body.observation));
 
     await ctx.sheets.spreadsheets.values.batchUpdate({
@@ -340,6 +443,7 @@ export async function handleExternalMaintenanceReturn(req: any, res: any) {
         data: [
           { range: `${CONTROL_SHEET}!A${equipment.sheetRow}`, values: [controlUpdated] },
           { range: `${EXTERNAL_MAINTENANCE_SHEET}!A${record.sheetRow}`, values: [recordUpdated] },
+          ...replacementWrites,
         ],
       },
     });
@@ -347,6 +451,7 @@ export async function handleExternalMaintenanceReturn(req: any, res: any) {
     return res.status(200).json({
       success: true,
       maintenanceId,
+      replacement: replacementInfo,
       termData: maintenanceRowToTermData(headers, recordUpdated),
     });
   } catch (error) {
