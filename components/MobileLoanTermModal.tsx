@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { MobileLoanTermData } from "./mobileLoanTermData";
 
@@ -44,6 +44,13 @@ export default function MobileLoanTermModal({
   data,
   onClose,
 }: MobileLoanTermModalProps) {
+  // Frente: termo de empréstimo preenchido. Verso: devolução em branco para preenchimento manual.
+  const [includeReturnPage, setIncludeReturnPage] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) setIncludeReturnPage(true);
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
     const onAfterPrint = () => document.body.classList.remove("printing-mobile-term");
@@ -78,6 +85,12 @@ export default function MobileLoanTermModal({
             <span>Empréstimo {data.loanId || "sem identificação"}</span>
           </div>
           <div>
+            {type === "loan" && (
+              <label className="mobile-term-option">
+                <input type="checkbox" checked={includeReturnPage} onChange={(event) => setIncludeReturnPage(event.target.checked)} />
+                Incluir termo de devolução no verso
+              </label>
+            )}
             <button type="button" className="mobile-term-close" onClick={onClose}>Fechar</button>
             <button type="button" className="mobile-term-print" onClick={handlePrint}>Imprimir / Salvar PDF</button>
           </div>
@@ -203,6 +216,63 @@ export default function MobileLoanTermModal({
 
           <footer>Fundação Geraldo Corrêa – Complexo de Saúde São João de Deus | Rua do Cobre, nº 800, Bairro Niterói, Divinópolis/MG | CEP 35.500-227</footer>
         </article>
+
+        {type === "loan" && includeReturnPage && (
+          <article className="mobile-term-document mobile-term-document-loan mobile-term-page-break">
+            <header className="mobile-term-document-header">
+              <img src="https://cssjd-ti.s3.us-east-2.amazonaws.com/LOGO.png" alt="Complexo de Saúde São João de Deus" />
+              <div>
+                <strong>FUNDAÇÃO GERALDO CORRÊA</strong><br />
+                Complexo de Saúde São João de Deus<br />
+                CNPJ 20.146.064/0001-02
+              </div>
+            </header>
+
+            <h1>Termo de Devolução de Equipamento de TI</h1>
+            <p>
+              Atesto que o equipamento de TI abaixo identificado, cedido em regime de empréstimo pela Gerência de Tecnologia da Informação, foi devolvido nas condições registradas neste Termo.
+            </p>
+
+            {/* Preenchimento manual: os dados reais da devolução só são conhecidos no momento da entrega. */}
+            <h2>Equipamento devolvido</h2>
+            <table className="mobile-term-fill-table">
+              <tbody>
+                <tr><td><b>Equipamento:</b></td><td><b>Número de série:</b></td></tr>
+                <tr><td><b>Marca:</b></td><td><b>Modelo:</b></td></tr>
+                <tr><td><b>Nº do empréstimo:</b></td><td><b>Data do empréstimo:</b> ____/____/________</td></tr>
+                <tr><td><b>Ordem de Serviço:</b></td><td><b>Equipamento original devolvido ao setor:</b></td></tr>
+              </tbody>
+            </table>
+
+            <h2>Dados da devolução</h2>
+            <table className="mobile-term-fill-table">
+              <tbody>
+                <tr><td><b>Data da devolução:</b> ____/____/________</td><td><b>Setor:</b></td></tr>
+                <tr><td><b>Colaborador que devolveu:</b></td><td><b>Matrícula:</b></td></tr>
+                <tr><td><b>Cargo:</b></td><td><b>Técnico de TI que recebeu:</b></td></tr>
+              </tbody>
+            </table>
+
+            <h2>Condições de devolução</h2>
+            <div className="mobile-term-checks">
+              <div>☐ Em perfeito estado</div>
+              <div>☐ Apresentando defeito</div>
+              <div>☐ Faltando peças/acessórios</div>
+            </div>
+            <p><b>Detalhamento:</b></p>
+            <div className="mobile-term-lines"><div /><div /><div /></div>
+
+            <p>Declaro que devolvi o equipamento acima identificado nas condições assinaladas neste Termo.</p>
+
+            <p className="mobile-term-date">Divinópolis, ____ de __________________ de ________.</p>
+            <div className="mobile-term-signatures">
+              <div><span /><small>Colaborador responsável pela devolução</small></div>
+              <div><span /><small>Técnico responsável pelo recebimento</small></div>
+            </div>
+
+            <footer>Fundação Geraldo Corrêa – Complexo de Saúde São João de Deus | Rua do Cobre, nº 800, Bairro Niterói, Divinópolis/MG | CEP 35.500-227</footer>
+          </article>
+        )}
       </div>
     </div>,
     document.body
