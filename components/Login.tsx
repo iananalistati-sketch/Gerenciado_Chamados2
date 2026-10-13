@@ -1,18 +1,42 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { setDataBase, type DataBase } from "../auth/dataBase";
 
-const DATA_BASE_OPTIONS: Array<{ value: DataBase; label: string; description: string }> = [
-  { value: "producao", label: "Produção", description: "Dados reais" },
-  { value: "treinamento", label: "Treinamento", description: "Base para testes e capacitação" },
+const DATA_BASE_OPTIONS: Array<{ value: DataBase; label: string; description: string; color: string }> = [
+  { value: "producao", label: "Produção", description: "Dados reais", color: "#3B82F6" },
+  { value: "treinamento", label: "Treinamento", description: "Base para testes e capacitação", color: "#F59E0B" },
 ];
 
 export default function Login() {
   const { login } = useAuth();
   const [dataBase, setSelectedDataBase] = useState<DataBase>("producao");
+  const [dataBaseMenuOpen, setDataBaseMenuOpen] = useState(false);
+  const dataBaseMenuRef = useRef<HTMLDivElement>(null);
+  const selectedOption = DATA_BASE_OPTIONS.find((option) => option.value === dataBase) || DATA_BASE_OPTIONS[0];
+
+  useEffect(() => {
+    if (!dataBaseMenuOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!dataBaseMenuRef.current?.contains(event.target as Node)) setDataBaseMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDataBaseMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [dataBaseMenuOpen]);
+
+  function chooseDataBase(value: DataBase) {
+    setSelectedDataBase(value);
+    setDataBaseMenuOpen(false);
+  }
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -159,38 +183,6 @@ export default function Login() {
           </div>
 
           <div className="login-field">
-            <span id="login-base-label" style={{ fontSize: "13px", fontWeight: 600 }}>Base de dados</span>
-            <div role="radiogroup" aria-labelledby="login-base-label" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px" }}>
-              {DATA_BASE_OPTIONS.map((option) => {
-                const selected = dataBase === option.value;
-                const color = option.value === "treinamento" ? "#F59E0B" : "#3B82F6";
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => setSelectedDataBase(option.value)}
-                    disabled={submitting}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: "10px",
-                      border: selected ? `2px solid ${color}` : "1px solid var(--border-primary, #CBD5E1)",
-                      backgroundColor: selected ? `${color}1A` : "transparent",
-                      color: "inherit",
-                      textAlign: "left",
-                      cursor: submitting ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    <strong style={{ display: "block", fontSize: "13px", color: selected ? color : "inherit" }}>{option.label}</strong>
-                    <span style={{ fontSize: "11px", opacity: 0.75 }}>{option.description}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="login-field">
             <label htmlFor="login-email">
               E-mail
             </label>
@@ -250,6 +242,96 @@ export default function Login() {
                 {showPassword ? "Ocultar" : "Mostrar"}
               </button>
             </div>
+          </div>
+
+          <div className="login-field" ref={dataBaseMenuRef} style={{ position: "relative" }}>
+            <label id="login-base-label" htmlFor="login-base-button">
+              Base de dados
+            </label>
+
+            <button
+              id="login-base-button"
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={dataBaseMenuOpen}
+              aria-labelledby="login-base-label login-base-button"
+              onClick={() => setDataBaseMenuOpen((open) => !open)}
+              disabled={submitting}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "8px",
+                width: "100%",
+                padding: "11px 14px",
+                borderRadius: "10px",
+                border: `1px solid ${selectedOption.color}`,
+                backgroundColor: `${selectedOption.color}1A`,
+                color: "inherit",
+                textAlign: "left",
+                cursor: submitting ? "not-allowed" : "pointer",
+              }}
+            >
+              <span>
+                <strong style={{ fontSize: "14px", color: selectedOption.color }}>{selectedOption.label}</strong>
+                <span style={{ fontSize: "12px", opacity: 0.75 }}> · {selectedOption.description}</span>
+              </span>
+              <span aria-hidden="true" style={{ transform: dataBaseMenuOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }}>▾</span>
+            </button>
+
+            {dataBaseMenuOpen && (
+              <ul
+                role="listbox"
+                aria-labelledby="login-base-label"
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  zIndex: 20,
+                  margin: "4px 0 0",
+                  padding: "4px",
+                  listStyle: "none",
+                  borderRadius: "10px",
+                  border: "1px solid #334155",
+                  backgroundColor: "#0F172A",
+                  color: "#F8FAFC",
+                  boxShadow: "0 12px 28px rgba(0, 0, 0, 0.35)",
+                }}
+              >
+                {DATA_BASE_OPTIONS.map((option) => {
+                  const selected = dataBase === option.value;
+                  return (
+                    <li
+                      key={option.value}
+                      role="option"
+                      aria-selected={selected}
+                      tabIndex={0}
+                      onClick={() => chooseDataBase(option.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          chooseDataBase(option.value);
+                        }
+                      }}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        backgroundColor: selected ? `${option.color}26` : "transparent",
+                        borderLeft: `3px solid ${option.color}`,
+                        marginBottom: "2px",
+                      }}
+                    >
+                      <strong style={{ display: "block", fontSize: "14px", color: option.color }}>
+                        {option.label}{selected ? " ✓" : ""}
+                      </strong>
+                      <span style={{ fontSize: "12px", opacity: 0.8 }}>{option.description}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
 
           {errorMessage && (
