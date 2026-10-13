@@ -1152,9 +1152,13 @@ function AppContent() {
   const headers = data[0] || [];
 
   const cobIdx = headers.findIndex(h => normalize(h) === "cobranca");
-  const currentSheetCount = cobIdx !== -1 
-    ? data.slice(1).filter(row => (row[cobIdx] || "").trim().toUpperCase() === "SIM").length 
-    : 0;
+  const cobExcluidoIdx = headers.findIndex(h => normalize(h) === "excluido");
+  // Cobrança considera apenas tickets não excluídos (mesma regra da lista).
+  const isInCobranca = (row: string[]) =>
+    cobIdx !== -1 &&
+    (row[cobIdx] || "").trim().toUpperCase() === "SIM" &&
+    !(cobExcluidoIdx !== -1 && (row[cobExcluidoIdx] || "").trim().toUpperCase() === "SIM");
+  const currentSheetCount = data.slice(1).filter(isInCobranca).length;
   
   const exportToExcel = () => {
     // Busca os índices das colunas de identificação e cobrança
@@ -1164,9 +1168,7 @@ function AppContent() {
     const cobrancaIdx = headers.findIndex(h => normalize(h) === "cobranca");
     const finalIdx = idIdx !== -1 ? idIdx : fallbackIdx;
 
-    const selectedRows = data.slice(1).filter(row => {
-      return cobrancaIdx !== -1 && (row[cobrancaIdx] || "").trim().toUpperCase() === "SIM";
-    });
+    const selectedRows = cobrancaIdx === -1 ? [] : data.slice(1).filter(isInCobranca);
     
     if (selectedRows.length === 0) {
         alert("Nenhum chamado marcado para cobrança nesta aba.");

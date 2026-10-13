@@ -28,10 +28,13 @@ export default function CobrancaModal({
   const headers = data[0] || [];
   const cobrancaIdx = headers.findIndex(h => normalize(h) === "cobranca");
   const gravidadeIdx = headers.findIndex(h => normalize(h) === "gravidade");
+  const excluidoIdx = headers.findIndex(h => normalize(h) === "excluido");
 
+  // Tickets excluídos logicamente não entram na cobrança, assim como não aparecem na lista.
   const cobrancaData = data.slice(1).filter(row =>
     cobrancaIdx !== -1 &&
-    (row[cobrancaIdx] || "").trim().toUpperCase() === "SIM"
+    (row[cobrancaIdx] || "").trim().toUpperCase() === "SIM" &&
+    !(excluidoIdx !== -1 && (row[excluidoIdx] || "").trim().toUpperCase() === "SIM")
   );
 
   const handleRemove = async (row: string[]) => {
