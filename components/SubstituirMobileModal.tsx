@@ -60,6 +60,20 @@ export default function SubstituirMobileModal({
   const snIdx = getIndex("SN");
   const statusIdx = getIndex("Status");
   const setorLocalizadoIdx = getIndex("Setor localizado");
+  // Marca/modelo vêm do cadastro quando a aba possui essas colunas (tablets); senão, usa a sugestão padrão.
+  const brandIdx = getIndex("MARCA", "Marca");
+  const modelIdx = getIndex("MODELO", "Modelo");
+  const cellAt = (row: string[] | null | undefined, index: number) =>
+    row && index !== -1 ? String(row[index] || "").trim() : "";
+  const equipmentBrand = cellAt(equipment, brandIdx);
+  const equipmentModel = cellAt(equipment, modelIdx);
+
+  const handleReserveChange = (collector: string) => {
+    setReserveCollector(collector);
+    const reserveRow = allRows.find((row) => normalize(cellAt(row, coletorIdx)) === normalize(collector));
+    if (brandIdx !== -1) setReserveBrand(cellAt(reserveRow, brandIdx) || defaultBrand);
+    if (modelIdx !== -1) setReserveModel(cellAt(reserveRow, modelIdx) || defaultModel);
+  };
 
   const originalSector =
     equipment && setorIdx !== -1
@@ -85,12 +99,12 @@ export default function SubstituirMobileModal({
     setLoanCollaboratorRegistration("");
     setLoanCollaboratorRole("");
     setServiceOrder("");
-    setOriginalBrand(defaultBrand);
-    setOriginalModel(defaultModel);
+    setOriginalBrand(equipmentBrand || defaultBrand);
+    setOriginalModel(equipmentModel || defaultModel);
     setReserveBrand(defaultBrand);
     setReserveModel(defaultModel);
     setTermData(null);
-  }, [isOpen, equipment, originalLocation, originalSector, defaultBrand, defaultModel]);
+  }, [isOpen, equipment, originalLocation, originalSector, defaultBrand, defaultModel, equipmentBrand, equipmentModel]);
 
   const reserves = useMemo(() => {
     if (
@@ -368,7 +382,7 @@ export default function SubstituirMobileModal({
               Equipamento reserva do TI-SUPORTE
               <select
                 value={reserveCollector}
-                onChange={(event) => setReserveCollector(event.target.value)}
+                onChange={(event) => handleReserveChange(event.target.value)}
                 style={inputStyle}
               >
                 <option value="">Selecione um equipamento reserva</option>

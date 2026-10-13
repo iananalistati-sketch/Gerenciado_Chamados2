@@ -22,8 +22,6 @@ export const READABLE_SHEETS = new Set([
   "tbManutencaoExternaMobiles",
   "tbSubstituicoesMobiles",
   "tbControleTablets",
-  "tbTabletApps",
-  "tbConfigTablets",
   "tbEmprestimosTablets",
 ]);
 
@@ -33,8 +31,6 @@ export const CREATABLE_SHEETS = new Set([
   "tbControleMobiles",
   "tbConfigMobiles",
   "tbControleTablets",
-  "tbTabletApps",
-  "tbConfigTablets",
 ]);
 
 export const UPDATABLE_SHEETS = new Set([
@@ -44,8 +40,6 @@ export const UPDATABLE_SHEETS = new Set([
   "tbConfigMobiles",
   "tbMobileApps",
   "tbControleTablets",
-  "tbTabletApps",
-  "tbConfigTablets",
 ]);
 
 export async function requireRole(

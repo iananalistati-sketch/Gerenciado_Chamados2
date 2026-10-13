@@ -41,7 +41,7 @@ export default async function handler(req: any, res: any) {
     if (sheet === TABLET_CONTROL_SHEET) {
       return handleTabletCreate(req, res);
     }
-    const permission = sheet === "tbControleMobiles" ? "mobiles.create" : sheet === "tbConfigMobiles" ? "mobile_config.manage" : sheet === "tbTabletApps" ? "tablet_apps.manage" : sheet === "tbConfigTablets" ? "tablet_config.manage" : "tickets.create";
+    const permission = sheet === "tbControleMobiles" ? "mobiles.create" : sheet === "tbConfigMobiles" ? "mobile_config.manage" : "tickets.create";
     const actor = await requirePermission(req.headers.authorization, permission);
 
     if (sheet === MOBILE_CONFIG_SHEET && actor.role !== "admin") {

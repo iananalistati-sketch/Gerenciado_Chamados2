@@ -57,6 +57,8 @@ export default function TabletFormModal({
     setorLocalizado: headerIndex(headers, "Setor localizado"),
     status: headerIndex(headers, "Status"),
     patrimonio: headerIndex(headers, "PATRIMONIO_REPROMAQ", "Patrimônio Repromaq", "Patrimonio Repromaq"),
+    marca: headerIndex(headers, "MARCA", "Marca"),
+    modelo: headerIndex(headers, "MODELO", "Modelo"),
     imei: headerIndex(headers, "IMEI"),
     ip: headerIndex(headers, "IP"),
   };
@@ -218,6 +220,8 @@ export default function TabletFormModal({
             {sectorField(idx.setorLocalizado, "Setor localizado", isOperationalStatus)}
             {textField(idx.tablet, "Tablet", true)}
             {textField(idx.sn, "SN")}
+            {textField(idx.marca, "Marca")}
+            {textField(idx.modelo, "Modelo")}
             {textField(idx.final, "Final", false, true)}
             {textField(idx.mac, "MAC")}
             {textField(idx.patrimonio, "Patrimônio")}

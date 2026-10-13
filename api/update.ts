@@ -17,7 +17,7 @@ export default async function handler(req: any, res: any) {
     if (sheet === TABLET_CONTROL_SHEET) {
       return handleTabletUpdate(req, res);
     }
-    const permission = sheet === "tbConfigMobiles" ? "mobile_config.manage" : ["tbControleMobiles", "tbMobileApps"].includes(sheet) ? "mobiles.edit" : sheet === "tbTabletApps" ? "tablet_apps.manage" : sheet === "tbConfigTablets" ? "tablet_config.manage" : "tickets.edit";
+    const permission = sheet === "tbConfigMobiles" ? "mobile_config.manage" : ["tbControleMobiles", "tbMobileApps"].includes(sheet) ? "mobiles.edit" : "tickets.edit";
     const actor = await requirePermission(req.headers.authorization, permission);
 
     if (sheet === "tbConfigMobiles" && actor.role !== "admin") {

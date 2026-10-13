@@ -27,8 +27,6 @@ export interface Permissions {
   canCreateTablet: boolean;
   canEditTablet: boolean;
   canChangeTabletStatus: boolean;
-  canManageTabletApps: boolean;
-  canManageTabletConfig: boolean;
   canViewTabletLoans: boolean;
   canCreateTabletLoan: boolean;
   canReturnTabletLoan: boolean;
@@ -81,8 +79,6 @@ const adminPermissions: Permissions = {
   canCreateTablet: true,
   canEditTablet: true,
   canChangeTabletStatus: true,
-  canManageTabletApps: true,
-  canManageTabletConfig: true,
   canViewTabletLoans: true,
   canCreateTabletLoan: true,
   canReturnTabletLoan: true,
@@ -132,8 +128,6 @@ const analystPermissions: Permissions = {
   canCreateTablet: true,
   canEditTablet: true,
   canChangeTabletStatus: true,
-  canManageTabletApps: true,
-  canManageTabletConfig: false,
   canViewTabletLoans: true,
   canCreateTabletLoan: true,
   canReturnTabletLoan: true,
@@ -183,8 +177,6 @@ const viewerPermissions: Permissions = {
   canCreateTablet: false,
   canEditTablet: false,
   canChangeTabletStatus: false,
-  canManageTabletApps: false,
-  canManageTabletConfig: false,
   canViewTabletLoans: false,
   canCreateTabletLoan: false,
   canReturnTabletLoan: false,
@@ -238,8 +230,6 @@ export const permissionMapToLegacy = (map: PermissionMap): Permissions => ({
   canCreateTablet: map["tablets.create"],
   canEditTablet: map["tablets.edit"],
   canChangeTabletStatus: map["tablets.change_status"],
-  canManageTabletApps: map["tablet_apps.manage"],
-  canManageTabletConfig: map["tablet_config.manage"],
   canViewTabletLoans: map["tablet_loans.view"],
   canCreateTabletLoan: map["tablet_loans.create"],
   canReturnTabletLoan: map["tablet_loans.return"],

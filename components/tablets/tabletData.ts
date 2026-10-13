@@ -2,8 +2,6 @@ import type { CSSProperties } from "react";
 
 export const TABLET_SHEETS = {
   control: "tbControleTablets",
-  apps: "tbTabletApps",
-  config: "tbConfigTablets",
   loans: "tbEmprestimosTablets",
 } as const;
 
@@ -44,27 +42,6 @@ export const statusColor = (status: string) => {
     case "M": return "#F59E0B";
     default: return "var(--text-muted)";
   }
-};
-
-// Status de atualização de um app: compara a versão instalada com a versão-alvo de tbConfigTablets.
-export const appUpdateStatus = (version: string, target: string) => {
-  if (!version || !target) return "SEM INFORMAÇÃO";
-  return normalize(version) === normalize(target) ? "ATUALIZADO" : "PENDENTE";
-};
-
-export const updateStatusColor = (status: string) => {
-  if (status === "ATUALIZADO") return "#10B981";
-  if (status === "PENDENTE") return "#F59E0B";
-  return "var(--text-muted)";
-};
-
-// Linhas carregadas de /api/data recebem o número da linha na planilha (1 = cabeçalho).
-export const withOriginalIndex = (values: unknown): string[][] => {
-  const rows = Array.isArray(values) ? values.filter((row) => Array.isArray(row)) as string[][] : [];
-  rows.forEach((row, index) => {
-    (row as any)._originalIndex = index + 1;
-  });
-  return rows;
 };
 
 export const originalIndexOf = (row: string[]) => {
