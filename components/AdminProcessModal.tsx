@@ -23,7 +23,63 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
 };
 
-const isDateField = (header: string) => /^data(_|\s|$)/i.test(String(header || "").trim());
+// Nomes amigáveis dos campos; colunas sem tradução viram texto sem underline.
+const FIELD_LABELS: Record<string, string> = {
+  ID_EMPRESTIMO: "ID do empréstimo",
+  ID_MANUTENCAO: "ID da manutenção",
+  ID_SUBSTITUICAO: "ID da substituição",
+  COLETOR: "Coletor",
+  SN: "SN",
+  COLETOR_RESERVA: "Coletor reserva",
+  SN_RESERVA: "SN da reserva",
+  COLETOR_SUBSTITUIDO: "Coletor substituído",
+  SN_SUBSTITUIDO: "SN do substituído",
+  SETOR_ORIGEM: "Setor de origem",
+  SETOR_DESTINO: "Setor de destino",
+  SETOR_RETORNO: "Setor de retorno",
+  LOCALIZACAO_ANTERIOR: "Localização anterior",
+  DATA_EMPRESTIMO: "Data do empréstimo",
+  DATA_DEVOLUCAO: "Data da devolução",
+  DATA_ENVIO: "Data do envio",
+  DATA_RETORNO: "Data do retorno",
+  RESPONSAVEL_EMPRESTIMO: "Técnico do empréstimo",
+  RESPONSAVEL_DEVOLUCAO: "Técnico da devolução",
+  RESPONSAVEL_ENVIO: "Técnico do envio",
+  RESPONSAVEL_RETORNO: "Técnico do retorno",
+  STATUS_EMPRESTIMO: "Status",
+  STATUS_MANUTENCAO: "Status",
+  MOTIVO: "Motivo",
+  OBS: "Observação",
+  OBS_EMPRESTIMO: "Observação do empréstimo",
+  OBS_DEVOLUCAO: "Observação da devolução",
+  OBS_RETORNO: "Observação do retorno",
+  ORDEM_SERVICO: "Ordem de serviço",
+  OS: "Ordem de serviço",
+  CONDICAO_DEVOLUCAO: "Condição da devolução",
+  DETALHES_DEVOLUCAO: "Defeitos/peças faltantes",
+  TIPO_OCORRENCIA_DEVOLUCAO: "Tipo da ocorrência",
+  JUSTIFICATIVA_MAU_USO: "Justificativa de responsabilidade",
+  RESPONSAVEL_SETOR_NOME: "Responsável pelo setor",
+  TERMO_RESPONSABILIDADE_EMITIDO: "Termo de responsabilidade emitido",
+  DEFEITO_RELATADO: "Defeito relatado",
+  SERVICO_REALIZADO: "Serviço realizado",
+  MODIFICADA_ADMIN: "Modificada pelo admin",
+};
+
+const prettyLabel = (header: string) => {
+  const key = String(header || "").trim().toUpperCase();
+  if (FIELD_LABELS[key]) return FIELD_LABELS[key];
+  const collaborator = key.match(/^COLABORADOR_([A-Z]+)_(NOME|MATRICULA|CARGO)$/);
+  if (collaborator) {
+    const kind = { NOME: "Colaborador", MATRICULA: "Matrícula", CARGO: "Cargo" }[collaborator[2] as "NOME" | "MATRICULA" | "CARGO"];
+    const stage = { EMPRESTIMO: "do empréstimo", DEVOLUCAO: "da devolução", ENTREGA: "da entrega", RETORNO: "do retorno", ENVIO: "do envio" }[collaborator[1]] || collaborator[1].toLowerCase();
+    return `${kind} ${stage}`;
+  }
+  const spaced = String(header || "").replace(/_+/g, " ").trim().toLowerCase();
+  return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : "";
+};
+
+const isDateField =(header: string) => /^data(_|\s|$)/i.test(String(header || "").trim());
 
 // Separa "2026-10-13T14:14:03" (ou "13/10/2026 14:14") em data ISO e hora.
 const splitDateTime = (value: string) => {
@@ -71,7 +127,7 @@ export default function AdminProcessModal({ process, headers, row, onClose, onDo
   const editable = isOpenRecord(process, headers, row);
   const status = config.statusColumn ? rowValue(headers, row, config.statusColumn) : "";
   const labels = headers.map((header, index) => {
-    const name = header || `Coluna ${index + 1}`;
+    const name = prettyLabel(header) || `Coluna ${index + 1}`;
     const repeated = headers.slice(0, index).filter((other) => other === header).length;
     return repeated > 0 ? `${name} (${repeated + 1})` : name;
   });
