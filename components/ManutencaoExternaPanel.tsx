@@ -4,7 +4,7 @@ import { exportRowsToXlsx } from "../utils/exportXlsx";
 import ExternalMaintenanceTermModal from "./ExternalMaintenanceTermModal";
 import RetornoManutencaoExternaModal from "./RetornoManutencaoExternaModal";
 import AdminProcessModal from "./AdminProcessModal";
-import { describeRollback } from "./adminProcess";
+import { isModifiedRow } from "./adminProcess";
 import { useAuth } from "../contexts/AuthContext";
 import {
   EXTERNAL_MAINTENANCE_SHEET,
@@ -160,6 +160,12 @@ export default function ManutencaoExternaPanel({
       visibleReplacements
     );
 
+  const modifiedIds = useMemo(() => {
+    const headers = rawExternal[0] || [];
+    const idIndex = headers.findIndex((header) => normalize(header) === normalize("ID_MANUTENCAO"));
+    return new Set(rawExternal.slice(1).filter((row) => isModifiedRow(headers, row)).map((row) => normalize(String(row[idIndex] || ""))));
+  }, [rawExternal]);
+
   const openCount = records.filter((item) => normalize(item.status) === "aberta").length;
   const finishedCount = records.length - openCount;
 
@@ -293,7 +299,7 @@ export default function ManutencaoExternaPanel({
                                 const raw = findRaw(rawReplacements, "ID_SUBSTITUICAO", item.id);
                                 if (raw) setAdminTarget({ kind: "replacement", row: raw });
                               }}
-                              title="Editar ou desfazer substituição (Administrador)"
+                              title="Excluir substituição do histórico (Administrador)"
                               style={{ padding: "6px 10px", borderRadius: "7px", border: "1px solid rgba(220, 38, 38, 0.45)", backgroundColor: "var(--bg-primary)", color: "#DC2626", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}
                             >
                               Admin
@@ -324,7 +330,10 @@ export default function ManutencaoExternaPanel({
                       <strong style={{ color: "var(--text-primary)" }}>{item.collector || "-"}</strong>
                       <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>SN: {item.serial || "-"} · {item.maintenanceId}</span>
                     </div>
-                    <span style={{ color: isOpen ? "#8B5CF6" : normalize(item.status) === "cancelada" ? "var(--text-muted)" : "#10B981", fontSize: "10px", fontWeight: 700 }}>{isOpen ? "EM ABERTO" : normalize(item.status) === "cancelada" ? "CANCELADA" : "FINALIZADA"}</span>
+                    <div style={{ display: "grid", justifyItems: "end", gap: "4px" }}>
+                      <span style={{ color: isOpen ? "#8B5CF6" : normalize(item.status) === "cancelada" ? "var(--text-muted)" : "#10B981", fontSize: "10px", fontWeight: 700 }}>{isOpen ? "EM ABERTO" : normalize(item.status) === "cancelada" ? "CANCELADA" : "FINALIZADA"}</span>
+                      {modifiedIds.has(normalize(item.maintenanceId)) && <span className="admin-modified-badge" title="Registro modificado pelo Administrador">Modificada</span>}
+                    </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px", marginTop: "12px", fontSize: "12px" }}>
                     <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>Setor</span><strong>{item.originSector || "-"}</strong></div>
@@ -344,7 +353,7 @@ export default function ManutencaoExternaPanel({
                           const raw = findRaw(rawExternal, "ID_MANUTENCAO", item.maintenanceId);
                           if (raw) setAdminTarget({ kind: "external", row: raw });
                         }}
-                        title="Editar ou desfazer etapa (Administrador)"
+                        title={isOpen ? "Modificar manutenção em aberto (Administrador)" : "Excluir manutenção do histórico (Administrador)"}
                         style={{ ...actionStyle("#DC2626"), border: "1px solid rgba(220, 38, 38, 0.45)" }}
                       >
                         Admin
@@ -366,16 +375,9 @@ export default function ManutencaoExternaPanel({
       />
       {isAdmin && adminTarget && (
         <AdminProcessModal
-          isOpen
-          title={adminTarget.kind === "external" ? "Manutenção externa" : "Substituição"}
-          sheet={adminTarget.kind === "external" ? EXTERNAL_MAINTENANCE_SHEET : REPLACEMENT_SHEET}
+          process={adminTarget.kind}
           headers={(adminTarget.kind === "external" ? rawExternal : rawReplacements)[0] || []}
           row={adminTarget.row}
-          rollback={describeRollback(
-            adminTarget.kind,
-            (adminTarget.kind === "external" ? rawExternal : rawReplacements)[0] || [],
-            adminTarget.row
-          )}
           onClose={() => setAdminTarget(null)}
           onDone={async () => {
             await Promise.resolve(onRefresh());

@@ -1,18 +1,16 @@
 import { ApiAuthError, authErrorResponse, requireRole } from "../_requireAuth.js";
 import { getSheetsClient, requireSpreadsheetId } from "../_googleSheets.js";
 
-// Ações exclusivas do Administrador no Controle de Mobiles (exceção às regras dos processos):
-// - "edit": sobrescreve qualquer campo de um registro (empréstimo, manutenção externa,
-//   substituição ou cadastro do coletor);
-// - "rollback": desfaz a última etapa de um processo, devolvendo os coletores ao estado anterior.
-// Toda ação grava uma linha em tbAuditoriaMobiles na mesma gravação dos dados.
+// Ações exclusivas do Administrador no histórico do Controle de Mobiles:
+// - "edit": modifica um processo EM ABERTO (empréstimo ou manutenção externa) em qualquer campo.
+//   O registro é sobrescrito, recebe MODIFICADA_ADMIN = SIM e, se o equipamento ou o setor mudar,
+//   o cadastro dos coletores envolvidos é ajustado na mesma gravação;
+// - "delete": exclui um processo FINALIZADO/CANCELADO ou uma substituição. O registro sai da aba do
+//   processo e a exclusão fica registrada somente na auditoria, com a cópia integral dos dados.
+// Toda ação grava uma linha em tbAuditoriaMobiles (quem, quando, antes → depois e motivo).
 // Roteado por /api/update (adminAction) para não exceder o limite de funções serverless.
 
 const CONTROL = "tbControleMobiles";
-const LOANS = "tbEmprestimosMobiles";
-const EXTERNAL = "tbManutencaoExternaMobiles";
-const REPLACEMENTS = "tbSubstituicoesMobiles";
-const APPS = "tbMobileApps";
 export const AUDIT_SHEET = "tbAuditoriaMobiles";
 export const AUDIT_HEADERS = [
   "ID_AUDITORIA",
@@ -28,38 +26,15 @@ export const AUDIT_HEADERS = [
   "DADOS_DEPOIS",
 ];
 
-const EDITABLE_SHEETS: Record<string, string> = {
-  [CONTROL]: "Cadastro do coletor",
-  [LOANS]: "Empréstimo",
-  [EXTERNAL]: "Manutenção externa",
-  [REPLACEMENTS]: "Substituição",
+const MODIFIED_COLUMN = "MODIFICADA_ADMIN";
+
+type Process = "loan" | "external" | "replacement";
+
+const PROCESSES: Record<Process, { title: string; sheet: string; idColumn: string; statusColumn: string; open: string; closed: string[] }> = {
+  loan: { title: "Empréstimo", sheet: "tbEmprestimosMobiles", idColumn: "ID_EMPRESTIMO", statusColumn: "STATUS_EMPRESTIMO", open: "aberto", closed: ["finalizado", "cancelado"] },
+  external: { title: "Manutenção externa", sheet: "tbManutencaoExternaMobiles", idColumn: "ID_MANUTENCAO", statusColumn: "STATUS_MANUTENCAO", open: "aberta", closed: ["finalizada", "cancelada"] },
+  replacement: { title: "Substituição", sheet: "tbSubstituicoesMobiles", idColumn: "ID_SUBSTITUICAO", statusColumn: "", open: "", closed: [] },
 };
-
-const LOAN_RETURN_FIELDS = [
-  "DATA_DEVOLUCAO",
-  "RESPONSAVEL_DEVOLUCAO",
-  "COLABORADOR_DEVOLUCAO_NOME",
-  "COLABORADOR_DEVOLUCAO_MATRICULA",
-  "COLABORADOR_DEVOLUCAO_CARGO",
-  "CONDICAO_DEVOLUCAO",
-  "DETALHES_DEVOLUCAO",
-  "OBS_DEVOLUCAO",
-  "TIPO_OCORRENCIA_DEVOLUCAO",
-  "JUSTIFICATIVA_MAU_USO",
-  "RESPONSAVEL_SETOR_NOME",
-  "TERMO_RESPONSABILIDADE_EMITIDO",
-];
-
-const EXTERNAL_RETURN_FIELDS = [
-  "DATA_RETORNO",
-  "RESPONSAVEL_RETORNO",
-  "COLABORADOR_RETORNO_NOME",
-  "COLABORADOR_RETORNO_MATRICULA",
-  "COLABORADOR_RETORNO_CARGO",
-  "SETOR_RETORNO",
-  "SERVICO_REALIZADO",
-  "OBS_RETORNO",
-];
 
 const normalize = (value: unknown) =>
   String(value ?? "")
@@ -86,10 +61,6 @@ const makeId = () =>
 
 const columnIndex = (headers: string[], ...names: string[]) =>
   headers.findIndex((header) => names.some((name) => normalize(header) === normalize(name)));
-
-// Algumas abas têm cabeçalhos repetidos (ex.: DATA_DEVOLUCAO em tbEmprestimosMobiles).
-const columnIndexes = (headers: string[], name: string) =>
-  headers.map((header, index) => (normalize(header) === normalize(name) ? index : -1)).filter((index) => index !== -1);
 
 const pad = (row: string[] | undefined, length: number) => {
   const copy = [...(row || [])].map((value) => String(value ?? ""));
@@ -123,6 +94,30 @@ async function loadSheet(sheets: any, spreadsheetId: string, name: string, optio
     }
     throw error;
   }
+}
+
+// Cria a coluna MODIFICADA_ADMIN no fim do cabeçalho quando ainda não existe,
+// ampliando a grade da aba se necessário. Assim as duas bases (produção e treinamento) se ajustam sozinhas.
+async function ensureColumn(sheets: any, spreadsheetId: string, sheet: SheetData, header: string) {
+  const existing = columnIndex(sheet.headers, header);
+  if (existing !== -1) return existing;
+
+  const index = sheet.headers.length;
+  const meta = await sheets.spreadsheets.get({ spreadsheetId, fields: "sheets.properties(sheetId,title,gridProperties.columnCount)" });
+  const properties = (meta.data.sheets || []).map((item: any) => item.properties).find((item: any) => item?.title === sheet.name);
+  if (!properties) throw new ValidationError(`A aba ${sheet.name} não existe na planilha.`);
+  if (index >= 52) throw new ValidationError(`A aba ${sheet.name} não tem espaço para a coluna ${header}.`);
+  if ((properties.gridProperties?.columnCount || 0) <= index) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [{ appendDimension: { sheetId: properties.sheetId, dimension: "COLUMNS", length: index + 1 - properties.gridProperties.columnCount } }] },
+    });
+  }
+  const letter = index < 26 ? String.fromCharCode(65 + index) : `A${String.fromCharCode(65 + index - 26)}`;
+  await sheets.spreadsheets.values.update({ spreadsheetId, range: `${sheet.name}!${letter}1`, valueInputOption: "RAW", requestBody: { values: [[header]] } });
+  sheet.headers = [...sheet.headers, header];
+  sheet.values[0] = sheet.headers;
+  return index;
 }
 
 async function loadAudit(sheets: any, spreadsheetId: string) {
@@ -161,7 +156,7 @@ async function commit(
   sheets: any,
   spreadsheetId: string,
   admin: string,
-  action: "EDICAO" | "ROLLBACK",
+  action: "EDICAO" | "EXCLUSAO",
   process: string,
   record: string,
   reason: string,
@@ -203,95 +198,6 @@ async function commit(
   return entry;
 }
 
-// ---------- Edição livre de registro ----------
-
-async function editRecord(body: any, admin: string, reason: string) {
-  const sheetName = text(body.sheet);
-  if (!EDITABLE_SHEETS[sheetName]) throw new ValidationError("Aba não permitida para edição administrativa.");
-  const rowIndex = Number(body.rowIndex);
-  if (!Number.isInteger(rowIndex) || rowIndex < 2) throw new ValidationError("Linha inválida.");
-  if (!Array.isArray(body.values) || !Array.isArray(body.expected)) throw new ValidationError("Dados do registro inválidos.");
-
-  const sheets = getSheetsClient();
-  const spreadsheetId = requireSpreadsheetId();
-  const sheet = (await loadSheet(sheets, spreadsheetId, sheetName))!;
-  const width = Math.max(sheet.headers.length, body.values.length);
-  const current = pad(sheet.values[rowIndex - 1], width);
-  const expected = pad(body.expected, width);
-
-  // Proteção contra sobrescrever um registro que mudou depois de aberto na tela.
-  if (current.some((value, index) => text(value) !== text(expected[index]))) {
-    throw new ValidationError("O registro foi alterado por outra operação desde que foi aberto. Atualize a tela e tente novamente.", 409);
-  }
-
-  const after = pad(body.values.map((value: unknown) => text(value)), width);
-  const idIndex = columnIndex(sheet.headers, "ID_EMPRESTIMO", "ID_MANUTENCAO", "ID_SUBSTITUICAO");
-  const record =
-    idIndex !== -1
-      ? text(current[idIndex])
-      : [text(current[columnIndex(sheet.headers, "Coletor")]), text(current[columnIndex(sheet.headers, "SN")])].filter(Boolean).join(" / ");
-
-  return commit(sheets, spreadsheetId, admin, "EDICAO", EDITABLE_SHEETS[sheetName], record || `linha ${rowIndex}`, reason, [
-    { sheet, sheetRow: rowIndex, before: current, after },
-  ]);
-}
-
-// ---------- Rollback ----------
-
-interface ControlCtx {
-  sheet: SheetData;
-  idx: { coletor: number; sn: number; status: number; local: number; setor: number; mac: number; final: number };
-}
-
-const controlContext = (sheet: SheetData): ControlCtx => {
-  const idx = {
-    coletor: columnIndex(sheet.headers, "Coletor"),
-    sn: columnIndex(sheet.headers, "SN"),
-    status: columnIndex(sheet.headers, "Status"),
-    local: columnIndex(sheet.headers, "Setor localizado"),
-    setor: columnIndex(sheet.headers, "Setor"),
-    mac: columnIndex(sheet.headers, "MAC"),
-    final: columnIndex(sheet.headers, "Final", "FINAL"),
-  };
-  if ([idx.coletor, idx.sn, idx.status, idx.local, idx.setor].some((value) => value === -1)) {
-    throw new ValidationError(`A estrutura de ${CONTROL} está incompleta.`);
-  }
-  return { sheet, idx };
-};
-
-const findEquipment = (ctx: ControlCtx, coletor: string, sn: string, allowedStatus: string[], label: string) => {
-  const matches = ctx.sheet.values
-    .slice(1)
-    .map((row, index) => ({ row, sheetRow: index + 2 }))
-    .filter(({ row }) => normalize(row[ctx.idx.coletor]) === normalize(coletor) && (!sn || normalize(row[ctx.idx.sn]) === normalize(sn)));
-  if (matches.length !== 1) {
-    throw new ValidationError(`Não foi possível identificar um único cadastro para ${label} "${coletor}"${sn ? ` (SN ${sn})` : ""}.`, 409);
-  }
-  const status = text(matches[0].row[ctx.idx.status]).toUpperCase();
-  if (!allowedStatus.includes(status)) {
-    throw new ValidationError(
-      `Rollback bloqueado: ${label} "${coletor}" está com status ${status || "vazio"} e já participa de outro processo. Corrija o cadastro antes (edição admin) ou desfaça o processo mais recente primeiro.`,
-      409
-    );
-  }
-  return matches[0];
-};
-
-const assertNoOtherActive = (ctx: ControlCtx, coletor: string, exceptRow: number) => {
-  const conflict = ctx.sheet.values
-    .slice(1)
-    .some((row, index) => index + 2 !== exceptRow && normalize(row[ctx.idx.coletor]) === normalize(coletor) && text(row[ctx.idx.status]).toUpperCase() === "A");
-  if (conflict) throw new ValidationError(`Já existe outro coletor ATIVO com o nome "${coletor}".`, 409);
-};
-
-const setControl = (ctx: ControlCtx, found: { row: string[]; sheetRow: number }, status: string, local: string): RowChange => {
-  const before = pad(found.row, ctx.sheet.headers.length);
-  const after = [...before];
-  after[ctx.idx.status] = status;
-  after[ctx.idx.local] = local;
-  return { sheet: ctx.sheet, sheetRow: found.sheetRow, before, after };
-};
-
 const findById = (sheet: SheetData, idColumn: string, id: string) => {
   const idIndex = columnIndex(sheet.headers, idColumn);
   if (idIndex === -1) throw new ValidationError(`A aba ${sheet.name} não possui a coluna ${idColumn}.`);
@@ -308,177 +214,243 @@ const field = (sheet: SheetData, row: string[], name: string) => {
   return index === -1 ? "" : text(row[index]);
 };
 
-async function rollbackLoan(id: string) {
-  const sheets = getSheetsClient();
-  const spreadsheetId = requireSpreadsheetId();
-  const [loans, control] = await Promise.all([loadSheet(sheets, spreadsheetId, LOANS), loadSheet(sheets, spreadsheetId, CONTROL)]);
-  const ctx = controlContext(control!);
-  const loan = findById(loans!, "ID_EMPRESTIMO", id);
-  const status = normalize(field(loans!, loan.row, "STATUS_EMPRESTIMO"));
-  const reserve = field(loans!, loan.row, "COLETOR_RESERVA");
-  const reserveSn = field(loans!, loan.row, "SN_RESERVA");
-  const original = field(loans!, loan.row, "COLETOR_SUBSTITUIDO");
-  const originalSn = field(loans!, loan.row, "SN_SUBSTITUIDO");
-  const destination = field(loans!, loan.row, "SETOR_DESTINO");
-  const statusIdx = columnIndex(loans!.headers, "STATUS_EMPRESTIMO");
-
-  const loanBefore = pad(loan.row, loans!.headers.length);
-  const loanAfter = [...loanBefore];
-  const changes: RowChange[] = [];
-  let description = "";
-
-  if (status === "aberto") {
-    // Aberto → Cancelado: reserva volta disponível no TI-SUPORTE e o original volta ao setor.
-    const reserveRow = findEquipment(ctx, reserve, reserveSn, ["E"], "a reserva");
-    const originalRow = findEquipment(ctx, original, originalSn, ["M"], "o coletor substituído");
-    assertNoOtherActive(ctx, original, originalRow.sheetRow);
-    assertNoOtherActive(ctx, reserve, reserveRow.sheetRow);
-    const originalSector = text(originalRow.row[ctx.idx.setor]);
-    changes.push(setControl(ctx, reserveRow, "A", "TI-SUPORTE"));
-    changes.push(setControl(ctx, originalRow, "A", destination || originalSector));
-    loanAfter[statusIdx] = "CANCELADO";
-    description = "Empréstimo aberto → cancelado";
-  } else if (status === "finalizado" || status === "cancelado") {
-    // Finalizado/Cancelado → Aberto: reserva volta emprestada no destino e o original volta para manutenção.
-    const otherOpen = loans!.values.slice(1).some((row, index) => {
-      if (index + 2 === loan.sheetRow || normalize(row[statusIdx]) !== "aberto") return false;
-      return [field(loans!, row, "COLETOR_RESERVA"), field(loans!, row, "COLETOR_SUBSTITUIDO")].some(
-        (coletor) => normalize(coletor) === normalize(reserve) || normalize(coletor) === normalize(original)
-      );
-    });
-    if (otherOpen) throw new ValidationError("Rollback bloqueado: a reserva ou o coletor substituído já está em outro empréstimo aberto.", 409);
-    const reserveRow = findEquipment(ctx, reserve, reserveSn, ["A", "M"], "a reserva");
-    const originalRow = findEquipment(ctx, original, originalSn, ["A"], "o coletor substituído");
-    changes.push(setControl(ctx, reserveRow, "E", destination || text(reserveRow.row[ctx.idx.local])));
-    changes.push(setControl(ctx, originalRow, "M", "TI-SUPORTE"));
-    loanAfter[statusIdx] = "ABERTO";
-    if (status === "finalizado") {
-      LOAN_RETURN_FIELDS.forEach((name) => columnIndexes(loans!.headers, name).forEach((index) => { loanAfter[index] = ""; }));
-    }
-    description = status === "finalizado" ? "Empréstimo finalizado → aberto (devolução desfeita)" : "Empréstimo cancelado → aberto";
-  } else {
-    throw new ValidationError(`Status do empréstimo não suportado para rollback: ${field(loans!, loan.row, "STATUS_EMPRESTIMO") || "vazio"}.`);
-  }
-
-  changes.unshift({ sheet: loans!, sheetRow: loan.sheetRow, before: loanBefore, after: loanAfter });
-  return { sheets, spreadsheetId, process: "Empréstimo", record: id, description, changes };
-}
-
-const revertReplacement = (
-  ctx: ControlCtx,
-  apps: SheetData | null,
-  replacements: SheetData,
-  replacement: { row: string[]; sheetRow: number },
-  allowedStatus: string[]
-) => {
-  const coletor = field(replacements, replacement.row, "COLETOR");
-  const snNew = field(replacements, replacement.row, "SN_NOVO");
-  const snOld = field(replacements, replacement.row, "SN_ANTERIOR");
-  const equipment = findEquipment(ctx, coletor, snNew, allowedStatus, "o coletor");
-  const snInUse = ctx.sheet.values.slice(1).some((row, index) => index + 2 !== equipment.sheetRow && snOld && normalize(row[ctx.idx.sn]) === normalize(snOld));
-  if (snInUse) throw new ValidationError(`Rollback bloqueado: o SN anterior "${snOld}" já está cadastrado em outro equipamento.`, 409);
-
-  const before = pad(equipment.row, ctx.sheet.headers.length);
-  const after = [...before];
-  after[ctx.idx.sn] = snOld;
-  if (ctx.idx.mac !== -1) after[ctx.idx.mac] = field(replacements, replacement.row, "MAC_ANTERIOR");
-  if (ctx.idx.final !== -1) after[ctx.idx.final] = field(replacements, replacement.row, "FINAL_ANTERIOR");
-  const changes: RowChange[] = [{ sheet: ctx.sheet, sheetRow: equipment.sheetRow, before, after }];
-
-  if (apps) {
-    const appColetor = columnIndex(apps.headers, "COLETOR");
-    const appSn = columnIndex(apps.headers, "SN");
-    if (appColetor !== -1 && appSn !== -1) {
-      apps.values.slice(1).forEach((row, index) => {
-        if (normalize(row[appColetor]) !== normalize(coletor)) return;
-        const appBefore = pad(row, apps.headers.length);
-        const appAfter = [...appBefore];
-        appAfter[appSn] = snOld;
-        changes.push({ sheet: apps, sheetRow: index + 2, before: appBefore, after: appAfter });
-      });
-    }
-  }
-
-  // O registro de substituição é removido do histórico ativo (cópia integral fica na auditoria).
-  const replacementBefore = pad(replacement.row, replacements.headers.length);
-  changes.push({ sheet: replacements, sheetRow: replacement.sheetRow, before: replacementBefore, after: replacementBefore.map(() => "") });
-  return { changes, equipment, after };
+const parseProcess = (value: unknown): Process => {
+  if (value === "loan" || value === "external" || value === "replacement") return value;
+  throw new ValidationError("Processo inválido para a ação administrativa.");
 };
 
-async function rollbackExternal(id: string) {
-  const sheets = getSheetsClient();
-  const spreadsheetId = requireSpreadsheetId();
-  const [external, control, replacements, apps] = await Promise.all([
-    loadSheet(sheets, spreadsheetId, EXTERNAL),
-    loadSheet(sheets, spreadsheetId, CONTROL),
-    loadSheet(sheets, spreadsheetId, REPLACEMENTS, true),
-    loadSheet(sheets, spreadsheetId, APPS, true),
-  ]);
-  const ctx = controlContext(control!);
-  const record = findById(external!, "ID_MANUTENCAO", id);
-  const status = normalize(field(external!, record.row, "STATUS_MANUTENCAO"));
-  const coletor = field(external!, record.row, "COLETOR");
-  const sn = field(external!, record.row, "SN");
-  const statusIdx = columnIndex(external!.headers, "STATUS_MANUTENCAO");
-  const recordBefore = pad(record.row, external!.headers.length);
-  const recordAfter = [...recordBefore];
-  const changes: RowChange[] = [];
-  let description = "";
+// ---------- Cadastro dos coletores (tbControleMobiles) ----------
 
-  if (status === "aberta") {
-    // Aberta → Cancelada: coletor volta Ativo na localização anterior ao envio.
-    const equipment = findEquipment(ctx, coletor, sn, ["M"], "o coletor");
-    assertNoOtherActive(ctx, coletor, equipment.sheetRow);
-    const previous = field(external!, record.row, "LOCALIZACAO_ANTERIOR") || field(external!, record.row, "SETOR_ORIGEM");
-    changes.push(setControl(ctx, equipment, "A", previous));
-    recordAfter[statusIdx] = "CANCELADA";
-    description = "Manutenção externa aberta → cancelada (envio desfeito)";
-  } else if (status === "finalizada" || status === "cancelada") {
-    // Finalizada/Cancelada → Aberta: coletor volta para MANUTENÇÃO EXTERNA (desfazendo substituição, se houver).
-    const linked = replacements
-      ? replacements.values
-          .slice(1)
-          .map((row, index) => ({ row, sheetRow: index + 2 }))
-          .filter(({ row }) => normalize(field(replacements, row, "ID_MANUTENCAO")) === normalize(id) && field(replacements, row, "COLETOR"))
-      : [];
-    if (linked.length > 1) throw new ValidationError("Há mais de uma substituição vinculada a esta manutenção. Desfaça as substituições individualmente.", 409);
-
-    if (linked.length === 1) {
-      const reverted = revertReplacement(ctx, apps, replacements!, linked[0], ["A"]);
-      const equipmentChange = reverted.changes[0];
-      equipmentChange.after[ctx.idx.status] = "M";
-      equipmentChange.after[ctx.idx.local] = "MANUTENÇÃO EXTERNA";
-      changes.push(...reverted.changes);
-      description = "Manutenção externa finalizada → aberta (retorno e substituição desfeitos)";
-    } else {
-      const equipment = findEquipment(ctx, coletor, sn, ["A"], "o coletor");
-      changes.push(setControl(ctx, equipment, "M", "MANUTENÇÃO EXTERNA"));
-      description = status === "finalizada" ? "Manutenção externa finalizada → aberta (retorno desfeito)" : "Manutenção externa cancelada → aberta";
-    }
-    recordAfter[statusIdx] = "ABERTA";
-    if (status === "finalizada") {
-      EXTERNAL_RETURN_FIELDS.forEach((name) => columnIndexes(external!.headers, name).forEach((index) => { recordAfter[index] = ""; }));
-    }
-  } else {
-    throw new ValidationError(`Status da manutenção não suportado para rollback: ${field(external!, record.row, "STATUS_MANUTENCAO") || "vazio"}.`);
-  }
-
-  changes.unshift({ sheet: external!, sheetRow: record.sheetRow, before: recordBefore, after: recordAfter });
-  return { sheets, spreadsheetId, process: "Manutenção externa", record: id, description, changes };
+interface ControlCtx {
+  sheet: SheetData;
+  idx: { coletor: number; sn: number; status: number; local: number };
+  // Linhas já alteradas nesta operação, para encadear ajustes no mesmo coletor.
+  pending: Map<number, RowChange>;
 }
 
-async function rollbackReplacement(id: string) {
+const controlContext = (sheet: SheetData): ControlCtx => {
+  const idx = {
+    coletor: columnIndex(sheet.headers, "Coletor"),
+    sn: columnIndex(sheet.headers, "SN"),
+    status: columnIndex(sheet.headers, "Status"),
+    local: columnIndex(sheet.headers, "Setor localizado"),
+  };
+  if (Object.values(idx).some((value) => value === -1)) throw new ValidationError(`A estrutura de ${CONTROL} está incompleta.`);
+  return { sheet, idx, pending: new Map() };
+};
+
+const findEquipment = (ctx: ControlCtx, coletor: string, sn: string, allowedStatus: string[], label: string) => {
+  const byName = ctx.sheet.values
+    .slice(1)
+    .map((row, index) => ({ row, sheetRow: index + 2 }))
+    .filter(({ row }) => normalize(row[ctx.idx.coletor]) === normalize(coletor));
+  const bySn = sn ? byName.filter(({ row }) => normalize(row[ctx.idx.sn]) === normalize(sn)) : [];
+  const byStatus = byName.filter(({ row }) => allowedStatus.includes(text(row[ctx.idx.status]).toUpperCase()));
+  const matches = bySn.length === 1 ? bySn : byStatus.length > 0 ? byStatus : byName;
+  if (matches.length !== 1) {
+    throw new ValidationError(
+      byName.length === 0
+        ? `O ${label} "${coletor}" não está cadastrado no Controle de Mobiles.`
+        : `Não foi possível identificar um único cadastro para o ${label} "${coletor}"${sn ? ` (SN ${sn})` : ""}.`,
+      409
+    );
+  }
+  const status = text(matches[0].row[ctx.idx.status]).toUpperCase();
+  if (!allowedStatus.includes(status)) {
+    throw new ValidationError(`O ${label} "${coletor}" está com status ${status || "vazio"} no cadastro e não pode ser usado nesta alteração.`, 409);
+  }
+  return matches[0];
+};
+
+const setControl = (ctx: ControlCtx, found: { row: string[]; sheetRow: number }, status: string, local: string) => {
+  const existing = ctx.pending.get(found.sheetRow);
+  const change = existing || { sheet: ctx.sheet, sheetRow: found.sheetRow, before: pad(found.row, ctx.sheet.headers.length), after: pad(found.row, ctx.sheet.headers.length) };
+  change.after[ctx.idx.status] = status;
+  change.after[ctx.idx.local] = local;
+  ctx.pending.set(found.sheetRow, change);
+  return change;
+};
+
+const serialOf = (ctx: ControlCtx, found: { row: string[] }) => text(found.row[ctx.idx.sn]);
+const locationOf = (ctx: ControlCtx, found: { row: string[] }) => text(found.row[ctx.idx.local]);
+
+// ---------- Edição de processo em aberto ----------
+
+async function editOpenRecord(body: any, admin: string, reason: string) {
+  const process = parseProcess(body.process);
+  if (process === "replacement") throw new ValidationError("A substituição é um registro concluído: ela só pode ser excluída.");
+  const config = PROCESSES[process];
+  const id = text(body.id);
+  if (!id) throw new ValidationError("Registro não informado.");
+  if (!Array.isArray(body.values) || !Array.isArray(body.expected)) throw new ValidationError("Dados do registro inválidos.");
+
   const sheets = getSheetsClient();
   const spreadsheetId = requireSpreadsheetId();
-  const [control, replacements, apps] = await Promise.all([
-    loadSheet(sheets, spreadsheetId, CONTROL),
-    loadSheet(sheets, spreadsheetId, REPLACEMENTS),
-    loadSheet(sheets, spreadsheetId, APPS, true),
-  ]);
+  const [records, control] = await Promise.all([loadSheet(sheets, spreadsheetId, config.sheet), loadSheet(sheets, spreadsheetId, CONTROL)]);
+  const sheet = records!;
+  const modifiedIndex = await ensureColumn(sheets, spreadsheetId, sheet, MODIFIED_COLUMN);
+  const record = findById(sheet, config.idColumn, id);
+  const width = sheet.headers.length;
+  const before = pad(record.row, width);
+
+  if (normalize(field(sheet, before, config.statusColumn)) !== config.open) {
+    throw new ValidationError("Somente processos em aberto podem ser modificados. Processos finalizados podem apenas ser excluídos.", 409);
+  }
+
+  // Proteção contra sobrescrever um registro que mudou depois de aberto na tela.
+  const expected = pad(body.expected, width);
+  if (before.some((value, index) => index !== modifiedIndex && text(value) !== text(expected[index]))) {
+    throw new ValidationError("O registro foi alterado por outra operação desde que foi aberto. Atualize a tela e tente novamente.", 409);
+  }
+
+  const protectedIndexes = new Set(
+    [config.idColumn, config.statusColumn, MODIFIED_COLUMN].map((name) => columnIndex(sheet.headers, name)).filter((index) => index !== -1)
+  );
+  const incoming = pad(body.values.map((value: unknown) => text(value)), width);
+  const after = before.map((value, index) => (protectedIndexes.has(index) ? value : incoming[index] ?? ""));
+  if (after.every((value, index) => text(value) === text(before[index]))) throw new ValidationError("Nenhum campo foi alterado.");
+
   const ctx = controlContext(control!);
-  const replacement = findById(replacements!, "ID_SUBSTITUICAO", id);
-  const reverted = revertReplacement(ctx, apps, replacements!, replacement, ["A", "I", "M", "E"]);
-  return { sheets, spreadsheetId, process: "Substituição", record: id, description: "Substituição desfeita (SN/MAC/Final anteriores restaurados)", changes: reverted.changes };
+  const set = (name: string, value: string) => {
+    const index = columnIndex(sheet.headers, name);
+    if (index !== -1) after[index] = value;
+  };
+  const changed = (name: string) => normalize(field(sheet, before, name)) !== normalize(field(sheet, after, name));
+  let summary = "";
+
+  if (process === "loan") {
+    const reserveBefore = field(sheet, before, "COLETOR_RESERVA");
+    const reserveAfter = field(sheet, after, "COLETOR_RESERVA");
+    const originalBefore = field(sheet, before, "COLETOR_SUBSTITUIDO");
+    const originalAfter = field(sheet, after, "COLETOR_SUBSTITUIDO");
+    const destination = field(sheet, after, "SETOR_DESTINO");
+    if (!reserveAfter || !originalAfter) throw new ValidationError("Informe o coletor reserva e o coletor substituído.");
+    if (normalize(reserveAfter) === normalize(originalAfter)) throw new ValidationError("O coletor reserva e o coletor substituído devem ser diferentes.");
+
+    const statusIdx = columnIndex(sheet.headers, config.statusColumn);
+    const busyInOtherLoan = (coletor: string) =>
+      sheet.values.slice(1).some((row, index) => {
+        if (index + 2 === record.sheetRow || normalize(row[statusIdx]) !== "aberto") return false;
+        return [field(sheet, row, "COLETOR_RESERVA"), field(sheet, row, "COLETOR_SUBSTITUIDO")].some((item) => normalize(item) === normalize(coletor));
+      });
+
+    if (changed("COLETOR_RESERVA")) {
+      if (busyInOtherLoan(reserveAfter)) throw new ValidationError(`O coletor "${reserveAfter}" já está em outro empréstimo aberto.`, 409);
+      const oldReserve = findEquipment(ctx, reserveBefore, field(sheet, before, "SN_RESERVA"), ["E"], "coletor reserva anterior");
+      const newReserve = findEquipment(ctx, reserveAfter, "", ["A"], "novo coletor reserva");
+      setControl(ctx, oldReserve, "A", "TI-SUPORTE");
+      setControl(ctx, newReserve, "E", destination);
+      set("SN_RESERVA", serialOf(ctx, newReserve));
+      summary += `reserva ${reserveBefore} → ${reserveAfter}; `;
+    } else if (changed("SETOR_DESTINO")) {
+      const reserve = findEquipment(ctx, reserveBefore, field(sheet, before, "SN_RESERVA"), ["E"], "coletor reserva");
+      setControl(ctx, reserve, "E", destination);
+    }
+
+    if (changed("COLETOR_SUBSTITUIDO")) {
+      if (busyInOtherLoan(originalAfter)) throw new ValidationError(`O coletor "${originalAfter}" já está em outro empréstimo aberto.`, 409);
+      const oldOriginal = findEquipment(ctx, originalBefore, field(sheet, before, "SN_SUBSTITUIDO"), ["M"], "coletor substituído anterior");
+      const newOriginal = findEquipment(ctx, originalAfter, "", ["A"], "novo coletor substituído");
+      setControl(ctx, oldOriginal, "A", destination || field(sheet, before, "SETOR_DESTINO"));
+      setControl(ctx, newOriginal, "M", "TI-SUPORTE");
+      set("SN_SUBSTITUIDO", serialOf(ctx, newOriginal));
+      summary += `substituído ${originalBefore} → ${originalAfter}; `;
+    }
+  } else {
+    const coletorBefore = field(sheet, before, "COLETOR");
+    const coletorAfter = field(sheet, after, "COLETOR");
+    if (!coletorAfter) throw new ValidationError("Informe o coletor.");
+    if (changed("COLETOR")) {
+      const previous = field(sheet, before, "LOCALIZACAO_ANTERIOR") || field(sheet, before, "SETOR_ORIGEM");
+      const oldEquipment = findEquipment(ctx, coletorBefore, field(sheet, before, "SN"), ["M"], "coletor anterior");
+      const newEquipment = findEquipment(ctx, coletorAfter, "", ["A"], "novo coletor");
+      setControl(ctx, oldEquipment, "A", previous);
+      set("SN", serialOf(ctx, newEquipment));
+      set("LOCALIZACAO_ANTERIOR", locationOf(ctx, newEquipment));
+      setControl(ctx, newEquipment, "M", "MANUTENÇÃO EXTERNA");
+      summary += `coletor ${coletorBefore} → ${coletorAfter}; `;
+    }
+  }
+
+  after[modifiedIndex] = "SIM";
+  const changes: RowChange[] = [{ sheet, sheetRow: record.sheetRow, before, after }, ...ctx.pending.values()];
+  return commit(sheets, spreadsheetId, admin, "EDICAO", config.title, `${id}${summary ? ` — ${summary.trim()}` : ""}`, reason, changes);
+}
+
+// ---------- Exclusão lógica de processo finalizado ----------
+
+// O registro sai da aba do processo e a exclusão fica registrada somente em tbAuditoriaMobiles,
+// com a cópia integral dos dados (DADOS_ANTES). Remoção da linha e auditoria vão numa única
+// requisição batchUpdate, que o Google Sheets aplica de forma atômica.
+async function deleteFinishedRecord(body: any, admin: string, reason: string) {
+  const process = parseProcess(body.process);
+  const config = PROCESSES[process];
+  const id = text(body.id);
+  if (!id) throw new ValidationError("Registro não informado.");
+
+  const sheets = getSheetsClient();
+  const spreadsheetId = requireSpreadsheetId();
+  const [sheet, audit, meta] = await Promise.all([
+    loadSheet(sheets, spreadsheetId, config.sheet),
+    loadAudit(sheets, spreadsheetId),
+    sheets.spreadsheets.get({ spreadsheetId, fields: "sheets.properties(sheetId,title)" }),
+  ]);
+  const record = findById(sheet!, config.idColumn, id);
+  const before = pad(record.row, sheet!.headers.length);
+
+  if (config.statusColumn) {
+    const status = normalize(field(sheet!, before, config.statusColumn));
+    if (!config.closed.includes(status)) {
+      throw new ValidationError("Somente processos finalizados podem ser excluídos. Processos em aberto podem ser modificados.", 409);
+    }
+  }
+
+  const sheetIdOf = (title: string) => {
+    const properties = (meta.data.sheets || []).map((item: any) => item.properties).find((item: any) => item?.title === title);
+    if (!properties) throw new ValidationError(`A aba ${title} não existe na planilha.`);
+    return properties.sheetId as number;
+  };
+
+  const change: RowChange = { sheet: sheet!, sheetRow: record.sheetRow, before, after: before.map(() => "") };
+  const entry: Record<string, string> = {
+    ID_AUDITORIA: makeId(),
+    DATA: now(),
+    ADMIN: admin,
+    ACAO: "EXCLUSAO",
+    PROCESSO: config.title,
+    ABA: sheet!.name,
+    REGISTRO: id,
+    CAMPOS_ALTERADOS: `Registro excluído da aba ${sheet!.name} (linha ${record.sheetRow}).`,
+    MOTIVO: reason,
+    DADOS_ANTES: snapshot([change], "before"),
+    DADOS_DEPOIS: "",
+  };
+  const auditRow = audit.headers.map((header) => {
+    const key = AUDIT_HEADERS.find((name) => normalize(name) === normalize(header));
+    return key ? entry[key] : "";
+  });
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          appendCells: {
+            sheetId: sheetIdOf(AUDIT_SHEET),
+            rows: [{ values: auditRow.map((value) => ({ userEnteredValue: { stringValue: value } })) }],
+            fields: "userEnteredValue",
+          },
+        },
+        {
+          deleteDimension: {
+            range: { sheetId: sheetIdOf(sheet!.name), dimension: "ROWS", startIndex: record.sheetRow - 1, endIndex: record.sheetRow },
+          },
+        },
+      ],
+    },
+  });
+
+  return entry;
 }
 
 export async function handleAdminOverride(req: any, res: any) {
@@ -491,24 +463,13 @@ export async function handleAdminOverride(req: any, res: any) {
     if (reason.length < 5) throw new ValidationError("Informe o motivo da alteração (mínimo de 5 caracteres).");
 
     if (body.adminAction === "edit") {
-      const entry = await editRecord(body, admin, reason);
+      const entry = await editOpenRecord(body, admin, reason);
       return res.status(200).json({ success: true, auditId: entry.ID_AUDITORIA });
     }
 
-    if (body.adminAction === "rollback") {
-      const id = text(body.id);
-      if (!id) throw new ValidationError("Registro não informado.");
-      const result =
-        body.process === "loan"
-          ? await rollbackLoan(id)
-          : body.process === "external"
-            ? await rollbackExternal(id)
-            : body.process === "replacement"
-              ? await rollbackReplacement(id)
-              : null;
-      if (!result) throw new ValidationError("Processo inválido para rollback.");
-      const entry = await commit(result.sheets, result.spreadsheetId, admin, "ROLLBACK", result.process, `${result.record} — ${result.description}`, reason, result.changes);
-      return res.status(200).json({ success: true, auditId: entry.ID_AUDITORIA, description: result.description });
+    if (body.adminAction === "delete") {
+      const entry = await deleteFinishedRecord(body, admin, reason);
+      return res.status(200).json({ success: true, auditId: entry.ID_AUDITORIA });
     }
 
     throw new ValidationError("Ação administrativa inválida.");

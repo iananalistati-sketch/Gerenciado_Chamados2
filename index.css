@@ -1153,6 +1153,20 @@ body,
   margin: -40px -20px 24px;
 }
 
+.admin-modified-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background-color: rgba(245, 158, 11, 0.14);
+  color: #D97706;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 @media print {
   .training-banner { display: none !important; }
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { exportRowsToXlsx } from "../utils/exportXlsx";
 import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData";
+import { isModifiedRow } from "./adminProcess";
 
 interface MobileLoanHistoryProps {
   idLabel?: string;
@@ -232,12 +233,15 @@ export default function MobileLoanHistory({
             {sortedItems.length === 0 ? <tr><td colSpan={visibleColumns.length + 1} className="mobile-history-empty">{loading ? "Carregando empréstimos..." : "Nenhum empréstimo encontrado com os filtros selecionados."}</td></tr> : sortedItems.map((item, index) => {
               const finalized = normalize(item.data.status) === "finalizado";
               return <tr key={item.data.loanId || `${item.data.reserveCollector}-${index}`}>
-                {visibleColumns.map((column) => <td key={column.key}>{column.value(item) || "—"}</td>)}
+                {visibleColumns.map((column) => <td key={column.key}>
+                  {column.value(item) || "—"}
+                  {column.key === "status" && isModifiedRow(headers, item.row) && <span className="admin-modified-badge" title="Registro modificado pelo Administrador">Modificada</span>}
+                </td>)}
                 <td><div className="mobile-history-term-actions">
                   <button type="button" onClick={() => onOpenTerm("loan", item.data)}>Empréstimo</button>
                   {finalized && item.data.returnDate && <button type="button" onClick={() => onOpenTerm("return", item.data)}>Devolução</button>}
                   {finalized && normalize(item.data.responsibilityTermIssued) === "sim" && <button type="button" onClick={() => onOpenTerm("responsibility", item.data)}>Responsabilidade</button>}
-                  {onAdmin && <button type="button" onClick={() => onAdmin(item.row)} title="Editar ou desfazer etapa (Administrador)" style={{ color: "#DC2626" }}>Admin</button>}
+                  {onAdmin && <button type="button" onClick={() => onAdmin(item.row)} title={normalize(item.data.status) === "aberto" ? "Modificar empréstimo em aberto (Administrador)" : "Excluir empréstimo do histórico (Administrador)"} style={{ color: "#DC2626" }}>Admin</button>}
                 </div></td>
               </tr>;
             })}

@@ -8,7 +8,6 @@ import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData
 import { DEVICE_CONFIG, type DeviceType } from "./deviceConfig";
 import { useAuth } from "../contexts/AuthContext";
 import AdminProcessModal from "./AdminProcessModal";
-import { describeRollback } from "./adminProcess";
 
 interface ReservasMobilesPanelProps {
   device?: DeviceType;
@@ -46,7 +45,7 @@ export default function ReservasMobilesPanel({
   const [reserveSort, setReserveSort] = useState<{ key: ReserveSortKey; direction: "asc" | "desc" }>({ key: "collector", direction: "asc" });
   const [adminLoan, setAdminLoan] = useState<string[] | null>(null);
   const { role } = useAuth();
-  // Edição/rollback administrativo: somente Administrador e somente no Controle de Mobiles.
+  // Ações do Administrador (modificar em aberto / excluir finalizado): somente no histórico do Controle de Mobiles.
   const isAdmin = role === "admin" && device === "mobile";
 
   const headers = data[0] || [];
@@ -488,9 +487,7 @@ export default function ReservasMobilesPanel({
                           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                             <button type="button" onClick={() => setTermPreview({ type: "loan", data: termData })} style={{ padding: "7px 9px", color: "#3B82F6", background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Termo empréstimo</button>
                             {finalized && termData.returnDate && <button type="button" onClick={() => setTermPreview({ type: "return", data: termData })} style={{ padding: "7px 9px", color: "#8B5CF6", background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Termo devolução</button>}
-                            {!finalized && canEdit && <button type="button" onClick={() => finishLoan(loan)} style={{ padding: "7px 10px", backgroundColor: "#10B981", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Finalizar empréstimo</button>}
-                            {isAdmin && <button type="button" onClick={() => setAdminLoan(loan)} title="Editar ou desfazer etapa (Administrador)" style={{ padding: "7px 9px", color: "#DC2626", background: "var(--bg-primary)", border: "1px solid rgba(220, 38, 38, 0.45)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Admin</button>}
-                          </div>
+                            {!finalized && canEdit && <button type="button" onClick={() => finishLoan(loan)} style={{ padding: "7px 10px", backgroundColor: "#10B981", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Finalizar empréstimo</button>}                          </div>
                         </td>
                       </tr>
                     );
@@ -524,14 +521,11 @@ export default function ReservasMobilesPanel({
         data={termPreview?.data || null}
         onClose={() => setTermPreview(null)}
       />
-      {isAdmin && (
+      {isAdmin && adminLoan && (
         <AdminProcessModal
-          isOpen={adminLoan !== null}
-          title="Empréstimo"
-          sheet={DEVICE_CONFIG[device].loanSheet}
+          process="loan"
           headers={loanHeaders}
           row={adminLoan}
-          rollback={adminLoan ? describeRollback("loan", loanHeaders, adminLoan) : null}
           onClose={() => setAdminLoan(null)}
           onDone={async () => {
             await Promise.resolve(onRefresh());
