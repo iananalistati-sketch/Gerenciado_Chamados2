@@ -1,8 +1,9 @@
+import { requireSpreadsheetId, withDataBase } from "./_googleSheets.js";
 import { google } from "googleapis";
 import { authErrorResponse, READABLE_SHEETS } from "./_requireAuth.js";
 import { requirePermission } from "./_rolePermissions.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Método não permitido." });
   }
@@ -40,7 +41,7 @@ export default async function handler(req, res) {
     });
 
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.SPREADSHEET_ID,
+      spreadsheetId: requireSpreadsheetId(),
       range: sheet,
     });
 
@@ -53,3 +54,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: error instanceof Error ? error.message : "Erro interno." });
   }
 }
+
+export default withDataBase(handler);

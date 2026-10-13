@@ -1,3 +1,4 @@
+import { requireSpreadsheetId } from "../_googleSheets.js";
 // Empréstimo de tablets: mesma regra do empréstimo de Mobiles, nas abas de tablets.
 // Roteado por /api/mobiles/loan e /api/mobiles/loan-return com device=tablet.
 import { google } from "googleapis";
@@ -179,7 +180,7 @@ export async function handleTabletLoanReturn(req: any, res: any) {
     });
 
     const spreadsheetId =
-      process.env.SPREADSHEET_ID;
+      requireSpreadsheetId();
 
     if (!spreadsheetId) {
       return res.status(500).json({

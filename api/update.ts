@@ -1,10 +1,11 @@
+import { requireSpreadsheetId, withDataBase } from "./_googleSheets.js";
 import { google } from "googleapis";
 import { authErrorResponse, UPDATABLE_SHEETS } from "./_requireAuth.js";
 import { requirePermission } from "./_rolePermissions.js";
 import { handleTabletUpdate, TABLET_CONTROL_SHEET } from "./tablets/_inventory.js";
 import { handleAdminOverride } from "./mobiles/_adminOverride.js";
 
-export default async function handler(req: any, res: any) {
+async function handler(req: any, res: any) {
   if (req.method !== "PUT") {
     return res.status(405).json({ error: "Método não permitido." });
   }
@@ -48,7 +49,7 @@ export default async function handler(req: any, res: any) {
     const sheets = google.sheets({ version: "v4", auth });
 
     if (sheet === "tbControleMobiles") {
-      const spreadsheetId = process.env.SPREADSHEET_ID;
+      const spreadsheetId = requireSpreadsheetId();
       const [headerResponse, currentRowResponse] = await Promise.all([
         sheets.spreadsheets.values.get({ spreadsheetId, range: `${sheet}!1:1` }),
         sheets.spreadsheets.values.get({ spreadsheetId, range: `${sheet}!A${rowIndex}:ZZ${rowIndex}` }),
@@ -67,7 +68,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (["tbChamadosMV", "tbChamadosForhealth"].includes(sheet)) {
-      const spreadsheetId = process.env.SPREADSHEET_ID;
+      const spreadsheetId = requireSpreadsheetId();
       const [headerResponse, currentRowResponse] = await Promise.all([
         sheets.spreadsheets.values.get({ spreadsheetId, range: `${sheet}!1:1` }),
         sheets.spreadsheets.values.get({ spreadsheetId, range: `${sheet}!A${rowIndex}:ZZ${rowIndex}` }),
@@ -88,7 +89,7 @@ export default async function handler(req: any, res: any) {
     }
 
     await sheets.spreadsheets.values.update({
-      spreadsheetId: process.env.SPREADSHEET_ID,
+      spreadsheetId: requireSpreadsheetId(),
       range: `${sheet}!A${rowIndex}`,
       valueInputOption: "RAW",
       requestBody: {
@@ -103,3 +104,5 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: error.message });
   }
 }
+
+export default withDataBase(handler);

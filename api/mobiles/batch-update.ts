@@ -1,3 +1,4 @@
+import { requireSpreadsheetId, withDataBase } from "../_googleSheets.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { google } from "googleapis";
 import { authErrorResponse } from "../_requireAuth.js";
@@ -24,7 +25,7 @@ const findHeaderIndex = (
     )
   );
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -90,7 +91,7 @@ export default async function handler(
     });
 
     const spreadsheetId =
-      process.env.SPREADSHEET_ID;
+      requireSpreadsheetId();
 
     if (!spreadsheetId) {
       return res.status(500).json({
@@ -453,3 +454,5 @@ export default async function handler(
     });
   }
 }
+
+export default withDataBase(handler);

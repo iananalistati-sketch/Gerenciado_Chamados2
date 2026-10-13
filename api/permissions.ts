@@ -22,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     const state = await loadPermissionMatrix();
     const sheets = getSheetsClient();
-    const spreadsheetId = requireSpreadsheetId();
+    const spreadsheetId = requireSpreadsheetId({ production: true });
     const writes: Array<{ range: string; values: string[][] }> = [];
     const appends: string[][] = [];
     const now = new Date().toLocaleString("sv-SE", { timeZone: "America/Sao_Paulo", hour12: false }).replace(" ", "T");

@@ -3,9 +3,16 @@ import { FirebaseError } from "firebase/app";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
+import { setDataBase, type DataBase } from "../auth/dataBase";
+
+const DATA_BASE_OPTIONS: Array<{ value: DataBase; label: string; description: string }> = [
+  { value: "producao", label: "Produção", description: "Dados reais" },
+  { value: "treinamento", label: "Treinamento", description: "Base para testes e capacitação" },
+];
 
 export default function Login() {
   const { login } = useAuth();
+  const [dataBase, setSelectedDataBase] = useState<DataBase>("producao");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -57,6 +64,8 @@ export default function Login() {
       setErrorMessage("");
       setSuccessMessage("");
 
+      // A base escolhida vale para todas as requisições desta aba até o próximo login.
+      setDataBase(dataBase);
       await login(email, password);
     } catch (error) {
       setErrorMessage(getLoginErrorMessage(error));
@@ -150,6 +159,38 @@ export default function Login() {
           </div>
 
           <div className="login-field">
+            <span id="login-base-label" style={{ fontSize: "13px", fontWeight: 600 }}>Base de dados</span>
+            <div role="radiogroup" aria-labelledby="login-base-label" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px" }}>
+              {DATA_BASE_OPTIONS.map((option) => {
+                const selected = dataBase === option.value;
+                const color = option.value === "treinamento" ? "#F59E0B" : "#3B82F6";
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setSelectedDataBase(option.value)}
+                    disabled={submitting}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: "10px",
+                      border: selected ? `2px solid ${color}` : "1px solid var(--border-primary, #CBD5E1)",
+                      backgroundColor: selected ? `${color}1A` : "transparent",
+                      color: "inherit",
+                      textAlign: "left",
+                      cursor: submitting ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <strong style={{ display: "block", fontSize: "13px", color: selected ? color : "inherit" }}>{option.label}</strong>
+                    <span style={{ fontSize: "11px", opacity: 0.75 }}>{option.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="login-field">
             <label htmlFor="login-email">
               E-mail
             </label>
@@ -236,7 +277,9 @@ export default function Login() {
           >
             {submitting
               ? "Entrando..."
-              : "Entrar no sistema"}
+              : dataBase === "treinamento"
+                ? "Entrar na base de treinamento"
+                : "Entrar no sistema"}
           </button>
 
           <button

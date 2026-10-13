@@ -14,6 +14,7 @@ import {
 } from "firebase/auth";
 
 import { auth } from "../firebase";
+import { setDataBase } from "../auth/dataBase";
 
 import {
   Permissions,
@@ -170,6 +171,7 @@ export function AuthProvider({
 
     setRole(null);
     setPermissions(null);
+    setDataBase("producao");
   }
 
   return (

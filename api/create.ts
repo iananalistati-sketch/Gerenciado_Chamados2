@@ -1,3 +1,4 @@
+import { requireSpreadsheetId, withDataBase } from "./_googleSheets.js";
 import { google } from "googleapis";
 import { authErrorResponse, CREATABLE_SHEETS } from "./_requireAuth.js";
 import { requirePermission } from "./_rolePermissions.js";
@@ -27,7 +28,7 @@ const findHeaderIndex = (
 const getToday = () =>
   new Date().toISOString().split("T")[0];
 
-export default async function handler(req: any, res: any) {
+async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido." });
   }
@@ -68,7 +69,7 @@ export default async function handler(req: any, res: any) {
     });
 
     const sheets = google.sheets({ version: "v4", auth });
-    const spreadsheetId = process.env.SPREADSHEET_ID;
+    const spreadsheetId = requireSpreadsheetId();
 
     if (!spreadsheetId) {
       return res.status(500).json({
@@ -460,3 +461,5 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
+
+export default withDataBase(handler);

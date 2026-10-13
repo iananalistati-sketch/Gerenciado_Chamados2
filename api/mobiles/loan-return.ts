@@ -1,3 +1,4 @@
+import { requireSpreadsheetId, withDataBase } from "../_googleSheets.js";
 import { google } from "googleapis";
 import { authErrorResponse } from "../_requireAuth.js";
 import { requirePermission } from "../_rolePermissions.js";
@@ -40,7 +41,7 @@ const toLocalIsoDateTime = () => {
   }).replace(" ", "T");
 };
 
-export default async function handler(req: any, res: any) {
+async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Método não permitido.",
@@ -186,7 +187,7 @@ export default async function handler(req: any, res: any) {
     });
 
     const spreadsheetId =
-      process.env.SPREADSHEET_ID;
+      requireSpreadsheetId();
 
     if (!spreadsheetId) {
       return res.status(500).json({
@@ -525,3 +526,5 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
+
+export default withDataBase(handler);

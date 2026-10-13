@@ -15,7 +15,7 @@ export async function loadPermissionMatrix() {
     viewer: { ...DEFAULT_ROLE_PERMISSIONS.viewer },
   };
   const sheets = getSheetsClient();
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId: requireSpreadsheetId(), range: `${PERMISSIONS_SHEET}!A:E` });
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId: requireSpreadsheetId({ production: true }), range: `${PERMISSIONS_SHEET}!A:E` });
   const values = response.data.values || [];
   if (values.length === 0) throw new Error(`A aba ${PERMISSIONS_SHEET} não possui cabeçalho.`);
   const headers = values[0] || [];

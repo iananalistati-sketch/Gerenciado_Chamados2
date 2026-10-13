@@ -17,6 +17,7 @@ import ChangePassword from "./components/ChangePassword";
 import { useTheme } from "./contexts/ThemeContext";
 import ControleMobiles from "./components/ControleMobiles";
 import ControleTablets from "./components/tablets/ControleTablets";
+import TrainingBanner from "./components/TrainingBanner";
 import { apiFetch } from "./auth/api";
 import { useAppDialog } from "./contexts/AppDialogContext";
 
@@ -1521,6 +1522,7 @@ function AppContent() {
       fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
       transition: 'background-color 0.25s ease, color 0.25s ease'
     }}>
+      <TrainingBanner />
       <div
         className="app-container"
         style={{
