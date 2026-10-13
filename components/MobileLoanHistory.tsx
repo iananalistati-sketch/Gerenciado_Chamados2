@@ -9,6 +9,7 @@ interface MobileLoanHistoryProps {
   loading: boolean;
   getCurrentLocation: (collector: string) => string;
   onOpenTerm: (type: "loan" | "return" | "responsibility", data: MobileLoanTermData) => void;
+  onAdmin?: (row: string[]) => void;
 }
 
 type HistoryItem = { row: string[]; data: MobileLoanTermData; currentLocation: string };
@@ -91,6 +92,7 @@ export default function MobileLoanHistory({
   loading,
   getCurrentLocation,
   onOpenTerm,
+  onAdmin,
 }: MobileLoanHistoryProps) {
   const columns = useMemo(
     () => (idLabel === "Coletor" ? baseColumns : baseColumns.map((column) => ({ ...column, label: column.label.replace("Coletor", idLabel) }))),
@@ -235,6 +237,7 @@ export default function MobileLoanHistory({
                   <button type="button" onClick={() => onOpenTerm("loan", item.data)}>Empréstimo</button>
                   {finalized && item.data.returnDate && <button type="button" onClick={() => onOpenTerm("return", item.data)}>Devolução</button>}
                   {finalized && normalize(item.data.responsibilityTermIssued) === "sim" && <button type="button" onClick={() => onOpenTerm("responsibility", item.data)}>Responsabilidade</button>}
+                  {onAdmin && <button type="button" onClick={() => onAdmin(item.row)} title="Editar ou desfazer etapa (Administrador)" style={{ color: "#DC2626" }}>Admin</button>}
                 </div></td>
               </tr>;
             })}

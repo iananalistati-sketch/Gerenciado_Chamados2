@@ -3,6 +3,9 @@ import { apiFetch } from "../auth/api";
 import { exportRowsToXlsx } from "../utils/exportXlsx";
 import ExternalMaintenanceTermModal from "./ExternalMaintenanceTermModal";
 import RetornoManutencaoExternaModal from "./RetornoManutencaoExternaModal";
+import AdminProcessModal from "./AdminProcessModal";
+import { describeRollback } from "./adminProcess";
+import { useAuth } from "../contexts/AuthContext";
 import {
   EXTERNAL_MAINTENANCE_SHEET,
   maintenanceRowToTermData,
@@ -49,6 +52,25 @@ export default function ManutencaoExternaPanel({
   const [returningRecord, setReturningRecord] = useState<ExternalMaintenanceTermData | null>(null);
   const [replacements, setReplacements] = useState<Replacement[]>([]);
   const [replacementsError, setReplacementsError] = useState<string | null>(null);
+  // Linhas originais (com número da linha) para a edição/rollback do Administrador.
+  const [rawExternal, setRawExternal] = useState<string[][]>([]);
+  const [rawReplacements, setRawReplacements] = useState<string[][]>([]);
+  const [adminTarget, setAdminTarget] = useState<{ kind: "external" | "replacement"; row: string[] } | null>(null);
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+
+  const withRowNumbers = (values: string[][]) => {
+    values.forEach((row, index) => {
+      (row as any)._originalIndex = index + 1;
+    });
+    return values;
+  };
+
+  const findRaw = (values: string[][], idColumn: string, id: string) => {
+    const headers = values[0] || [];
+    const index = headers.findIndex((header) => normalize(header) === normalize(idColumn));
+    return index === -1 ? null : values.slice(1).find((row) => normalize(String(row[index] || "")) === normalize(id)) || null;
+  };
 
   const fetchReplacements = useCallback(async () => {
     setReplacementsError(null);
@@ -56,7 +78,8 @@ export default function ManutencaoExternaPanel({
       const response = await apiFetch(`/api/data?sheet=${REPLACEMENT_SHEET}`);
       const result = await response.json();
       if (!response.ok) throw new Error(result?.error || "Erro ao carregar o histórico de substituições.");
-      const values: string[][] = Array.isArray(result) ? result.filter((row) => Array.isArray(row)) : [];
+      const values: string[][] = withRowNumbers(Array.isArray(result) ? result.filter((row) => Array.isArray(row)) : []);
+      setRawReplacements(values);
       const headers = values[0] || [];
       const col = (row: string[], name: string) => {
         const index = headers.findIndex((header) => normalize(header) === normalize(name));
@@ -81,6 +104,7 @@ export default function ManutencaoExternaPanel({
       );
     } catch (err: any) {
       setReplacements([]);
+      setRawReplacements([]);
       setReplacementsError(err?.message || "Erro ao carregar o histórico de substituições.");
     }
   }, []);
@@ -93,12 +117,14 @@ export default function ManutencaoExternaPanel({
       const response = await apiFetch(`/api/data?sheet=${EXTERNAL_MAINTENANCE_SHEET}`);
       const result = await response.json();
       if (!response.ok) throw new Error(result?.error || "Erro ao carregar manutenções externas.");
-      const values: string[][] = Array.isArray(result) ? result.filter((row) => Array.isArray(row)) : [];
+      const values: string[][] = withRowNumbers(Array.isArray(result) ? result.filter((row) => Array.isArray(row)) : []);
+      setRawExternal(values);
       const headers = values[0] || [];
       setRecords(values.slice(1).map((row) => maintenanceRowToTermData(headers, row)).filter((item) => item.maintenanceId));
     } catch (err: any) {
       setError(err?.message || "Erro ao carregar manutenções externas.");
       setRecords([]);
+      setRawExternal([]);
     } finally {
       setLoading(false);
     }
@@ -242,7 +268,7 @@ export default function ManutencaoExternaPanel({
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
-                    {["Data", "Coletor", "SN anterior → SN novo", "MAC anterior → MAC novo", "Setor", "Protocolo", "Responsável"].map((title) => (
+                    {["Data", "Coletor", "SN anterior → SN novo", "MAC anterior → MAC novo", "Setor", "Protocolo", "Responsável", ...(isAdmin ? [""] : [])].map((title) => (
                       <th key={title} style={{ padding: "10px 12px", textAlign: "left", color: "var(--text-muted)", fontSize: "11px", fontWeight: 700, borderBottom: "1px solid var(--border-primary)", whiteSpace: "nowrap" }}>{title}</th>
                     ))}
                   </tr>
@@ -259,6 +285,21 @@ export default function ManutencaoExternaPanel({
                         <td style={td}>{item.sector || "-"}</td>
                         <td style={td}>{item.maintenanceId || "-"}</td>
                         <td style={td}>{item.responsible || "-"}</td>
+                        {isAdmin && (
+                          <td style={td}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const raw = findRaw(rawReplacements, "ID_SUBSTITUICAO", item.id);
+                                if (raw) setAdminTarget({ kind: "replacement", row: raw });
+                              }}
+                              title="Editar ou desfazer substituição (Administrador)"
+                              style={{ padding: "6px 10px", borderRadius: "7px", border: "1px solid rgba(220, 38, 38, 0.45)", backgroundColor: "var(--bg-primary)", color: "#DC2626", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}
+                            >
+                              Admin
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -283,7 +324,7 @@ export default function ManutencaoExternaPanel({
                       <strong style={{ color: "var(--text-primary)" }}>{item.collector || "-"}</strong>
                       <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>SN: {item.serial || "-"} · {item.maintenanceId}</span>
                     </div>
-                    <span style={{ color: isOpen ? "#8B5CF6" : "#10B981", fontSize: "10px", fontWeight: 700 }}>{isOpen ? "EM ABERTO" : "FINALIZADA"}</span>
+                    <span style={{ color: isOpen ? "#8B5CF6" : normalize(item.status) === "cancelada" ? "var(--text-muted)" : "#10B981", fontSize: "10px", fontWeight: 700 }}>{isOpen ? "EM ABERTO" : normalize(item.status) === "cancelada" ? "CANCELADA" : "FINALIZADA"}</span>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px", marginTop: "12px", fontSize: "12px" }}>
                     <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>Setor</span><strong>{item.originSector || "-"}</strong></div>
@@ -294,8 +335,21 @@ export default function ManutencaoExternaPanel({
                   </div>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
                     <button type="button" onClick={() => setTermPreview({ type: "receipt", data: item })} style={actionStyle("#8B5CF6")}>Termo de recebimento</button>
-                    {!isOpen && <button type="button" onClick={() => setTermPreview({ type: "return", data: item })} style={actionStyle("#10B981")}>Termo de devolução</button>}
+                    {!isOpen && item.returnDate && <button type="button" onClick={() => setTermPreview({ type: "return", data: item })} style={actionStyle("#10B981")}>Termo de devolução</button>}
                     {isOpen && canManage && <button type="button" onClick={() => setReturningRecord(item)} style={actionStyle("#3B82F6")}>↩ Registrar retorno</button>}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const raw = findRaw(rawExternal, "ID_MANUTENCAO", item.maintenanceId);
+                          if (raw) setAdminTarget({ kind: "external", row: raw });
+                        }}
+                        title="Editar ou desfazer etapa (Administrador)"
+                        style={{ ...actionStyle("#DC2626"), border: "1px solid rgba(220, 38, 38, 0.45)" }}
+                      >
+                        Admin
+                      </button>
+                    )}
                   </div>
                 </article>
               );
@@ -310,6 +364,25 @@ export default function ManutencaoExternaPanel({
         data={termPreview?.data || null}
         onClose={() => setTermPreview(null)}
       />
+      {isAdmin && adminTarget && (
+        <AdminProcessModal
+          isOpen
+          title={adminTarget.kind === "external" ? "Manutenção externa" : "Substituição"}
+          sheet={adminTarget.kind === "external" ? EXTERNAL_MAINTENANCE_SHEET : REPLACEMENT_SHEET}
+          headers={(adminTarget.kind === "external" ? rawExternal : rawReplacements)[0] || []}
+          row={adminTarget.row}
+          rollback={describeRollback(
+            adminTarget.kind,
+            (adminTarget.kind === "external" ? rawExternal : rawReplacements)[0] || [],
+            adminTarget.row
+          )}
+          onClose={() => setAdminTarget(null)}
+          onDone={async () => {
+            await Promise.resolve(onRefresh());
+            await fetchRecords();
+          }}
+        />
+      )}
       <RetornoManutencaoExternaModal
         isOpen={returningRecord !== null}
         record={returningRecord}

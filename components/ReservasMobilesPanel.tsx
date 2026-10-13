@@ -6,6 +6,9 @@ import MobileLoanTermModal from "./MobileLoanTermModal";
 import MobileMaintenancePanel from "./MobileMaintenancePanel";
 import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData";
 import { DEVICE_CONFIG, type DeviceType } from "./deviceConfig";
+import { useAuth } from "../contexts/AuthContext";
+import AdminProcessModal from "./AdminProcessModal";
+import { describeRollback } from "./adminProcess";
 
 interface ReservasMobilesPanelProps {
   device?: DeviceType;
@@ -41,6 +44,10 @@ export default function ReservasMobilesPanel({
   const [termPreview, setTermPreview] = useState<{ type: "loan" | "return" | "responsibility"; data: MobileLoanTermData } | null>(null);
   const [activePanel, setActivePanel] = useState<PanelView>(mode === "history" ? "history" : "openLoans");
   const [reserveSort, setReserveSort] = useState<{ key: ReserveSortKey; direction: "asc" | "desc" }>({ key: "collector", direction: "asc" });
+  const [adminLoan, setAdminLoan] = useState<string[] | null>(null);
+  const { role } = useAuth();
+  // Edição/rollback administrativo: somente Administrador e somente no Controle de Mobiles.
+  const isAdmin = role === "admin" && device === "mobile";
 
   const headers = data[0] || [];
   const rows = data.slice(1);
@@ -94,7 +101,12 @@ export default function ReservasMobilesPanel({
         throw new Error(result?.error || "Erro ao carregar empréstimos.");
       }
 
-      setLoans(Array.isArray(result) ? result.filter((row) => Array.isArray(row)) : []);
+      const loanValues: string[][] = Array.isArray(result) ? result.filter((row) => Array.isArray(row)) : [];
+      // Número da linha na planilha, usado pela edição administrativa.
+      loanValues.forEach((row, index) => {
+        (row as any)._originalIndex = index + 1;
+      });
+      setLoans(loanValues);
     } catch (err: any) {
       console.error(`Erro ao carregar ${DEVICE_CONFIG[device].loanSheet}:`, err);
       setError(err.message || "Erro ao carregar empréstimos.");
@@ -419,6 +431,7 @@ export default function ReservasMobilesPanel({
           loading={loadingLoans}
           getCurrentLocation={getReserveLocation}
           onOpenTerm={(type, termData) => setTermPreview({ type, data: termData })}
+          onAdmin={isAdmin ? (row) => setAdminLoan(row) : undefined}
         />
       ) : (
         <div>
@@ -476,6 +489,7 @@ export default function ReservasMobilesPanel({
                             <button type="button" onClick={() => setTermPreview({ type: "loan", data: termData })} style={{ padding: "7px 9px", color: "#3B82F6", background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Termo empréstimo</button>
                             {finalized && termData.returnDate && <button type="button" onClick={() => setTermPreview({ type: "return", data: termData })} style={{ padding: "7px 9px", color: "#8B5CF6", background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Termo devolução</button>}
                             {!finalized && canEdit && <button type="button" onClick={() => finishLoan(loan)} style={{ padding: "7px 10px", backgroundColor: "#10B981", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Finalizar empréstimo</button>}
+                            {isAdmin && <button type="button" onClick={() => setAdminLoan(loan)} title="Editar ou desfazer etapa (Administrador)" style={{ padding: "7px 9px", color: "#DC2626", background: "var(--bg-primary)", border: "1px solid rgba(220, 38, 38, 0.45)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Admin</button>}
                           </div>
                         </td>
                       </tr>
@@ -510,6 +524,21 @@ export default function ReservasMobilesPanel({
         data={termPreview?.data || null}
         onClose={() => setTermPreview(null)}
       />
+      {isAdmin && (
+        <AdminProcessModal
+          isOpen={adminLoan !== null}
+          title="Empréstimo"
+          sheet={DEVICE_CONFIG[device].loanSheet}
+          headers={loanHeaders}
+          row={adminLoan}
+          rollback={adminLoan ? describeRollback("loan", loanHeaders, adminLoan) : null}
+          onClose={() => setAdminLoan(null)}
+          onDone={async () => {
+            await Promise.resolve(onRefresh());
+            await fetchLoans();
+          }}
+        />
+      )}
     </div>
   );
 }

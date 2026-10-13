@@ -5,6 +5,8 @@ import ManutencaoExternaModal from "./ManutencaoExternaModal";
 import RetornoManutencaoExternaModal from "./RetornoManutencaoExternaModal";
 import { isExternalMaintenanceLocation } from "./externalMaintenanceData";
 import { useAppDialog } from "../contexts/AppDialogContext";
+import { useAuth } from "../contexts/AuthContext";
+import AdminProcessModal from "./AdminProcessModal";
 
 interface EditarMobileModalProps {
   isOpen: boolean;
@@ -44,6 +46,9 @@ export default function EditarMobileModal({
   const [showReturn, setShowReturn] = useState(false);
   const [showExternalSend, setShowExternalSend] = useState(false);
   const [showExternalReturn, setShowExternalReturn] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
 
   const getHeader = (...names: string[]) =>
     headers.find((header) =>
@@ -121,6 +126,7 @@ export default function EditarMobileModal({
     setShowReturn(false);
     setShowExternalSend(false);
     setShowExternalReturn(false);
+    setShowAdmin(false);
   }, [isOpen, row, headers]);
 
   if (!isOpen || !row) return null;
@@ -432,6 +438,7 @@ export default function EditarMobileModal({
               {canTemporarilyReplace && <button type="button" onClick={() => setShowSubstitute(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(245, 158, 11, 0.14)", color: "#F59E0B", border: "1px solid rgba(245, 158, 11, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Substituir temporariamente</button>}
               {canFinalizeLoan && <button type="button" onClick={() => setShowReturn(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(16, 185, 129, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Finalizar empréstimo</button>}
               {canSendToExternalMaintenance && <button type="button" onClick={() => setShowExternalSend(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(139, 92, 246, 0.14)", color: "#8B5CF6", border: "1px solid rgba(139, 92, 246, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Enviar p/ manutenção externa</button>}
+              {isAdmin && <button type="button" onClick={() => setShowAdmin(true)} disabled={saving} title="Editar qualquer campo, inclusive status e localização (Administrador)" style={{ padding: "10px 18px", backgroundColor: "rgba(220, 38, 38, 0.10)", color: "#DC2626", border: "1px solid rgba(220, 38, 38, 0.45)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Admin</button>}
               {canReturnFromExternalMaintenance && <button type="button" onClick={() => setShowExternalReturn(true)} disabled={saving} style={{ padding: "10px 18px", backgroundColor: "rgba(16, 185, 129, 0.14)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.35)", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: 700 }}>Registrar retorno da manutenção</button>}
             </div>
             <div style={{ display: "flex", gap: "12px" }}>
@@ -480,6 +487,21 @@ export default function EditarMobileModal({
           onClose();
         }}
       />
+      {isAdmin && (
+        <AdminProcessModal
+          isOpen={showAdmin}
+          title={`Coletor ${currentCollector || ""}`.trim()}
+          sheet="tbControleMobiles"
+          headers={headers}
+          row={row}
+          onClose={() => setShowAdmin(false)}
+          onDone={async () => {
+            await Promise.resolve(onRefresh());
+            setShowAdmin(false);
+            onClose();
+          }}
+        />
+      )}
       <RetornoManutencaoExternaModal
         isOpen={showExternalReturn}
         collector={currentCollector}

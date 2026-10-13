@@ -2,10 +2,16 @@ import { google } from "googleapis";
 import { authErrorResponse, UPDATABLE_SHEETS } from "./_requireAuth.js";
 import { requirePermission } from "./_rolePermissions.js";
 import { handleTabletUpdate, TABLET_CONTROL_SHEET } from "./tablets/_inventory.js";
+import { handleAdminOverride } from "./mobiles/_adminOverride.js";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "PUT") {
     return res.status(405).json({ error: "Método não permitido." });
+  }
+
+  // Edição/rollback administrativo do Controle de Mobiles (somente perfil admin, com auditoria).
+  if (req.body?.adminAction) {
+    return handleAdminOverride(req, res);
   }
 
   try {
