@@ -23,6 +23,28 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
 };
 
+const isDateField = (header: string) => /^data(_|\s|$)/i.test(String(header || "").trim());
+
+// Separa "2026-10-13T14:14:03" (ou "13/10/2026 14:14") em data ISO e hora.
+const splitDateTime = (value: string) => {
+  const iso = value.match(/^(\d{4}-\d{2}-\d{2})(?:[T\s](\d{2}:\d{2}(?::\d{2})?))?/);
+  if (iso) return { date: iso[1], time: iso[2] || "" };
+  const br = value.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}:\d{2}(?::\d{2})?))?/);
+  if (br) return { date: `${br[3]}-${br[2]}-${br[1]}`, time: br[4] || "" };
+  return { date: "", time: "" };
+};
+
+const currentTime = () =>
+  new Date().toLocaleTimeString("sv-SE", { timeZone: "America/Sao_Paulo", hour12: false });
+
+// Na tela o Administrador escolhe só a data; no banco o registro mantém a hora
+// (a hora original do registro ou, se não houver, a hora atual).
+const dateWithTime = (date: string, originalValue: string) => {
+  if (!date) return "";
+  const time = splitDateTime(originalValue).time || currentTime();
+  return `${date}T${time.length === 5 ? `${time}:00` : time}`;
+};
+
 // Ações exclusivas do Administrador no histórico: processo em aberto → modificar qualquer etapa;
 // processo finalizado → excluir. O servidor registra cada ação em tbAuditoriaMobiles.
 export default function AdminProcessModal({ process, headers, row, onClose, onDone }: AdminProcessModalProps) {
@@ -151,16 +173,28 @@ export default function AdminProcessModal({ process, headers, row, onClose, onDo
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "12px" }}>
                 {headers.map((header, index) => {
                   const locked = isProtectedField(process, header);
+                  const dateField = isDateField(header);
+                  const setValue = (next: string) => setValues((current) => current.map((value, i) => (i === index ? next : value)));
                   return (
                     <label key={index} style={{ display: "grid", gap: "5px", color: changed[index] ? "#F59E0B" : "var(--text-secondary)", fontSize: "11px", fontWeight: 600 }}>
                       {labels[index]}{changed[index] ? " • alterado" : ""}
-                      <input
-                        type="text"
-                        value={values[index] ?? ""}
-                        onChange={(event) => setValues((current) => current.map((value, i) => (i === index ? event.target.value : value)))}
-                        disabled={saving || locked}
-                        style={{ ...inputStyle, borderColor: changed[index] ? "#F59E0B" : "var(--border-primary)", opacity: locked ? 0.6 : 1 }}
-                      />
+                      {dateField ? (
+                        <input
+                          type="date"
+                          value={splitDateTime(values[index] ?? "").date}
+                          onChange={(event) => setValue(event.target.value === splitDateTime(original[index] || "").date ? original[index] : dateWithTime(event.target.value, original[index] || ""))}
+                          disabled={saving || locked}
+                          style={{ ...inputStyle, colorScheme: "light dark", borderColor: changed[index] ? "#F59E0B" : "var(--border-primary)", opacity: locked ? 0.6 : 1 }}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={values[index] ?? ""}
+                          onChange={(event) => setValue(event.target.value)}
+                          disabled={saving || locked}
+                          style={{ ...inputStyle, borderColor: changed[index] ? "#F59E0B" : "var(--border-primary)", opacity: locked ? 0.6 : 1 }}
+                        />
+                      )}
                     </label>
                   );
                 })}
