@@ -43,3 +43,12 @@ export async function requirePermission(authorization: string | string[] | undef
   return actor;
 }
 
+// Libera a operação se o perfil tiver pelo menos uma das permissões informadas.
+export async function requireAnyPermission(authorization: string | string[] | undefined, permissions: PermissionKey[]) {
+  const actor = await requireRole(authorization, ["admin", "analyst", "viewer"]);
+  if (actor.role === "admin") return actor;
+  const { matrix } = await loadPermissionMatrix();
+  if (!permissions.some((permission) => matrix[actor.role][permission])) throw new ApiAuthError("Usuário sem permissão para esta operação.", 403);
+  return actor;
+}
+

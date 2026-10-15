@@ -7,6 +7,7 @@ import MobileMaintenancePanel from "./MobileMaintenancePanel";
 import { loanRowToTermData, type MobileLoanTermData } from "./mobileLoanTermData";
 import { DEVICE_CONFIG, type DeviceType } from "./deviceConfig";
 import { useAuth } from "../contexts/AuthContext";
+import { useAppDialog } from "../contexts/AppDialogContext";
 import AdminProcessModal from "./AdminProcessModal";
 
 interface ReservasMobilesPanelProps {
@@ -15,6 +16,8 @@ interface ReservasMobilesPanelProps {
   data: string[][];
   currentUserName: string;
   canEdit: boolean;
+  // Quem gerencia empréstimos (criar ou finalizar) registra o número da RNC nos empréstimos em aberto.
+  canRegisterRnc?: boolean;
   onRefresh: () => void | Promise<void>;
 }
 
@@ -34,8 +37,10 @@ export default function ReservasMobilesPanel({
   data,
   currentUserName,
   canEdit,
+  canRegisterRnc = false,
   onRefresh,
 }: ReservasMobilesPanelProps) {
+  const { alert: showAlert, prompt: showPrompt } = useAppDialog();
   const [loans, setLoans] = useState<string[][]>([]);
   const [loadingLoans, setLoadingLoans] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +145,40 @@ export default function ReservasMobilesPanel({
   const responsibleIdx = loanIndex("RESPONSAVEL_EMPRESTIMO");
   const reasonIdx = loanIndex("MOTIVO");
   const loanStatusIdx = loanIndex("STATUS_EMPRESTIMO");
+  const rncIdx = loanIndex("NUMERO_RNC");
+  const getRnc = (loan: string[]) => (rncIdx !== -1 ? String(loan[rncIdx] || "").trim() : "");
+  const isOpenLoan = (loan: string[]) =>
+    loanStatusIdx !== -1 && String(loan[loanStatusIdx] || "").trim().toUpperCase() === "ABERTO";
+
+  const registerRnc = async (loan: string[]) => {
+    if (!canRegisterRnc || !isOpenLoan(loan)) return;
+    const loanId = idIdx !== -1 ? String(loan[idIdx] || "").trim() : "";
+    if (!loanId) return;
+    const current = getRnc(loan);
+    const value = await showPrompt(`Informe o número da RNC do empréstimo ${loanId}.${current ? " Deixe em branco para remover." : ""}`, {
+      title: "Registrar RNC",
+      defaultValue: current,
+      placeholder: "Nº da RNC",
+      confirmLabel: "Salvar",
+      cancelLabel: "Cancelar",
+    });
+    if (value === null) return;
+    const rnc = value.trim();
+    if (rnc === current) return;
+    try {
+      const response = await apiFetch("/api/mobiles/loan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow: "rnc", device, loanId, rnc }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.error || "Erro ao registrar a RNC.");
+      await fetchLoans();
+      await showAlert(rnc ? `RNC ${rnc} registrada no empréstimo ${loanId}.` : `RNC removida do empréstimo ${loanId}.`, { variant: "success" });
+    } catch (err: any) {
+      await showAlert(err?.message || "Erro ao registrar a RNC.", { variant: "error" });
+    }
+  };
 
   const openLoans = loanRows.filter(
     (row) =>
@@ -431,6 +470,7 @@ export default function ReservasMobilesPanel({
           getCurrentLocation={getReserveLocation}
           onOpenTerm={(type, termData) => setTermPreview({ type, data: termData })}
           onAdmin={isAdmin ? (row) => setAdminLoan(row) : undefined}
+          onRnc={canRegisterRnc ? registerRnc : undefined}
         />
       ) : (
         <div>
@@ -439,7 +479,7 @@ export default function ReservasMobilesPanel({
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1020px" }}>
               <thead>
                 <tr style={{ backgroundColor: "var(--bg-primary)" }}>
-                  {["Reserva", "SN Reserva", "Substituindo", "SN Substituído", "Setor destino", "Localização atual", "Data", "Responsável", "Motivo", "Ação"].map((title) => (
+                  {["Reserva", "SN Reserva", "Substituindo", "SN Substituído", "Setor destino", "Localização atual", "Data", "Responsável", "Motivo", "Nº RNC", "Ação"].map((title) => (
                     <th key={title} style={{ padding: "10px 12px", textAlign: "left", color: "var(--text-muted)", fontSize: "11px", borderBottom: "1px solid var(--border-primary)", whiteSpace: "nowrap" }}>
                       {title}
                     </th>
@@ -449,7 +489,7 @@ export default function ReservasMobilesPanel({
               <tbody>
                 {displayedLoans.length === 0 ? (
                   <tr>
-                    <td colSpan={10} style={{ padding: "18px", textAlign: "center", color: "var(--text-muted)", fontSize: "12px" }}>
+                    <td colSpan={11} style={{ padding: "18px", textAlign: "center", color: "var(--text-muted)", fontSize: "12px" }}>
                       {loadingLoans ? "Carregando empréstimos..." : "Nenhum empréstimo aberto."}
                     </td>
                   </tr>
@@ -483,11 +523,13 @@ export default function ReservasMobilesPanel({
                         <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{dateIdx !== -1 ? loan[dateIdx] || "-" : "-"}</td>
                         <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{responsibleIdx !== -1 ? loan[responsibleIdx] || "-" : "-"}</td>
                         <td style={{ padding: "10px 12px", color: "var(--text-secondary)", fontSize: "12px" }}>{reasonIdx !== -1 ? loan[reasonIdx] || "-" : "-"}</td>
+                        <td style={{ padding: "10px 12px", color: getRnc(loan) ? "var(--text-primary)" : "var(--text-muted)", fontSize: "12px", fontWeight: getRnc(loan) ? 700 : 400 }}>{getRnc(loan) || "-"}</td>
                         <td style={{ padding: "10px 12px" }}>
                           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                             <button type="button" onClick={() => setTermPreview({ type: "loan", data: termData })} style={{ padding: "7px 9px", color: "#3B82F6", background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Termo empréstimo</button>
                             {finalized && termData.returnDate && <button type="button" onClick={() => setTermPreview({ type: "return", data: termData })} style={{ padding: "7px 9px", color: "#8B5CF6", background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Termo devolução</button>}
-                            {!finalized && canEdit && <button type="button" onClick={() => finishLoan(loan)} style={{ padding: "7px 10px", backgroundColor: "#10B981", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Finalizar empréstimo</button>}                          </div>
+                            {!finalized && canEdit && <button type="button" onClick={() => finishLoan(loan)} style={{ padding: "7px 10px", backgroundColor: "#10B981", color: "#FFFFFF", border: "none", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>Finalizar empréstimo</button>}
+                            {!finalized && canRegisterRnc && <button type="button" onClick={() => registerRnc(loan)} title="Registrar ou alterar o número da RNC" style={{ padding: "7px 9px", color: "#F59E0B", background: "var(--bg-primary)", border: "1px solid rgba(245, 158, 11, 0.45)", borderRadius: "7px", cursor: "pointer", fontSize: "11px", fontWeight: 700 }}>{getRnc(loan) ? "Alterar RNC" : "RNC"}</button>}                          </div>
                         </td>
                       </tr>
                     );

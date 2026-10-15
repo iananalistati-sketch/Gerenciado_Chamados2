@@ -64,6 +64,7 @@ const FIELD_LABELS: Record<string, string> = {
   DEFEITO_RELATADO: "Defeito relatado",
   SERVICO_REALIZADO: "Serviço realizado",
   MODIFICADA_ADMIN: "Modificada pelo admin",
+  NUMERO_RNC: "Nº da RNC",
 };
 
 const prettyLabel = (header: string) => {

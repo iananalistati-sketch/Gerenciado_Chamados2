@@ -11,9 +11,10 @@ interface MobileLoanHistoryProps {
   getCurrentLocation: (collector: string) => string;
   onOpenTerm: (type: "loan" | "return" | "responsibility", data: MobileLoanTermData) => void;
   onAdmin?: (row: string[]) => void;
+  onRnc?: (row: string[]) => void;
 }
 
-type HistoryItem = { row: string[]; data: MobileLoanTermData; currentLocation: string };
+type HistoryItem = { row: string[]; data: MobileLoanTermData; currentLocation: string; rnc: string };
 type SortDirection = "asc" | "desc";
 
 interface HistoryColumn {
@@ -60,6 +61,7 @@ const baseColumns: HistoryColumn[] = [
   { key: "destinationSector", label: "Setor de destino", width: 22, value: ({ data }) => data.destinationSector },
   { key: "currentLocation", label: "Localização atual", width: 22, value: ({ currentLocation }) => currentLocation },
   { key: "serviceOrder", label: "Ordem de serviço", width: 18, value: ({ data }) => data.serviceOrder },
+  { key: "rnc", label: "Nº da RNC", width: 18, value: ({ rnc }) => rnc },
   { key: "loanDate", label: "Data do empréstimo", width: 18, value: ({ data }) => formatDate(data.loanDate), sortValue: ({ data }) => dateKey(data.loanDate) },
   { key: "returnDate", label: "Data da devolução", width: 18, value: ({ data }) => formatDate(data.returnDate), sortValue: ({ data }) => dateKey(data.returnDate) },
   { key: "loanResponsible", label: "Técnico do empréstimo", width: 28, value: ({ data }) => data.loanResponsible },
@@ -83,7 +85,7 @@ const baseColumns: HistoryColumn[] = [
 
 const defaultColumns = [
   "loanId", "status", "reserveCollector", "originalCollector", "destinationSector",
-  "serviceOrder", "loanDate", "returnDate", "loanResponsible",
+  "serviceOrder", "rnc", "loanDate", "returnDate", "loanResponsible",
 ];
 
 export default function MobileLoanHistory({
@@ -94,6 +96,7 @@ export default function MobileLoanHistory({
   getCurrentLocation,
   onOpenTerm,
   onAdmin,
+  onRnc,
 }: MobileLoanHistoryProps) {
   const columns = useMemo(
     () => (idLabel === "Coletor" ? baseColumns : baseColumns.map((column) => ({ ...column, label: column.label.replace("Coletor", idLabel) }))),
@@ -108,10 +111,14 @@ export default function MobileLoanHistory({
   const [selectedKeys, setSelectedKeys] = useState<string[]>(defaultColumns);
   const [sort, setSort] = useState<{ key: string; direction: SortDirection }>({ key: "loanDate", direction: "desc" });
 
-  const items = useMemo(() => rows.map((row) => {
-    const data = loanRowToTermData(headers, row);
-    return { row, data, currentLocation: getCurrentLocation(data.reserveCollector) };
-  }), [getCurrentLocation, headers, rows]);
+  const items = useMemo(() => {
+    const rncIndex = headers.findIndex((header) => normalize(header) === normalize("NUMERO_RNC"));
+    return rows.map((row) => {
+      const data = loanRowToTermData(headers, row);
+      const rnc = rncIndex === -1 ? "" : String(row[rncIndex] || "").trim();
+      return { row, data, currentLocation: getCurrentLocation(data.reserveCollector), rnc };
+    });
+  }, [getCurrentLocation, headers, rows]);
 
   const sectors = useMemo(() => Array.from(new Set<string>(items.map(({ data }) => data.destinationSector).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" })), [items]);
@@ -241,6 +248,7 @@ export default function MobileLoanHistory({
                   <button type="button" onClick={() => onOpenTerm("loan", item.data)}>Empréstimo</button>
                   {finalized && item.data.returnDate && <button type="button" onClick={() => onOpenTerm("return", item.data)}>Devolução</button>}
                   {finalized && normalize(item.data.responsibilityTermIssued) === "sim" && <button type="button" onClick={() => onOpenTerm("responsibility", item.data)}>Responsabilidade</button>}
+                  {onRnc && normalize(item.data.status) === "aberto" && <button type="button" onClick={() => onRnc(item.row)} title="Registrar ou alterar o número da RNC" style={{ color: "#F59E0B" }}>{item.rnc ? "Alterar RNC" : "RNC"}</button>}
                   {onAdmin && <button type="button" onClick={() => onAdmin(item.row)} title={normalize(item.data.status) === "aberto" ? "Modificar empréstimo em aberto (Administrador)" : "Excluir empréstimo do histórico (Administrador)"} style={{ color: "#DC2626" }}>Admin</button>}
                 </div></td>
               </tr>;

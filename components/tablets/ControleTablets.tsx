@@ -246,10 +246,10 @@ export default function ControleTablets({ data, loading, error, currentUserName,
       )}
 
       {section === "loans" && permissions.canViewTabletLoans && (
-        <ReservasMobilesPanel device="tablet" mode="operations" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnTabletLoan} onRefresh={refreshAll} />
+        <ReservasMobilesPanel device="tablet" mode="operations" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnTabletLoan} canRegisterRnc={permissions.canCreateTabletLoan || permissions.canReturnTabletLoan} onRefresh={refreshAll} />
       )}
       {section === "history" && permissions.canViewTabletLoans && (
-        <ReservasMobilesPanel device="tablet" mode="history" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnTabletLoan} onRefresh={refreshAll} />
+        <ReservasMobilesPanel device="tablet" mode="history" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnTabletLoan} canRegisterRnc={permissions.canCreateTabletLoan || permissions.canReturnTabletLoan} onRefresh={refreshAll} />
       )}
 
       <TabletFormModal

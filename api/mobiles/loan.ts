@@ -4,6 +4,7 @@ import { authErrorResponse } from "../_requireAuth.js";
 import { requirePermission } from "../_rolePermissions.js";
 import { handleExternalMaintenanceSend } from "./_externalMaintenance.js";
 import { handleTabletLoan } from "../tablets/_loan.js";
+import { handleLoanRnc } from "./_loanRnc.js";
 
 const CONTROL_SHEET = "tbControleMobiles";
 const LOAN_SHEET = "tbEmprestimosMobiles";
@@ -55,6 +56,10 @@ async function handler(req: any, res: any) {
 
   if (req.body?.flow === "external_maintenance") {
     return handleExternalMaintenanceSend(req, res);
+  }
+
+  if (req.body?.flow === "rnc") {
+    return handleLoanRnc(req, res);
   }
 
   if (req.body?.device === "tablet") {

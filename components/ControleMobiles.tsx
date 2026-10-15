@@ -576,9 +576,9 @@ export default function ControleMobiles({
         })}
       </div>}
 
-      {activeSection === "loans" && permissions.canViewLoans && <ReservasMobilesPanel mode="operations" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnLoan} onRefresh={onRefresh} />}
+      {activeSection === "loans" && permissions.canViewLoans && <ReservasMobilesPanel mode="operations" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnLoan} canRegisterRnc={permissions.canCreateLoan || permissions.canReturnLoan} onRefresh={onRefresh} />}
       {activeSection === "external" && <ManutencaoExternaPanel data={data} currentUserName={currentUserName} canManage={permissions.canManageMobileMaintenance} onRefresh={onRefresh} />}
-      {activeSection === "history" && permissions.canViewLoans && <ReservasMobilesPanel mode="history" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnLoan} onRefresh={onRefresh} />}
+      {activeSection === "history" && permissions.canViewLoans && <ReservasMobilesPanel mode="history" data={data} currentUserName={currentUserName} canEdit={permissions.canReturnLoan} canRegisterRnc={permissions.canCreateLoan || permissions.canReturnLoan} onRefresh={onRefresh} />}
 
       {activeSection === "equipment" && <div className="mobile-section-intro">
         <div><strong>Inventário de equipamentos</strong><span>Use a pesquisa e os filtros rápidos; abra os filtros avançados somente quando necessário.</span></div>
