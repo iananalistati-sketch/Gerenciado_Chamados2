@@ -6,6 +6,7 @@ import RetornoManutencaoExternaModal from "./RetornoManutencaoExternaModal";
 import AdminProcessModal from "./AdminProcessModal";
 import { isModifiedRow } from "./adminProcess";
 import { useAuth } from "../contexts/AuthContext";
+import { useAppDialog } from "../contexts/AppDialogContext";
 import {
   EXTERNAL_MAINTENANCE_SHEET,
   maintenanceRowToTermData,
@@ -58,6 +59,36 @@ export default function ManutencaoExternaPanel({
   const [adminTarget, setAdminTarget] = useState<{ kind: "external" | "replacement"; row: string[] } | null>(null);
   const { role } = useAuth();
   const isAdmin = role === "admin";
+  const { alert: showAlert, prompt: showPrompt } = useAppDialog();
+
+  // Número da RNC: preenchido por quem gerencia manutenção, somente enquanto a manutenção está em aberto.
+  const registerRnc = async (item: ExternalMaintenanceTermData) => {
+    if (!canManage || normalize(item.status) !== "aberta") return;
+    const current = item.rnc;
+    const value = await showPrompt(`Informe o número da RNC da manutenção ${item.maintenanceId} (${item.collector}).${current ? " Deixe em branco para remover." : ""}`, {
+      title: "Registrar RNC",
+      defaultValue: current,
+      placeholder: "Nº da RNC",
+      confirmLabel: "Salvar",
+      cancelLabel: "Cancelar",
+    });
+    if (value === null) return;
+    const rnc = value.trim();
+    if (rnc === current) return;
+    try {
+      const response = await apiFetch("/api/mobiles/loan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow: "rnc", process: "external", maintenanceId: item.maintenanceId, rnc }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.error || "Erro ao registrar a RNC.");
+      await fetchRecords();
+      await showAlert(rnc ? `RNC ${rnc} registrada na manutenção ${item.maintenanceId}.` : `RNC removida da manutenção ${item.maintenanceId}.`, { variant: "success" });
+    } catch (err: any) {
+      await showAlert(err?.message || "Erro ao registrar a RNC.", { variant: "error" });
+    }
+  };
 
   const withRowNumbers = (values: string[][]) => {
     values.forEach((row, index) => {
@@ -177,7 +208,7 @@ export default function ManutencaoExternaPanel({
         if (filter === "open" && !isOpen) return false;
         if (filter === "finished" && isOpen) return false;
         if (!query) return true;
-        return [item.collector, item.serial, item.originSector, item.deliveryName, item.serviceOrder, item.maintenanceId]
+        return [item.collector, item.serial, item.originSector, item.deliveryName, item.serviceOrder, item.maintenanceId, item.rnc]
           .some((value) => normalize(value).includes(query));
       })
       .sort((a, b) => b.sendDate.localeCompare(a.sendDate));
@@ -340,12 +371,14 @@ export default function ManutencaoExternaPanel({
                     <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>Envio</span><strong>{formatDate(item.sendDate)}</strong></div>
                     <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>Entregue por</span><strong>{item.deliveryName || "-"}</strong></div>
                     <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>{isOpen ? "OS" : "Retorno"}</span><strong>{isOpen ? item.serviceOrder || "-" : formatDate(item.returnDate)}</strong></div>
+                    <div><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>Nº da RNC</span><strong style={{ color: item.rnc ? "var(--text-primary)" : "var(--text-muted)" }}>{item.rnc || "-"}</strong></div>
                     <div style={{ gridColumn: "1 / -1" }}><span style={{ display: "block", color: "var(--text-muted)", fontSize: "10px" }}>Defeito relatado</span><span style={{ color: "var(--text-secondary)" }}>{item.reportedDefect || "-"}</span></div>
                   </div>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
                     <button type="button" onClick={() => setTermPreview({ type: "receipt", data: item })} style={actionStyle("#8B5CF6")}>Termo de recebimento</button>
                     {!isOpen && item.returnDate && <button type="button" onClick={() => setTermPreview({ type: "return", data: item })} style={actionStyle("#10B981")}>Termo de devolução</button>}
                     {isOpen && canManage && <button type="button" onClick={() => setReturningRecord(item)} style={actionStyle("#3B82F6")}>↩ Registrar retorno</button>}
+                    {isOpen && canManage && <button type="button" onClick={() => registerRnc(item)} title="Registrar ou alterar o número da RNC" style={{ ...actionStyle("#F59E0B"), border: "1px solid rgba(245, 158, 11, 0.45)" }}>{item.rnc ? "Alterar RNC" : "RNC"}</button>}
                     {isAdmin && (
                       <button
                         type="button"

@@ -27,6 +27,7 @@ export interface ExternalMaintenanceTermData {
   returnSector: string;
   serviceDone: string;
   returnObservation: string;
+  rnc: string;
 }
 
 export const ACCESSORY_OPTIONS: Array<{ key: string; label: string }> = [
@@ -77,6 +78,7 @@ export const maintenanceRowToTermData = (
   returnSector: valueOf(headers, row, "SETOR_RETORNO"),
   serviceDone: valueOf(headers, row, "SERVICO_REALIZADO"),
   returnObservation: valueOf(headers, row, "OBS_RETORNO"),
+  rnc: valueOf(headers, row, "NUMERO_RNC"),
 });
 
 // A API devolve o registro com as chaves da planilha (ID_MANUTENCAO, COLETOR...).
